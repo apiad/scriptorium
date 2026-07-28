@@ -55,6 +55,7 @@ def test_freeze_cache_avoids_rerun(tmp_path):
     fz = Freeze(tmp_path / "f.json")
     env = ExecEnv(cwd=str(tmp_path), freeze=fz)
     out1 = env.run("import random; print(random.random())", "python")
+    env.reset_session()  # same program again (no accumulated prior cell)
     out2 = env.run("import random; print(random.random())", "python")
     assert out1 == out2  # second call served from cache, not re-run
 
@@ -78,3 +79,18 @@ def test_export_provenance_line_ranges():
     labels = [u.html for u in units if "code-file" in u.html]
     assert "m.py · L1–2" in labels[0]   # first block occupies lines 1-2
     assert "m.py · L3–3" in labels[1]   # second block continues at line 3
+
+
+def test_session_state_shared_across_blocks(tmp_path):
+    env = ExecEnv(cwd=str(tmp_path))
+    units = parse('```{python}\ndef greet(): return "hi"\n```\n\n'
+                  '```{python}\nprint(greet())\n```', env=env)
+    out = "".join(u.html for u in units if u.name == "output")
+    assert "hi" in out and out.count("hi") == 1  # shared state, no duplicated output
+
+
+def test_session_resets_on_newpage(tmp_path):
+    env = ExecEnv(cwd=str(tmp_path))
+    units = parse('```{python}\nx = 1\n```\n\n\\newpage\n\n```{python}\nprint(x)\n```', env=env)
+    out = "".join(u.html for u in units if u.name == "output")
+    assert "NameError" in out  # x is gone after the chapter boundary

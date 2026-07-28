@@ -117,6 +117,46 @@ def _split_code(u: Unit, avail: float) -> tuple[Unit, Unit]:
     return ua, ub
 
 
+_TBODY = re.compile(r"^(.*?<tbody[^>]*>)(.*)(</tbody>.*)$", re.S)
+_TR = re.compile(r"<tr\b.*?</tr>", re.S)
+
+
+def _split_code_maybe(u: Unit, avail: float):
+    """Split a code listing into `avail` if worthwhile, else None."""
+    if u.name != "code" or not u.code_src:
+        return None
+    n = u.code_src.count("\n") + 1
+    if n < 2 * MIN_CODE_LINES:
+        return None
+    per = max((u.height_mm - CODE_OVERHEAD) / n, 0.1)
+    if avail - CODE_OVERHEAD < MIN_CODE_LINES * per:
+        return None
+    return _split_code(u, avail)
+
+
+def _split_table(u: Unit, avail: float):
+    """Split a too-tall table at row boundaries, repeating the header, else None."""
+    if "<table" not in u.html:
+        return None
+    m = _TBODY.search(u.html)
+    if not m:
+        return None
+    head, body, tail = m.groups()
+    rows = _TR.findall(body)
+    n = len(rows)
+    if n < 2:
+        return None
+    per = max(u.height_mm / (n + 1), 0.1)  # +1 ≈ the repeated header row
+    if avail < 2.5 * per:  # too little room to bother splitting into here
+        return None
+    fit = max(1, min(int(avail / per) - 1, n - 1))
+
+    def frag(rws, k):
+        return Unit(html=head + "".join(rws) + tail, name="prose", height_mm=(k + 1) * per)
+
+    return frag(rows[:fit], fit), frag(rows[fit:], n - fit)
+
+
 def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Unit]], Report]:
     pages: list[list[Unit]] = [[]]
     oversized: list[str] = []
@@ -160,32 +200,24 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
                 avail = content_h
 
         if h > avail + EPS:  # doesn't fit in the space left on this page
-            can_split = u.splittable and u.name == "code" and u.code_src.count("\n") + 1 >= 2 * MIN_CODE_LINES
-            per = (u.height_mm - CODE_OVERHEAD) / (u.code_src.count("\n") + 1) if can_split else 0
-            if can_split and avail - CODE_OVERHEAD >= MIN_CODE_LINES * per:
-                ua, ub = _split_code(u, avail)
-                place(ua)
-                dq.appendleft(ub)
+            # 1) gap-fill: only code splits mid-page (tables/figures stay whole)
+            s = _split_code_maybe(u, avail)
+            if s:
+                place(s[0]); dq.appendleft(s[1]); new_page(); continue
+            # 2) fits whole on a fresh page -> move it there intact
+            if h <= content_h + EPS:
+                new_page(); dq.appendleft(u); continue
+            # 3) taller than a whole page: split (code or table) or overflow-warn
+            if pages[-1]:
                 new_page()
-                continue
-            if h > content_h + EPS:  # taller than a whole page
-                if pages[-1]:
-                    new_page()
-                if can_split:
-                    ua, ub = _split_code(u, content_h)
-                    place(ua)
-                    dq.appendleft(ub)
-                    new_page()
-                    continue
-                label = u.name if u.name != "prose" else re.sub(r"<[^>]+>", "", u.html)[:40] + "…"
-                oversized.append(f"{label} ({h:.0f}mm > {content_h:.0f}mm)")
-                pages[-1].append(u)
-                page_of.append(len(pages) - 1)
-                pages.append([])
-                y = 0.0
-                continue
-            new_page()  # fits whole on a fresh page — move it there
-            dq.appendleft(u)
+            s = _split_code_maybe(u, content_h) or _split_table(u, content_h)
+            if s:
+                place(s[0]); dq.appendleft(s[1]); new_page(); continue
+            label = u.name if u.name != "prose" else re.sub(r"<[^>]+>", "", u.html)[:40] + "…"
+            oversized.append(f"{label} ({h:.0f}mm > {content_h:.0f}mm)")
+            place(u)
+            pages.append([])
+            y = 0.0
             continue
         place(u)
 
@@ -257,7 +289,8 @@ _APPEARANCE = ("brand", "accent", "ink", "muted")
 
 def render_pdf(src: str, out_path: str, base_url: str | None = None,
                theme_name: str = "marketing", cwd: str | None = None,
-               execute: bool = True, vars: dict | None = None) -> Report:
+               execute: bool = True, vars: dict | None = None,
+               code_root: str | None = None) -> Report:
     from .parse import frontmatter, parse
 
     theme = load_theme(theme_name)
@@ -280,7 +313,10 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
         stem = str(meta.get("stem", "doc"))
         if cwd:
             tangle_write(src, cwd, doc_stem=stem)
-        env = ExecEnv(cwd=cwd, freeze=freeze)
+        pythonpath = []
+        if cwd and code_root:
+            pythonpath = [str((Path(cwd) / code_root).resolve())]
+        env = ExecEnv(cwd=cwd, freeze=freeze, pythonpath=pythonpath)
         if isinstance(meta.get("execute"), dict) and meta["execute"].get("interpreters"):
             env.interpreters.update(meta["execute"]["interpreters"])
 

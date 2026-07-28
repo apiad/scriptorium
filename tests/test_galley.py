@@ -90,3 +90,13 @@ def test_long_code_splits_across_pages():
     assert report.n_pages >= 2
     assert any(u.name == "code" for u in pages[0])  # part 1 fills the gap
     assert any(u.name == "code" for u in pages[1])  # part 2 continues
+
+
+def test_tall_table_splits_by_rows_repeating_header():
+    rows = "".join(f"<tr><td>{i}</td></tr>" for i in range(40))
+    html = f"<table><thead><tr><th>H</th></tr></thead><tbody>{rows}</tbody></table>"
+    tall = Unit(html=html, name="prose", height_mm=CONTENT_H + 90)  # taller than a page
+    pages, report = pack([tall])
+    frags = [u for p in pages for u in p if "<table" in u.html]
+    assert report.n_pages >= 2 and len(frags) >= 2
+    assert all("<thead>" in u.html for u in frags)  # header repeated on each fragment

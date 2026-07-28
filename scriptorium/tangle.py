@@ -46,6 +46,14 @@ def write(src: str, root: str | Path, doc_stem: str = "doc") -> list[str]:
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(content, encoding="utf-8")
         written.append(str(out))
+        # make every tangled dir an importable package (idempotent, never clobbers)
+        if out.suffix == ".py":
+            d = out.parent
+            while d != root and d != d.parent:
+                init = d / "__init__.py"
+                if not init.exists():
+                    init.write_text("", encoding="utf-8")
+                d = d.parent
     return written
 
 

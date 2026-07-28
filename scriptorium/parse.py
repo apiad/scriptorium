@@ -282,6 +282,8 @@ def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = No
                     continue
                 block = rest[0]
                 if block.strip() == r"\newpage":
+                    if env is not None:
+                        env.reset_session()  # new file/chapter -> fresh exec state
                     units.append(Unit(is_break=True, name="newpage"))
                     continue
                 if _HEADING.match(block):
@@ -292,6 +294,8 @@ def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = No
         else:
             _, name, mods, attrs, inner = node
             if name == "newpage":
+                if env is not None:
+                    env.reset_session()  # new file/chapter -> fresh exec state
                 units.append(Unit(is_break=True, name="newpage"))
                 continue
             if name in _TRANSPARENT:
