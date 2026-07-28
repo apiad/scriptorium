@@ -1,18 +1,21 @@
 name: book
-description: A technical-book template. Chapter numbering, cross-references, and
-  the TOC live in CSS (counters + target-counter/target-text), not the engine.
-  Serif body, sans headings, mono code.
+extends: base
+description: A classic long-form book template. Serif body (Source Serif), sans
+  headings, quiet large chapter numerals. Numbering, cross-references, and the
+  TOC live in CSS (counters + target-counter/target-text), not the engine.
 
 page:
   size: A4
   margin: 20mm
 
-# vars the project can override (also injected as CSS custom properties)
 vars:
   title: Untitled
   subtitle: ""
   author: ""
-  brand: "#1e3a8a"
+  accent: "#9a3412"        # warm sienna for chapter numerals + rules
+  accent-dark: "#7c2d12"
+  body-font: "Source Serif 4"
+  heading-font: "Inter"
 
 masters:
   body:

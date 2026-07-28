@@ -284,23 +284,35 @@ def emit(pages: list[list[Unit]], theme: Theme, meta: dict | None = None) -> str
     return "".join(out)
 
 
-_APPEARANCE = ("brand", "accent", "ink", "muted")
+# var names that become CSS custom properties (the customization contract)
+_APPEARANCE = {
+    "accent", "accent-dark", "brand", "brand-dark", "ink", "muted", "rule",
+    "body-font", "heading-font", "mono-font",
+}
 
 
 def render_pdf(src: str, out_path: str, base_url: str | None = None,
-               theme_name: str = "marketing", cwd: str | None = None,
+               theme_name: str = "report", cwd: str | None = None,
                execute: bool = True, vars: dict | None = None,
                code_root: str | None = None) -> Report:
     from .parse import frontmatter, parse
 
     theme = load_theme(theme_name)
     _, _, content_h = _geom(theme)
-    meta = frontmatter(src)
-    if vars:  # project vars feed masters and CSS custom properties
-        meta = {**vars, **meta}
-        overrides = "".join(f"--{k}:{vars[k]};" for k in _APPEARANCE if k in vars)
-        if overrides:
-            theme.css += f":root{{{overrides}}}"
+    # theme var defaults, overridden by project vars, then by per-doc frontmatter
+    merged = {**theme.vars, **(vars or {})}
+    meta = {**merged, **frontmatter(src)}
+
+    def _css_val(k, v):
+        v = str(v)
+        # multi-word font-family names must be quoted to be a valid CSS value
+        if k.endswith("-font") and " " in v and v[0] not in "'\"":
+            v = f"'{v}'"
+        return f"--{k}:{v};"
+
+    overrides = "".join(_css_val(k, merged[k]) for k in _APPEARANCE if k in merged)
+    if overrides:
+        theme.css += f":root{{{overrides}}}"
 
     # freeze cache serves both executed code and rendered math
     freeze = Freeze(Path(cwd) / ".scriptorium" / "freeze.json") if cwd else None

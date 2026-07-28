@@ -1,11 +1,18 @@
-name: marketing
-description: A generic, marketing-rich report theme — covers, section openers, KPI
-  dashboards, finding cards, timelines, stat strips, pull quotes. Neutral slate
-  palette with a swappable --brand accent. Self-contained (vendored Inter + JetBrains Mono).
+name: report
+extends: base
+description: A confident, data-forward report/briefing theme — covers, section
+  openers, KPI dashboards, finding cards, timelines, stat strips, pull quotes.
+  Disciplined slate palette with one swappable accent. All-sans (Inter).
 
 page:
   size: A4
   margin: 14mm
+
+vars:
+  accent: "#4f46e5"        # indigo — swap per project brand
+  accent-dark: "#3730a3"
+  body-font: "Inter"
+  heading-font: "Inter"
 
 # Full-page masters and body furniture.
 masters:

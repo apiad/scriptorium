@@ -1,0 +1,21 @@
+name: base
+description: >
+  Foundation theme — the customization var contract, vendored fonts, and correct
+  base styling for prose, code, math, tables, and layout primitives. Not used
+  directly; every other theme extends it and adds a point of view.
+
+page:
+  size: A4
+  margin: 20mm
+
+# The customization contract. Override any of these per-theme or per-project
+# (project vars win). Colors and fonts are injected as CSS custom properties.
+vars:
+  accent: "#2563eb"
+  accent-dark: "#1e40af"
+  ink: "#1a1a1a"
+  muted: "#6b7280"
+  rule: "#e5e7eb"
+  body-font: "Inter"
+  heading-font: "Inter"
+  mono-font: "JetBrains Mono"

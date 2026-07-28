@@ -1,31 +1,24 @@
-/* marketing theme — generic marketing-rich report design system.
-   Neutral slate palette + a swappable --brand accent. Self-contained fonts.
-   Visual layer only; galley owns the hard page geometry. */
-
-@font-face { font-family:'Inter'; font-weight:400; font-display:swap; src:url('assets/fonts/inter-400.woff2') format('woff2'); }
-@font-face { font-family:'Inter'; font-weight:500; font-display:swap; src:url('assets/fonts/inter-500.woff2') format('woff2'); }
-@font-face { font-family:'Inter'; font-weight:600; font-display:swap; src:url('assets/fonts/inter-600.woff2') format('woff2'); }
-@font-face { font-family:'Inter'; font-weight:700; font-display:swap; src:url('assets/fonts/inter-700.woff2') format('woff2'); }
-@font-face { font-family:'Inter'; font-weight:800; font-display:swap; src:url('assets/fonts/inter-800.woff2') format('woff2'); }
-@font-face { font-family:'JetBrains Mono'; font-weight:400; font-display:swap; src:url('assets/fonts/jbmono-400.woff2') format('woff2'); }
-@font-face { font-family:'JetBrains Mono'; font-weight:500; font-display:swap; src:url('assets/fonts/jbmono-500.woff2') format('woff2'); }
+/* report theme — data-forward briefing design system (extends base).
+   Fonts + base styling come from base; this layer is the component vocabulary
+   (covers, section openers, KPI tiles, finding cards, timelines) + the accent.
+   The rich variant colors (amber/emerald/rose…) are fixed semantic hues; the
+   primary accent follows var(--accent). */
 
 :root {
+  /* primary accent follows the injected --accent; --brand is a legacy alias */
+  --brand:var(--accent); --brand-dark:var(--accent-dark);
   --slate-900:#0f172a; --slate-850:#0b1220; --slate-800:#1e293b; --slate-700:#334155;
   --slate-600:#475569; --slate-500:#64748b; --slate-400:#94a3b8; --slate-300:#cbd5e1;
   --slate-200:#e2e8f0; --slate-100:#f1f5f9; --slate-50:#f8fafc;
-  /* swap --brand / --brand-dark to rebrand the whole theme */
-  --brand:#60a5fa; --brand-dark:#2563eb;
   --amber:#fbbf24; --emerald:#34d399; --rose:#fb7185; --violet:#a78bfa;
   --teal:#2dd4bf; --pink:#ec4899; --red:#ef4444; --yellow:#facc15;
-  --accent:var(--brand); --accent-dark:var(--brand-dark);
-  --grad-dark: radial-gradient(circle at 85% 12%, rgba(96,165,250,0.18) 0%, transparent 55%), linear-gradient(135deg, #0f172a 0%, #0b1220 100%);
-  --mono:'JetBrains Mono', ui-monospace, monospace;
+  --grad-dark: radial-gradient(circle at 85% 12%, rgba(79,70,229,0.20) 0%, transparent 55%), linear-gradient(135deg, #0f172a 0%, #0b1220 100%);
+  --mono:var(--mono-font), ui-monospace, monospace;
 }
 
 * { box-sizing:border-box; }
 body {
-  font-family:'Inter', system-ui, sans-serif; font-weight:400;
+  font-family:var(--body-font), system-ui, sans-serif; font-weight:400;
   font-size:10.5pt; line-height:1.55; color:var(--slate-900);
   -webkit-print-color-adjust:exact; print-color-adjust:exact;
 }

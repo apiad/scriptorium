@@ -1,34 +1,27 @@
-/* book theme — numbering + cross-references are pure CSS (WeasyPrint resolves
-   counters and target-counter/target-text at render time). */
+/* book theme (extends base) — classic long-form typography. Numbering + cross-
+   references are pure CSS (counters + target-counter/target-text). */
 
-:root { --brand:#1e3a8a; --ink:#1a1a1a; --muted:#666; --rule:#ddd; }
+:root { --brand:var(--accent); }
 
-* { box-sizing:border-box; }
 body {
-  font-family: Georgia, "Times New Roman", "DejaVu Serif", serif;
+  font-family: var(--body-font), Georgia, "DejaVu Serif", serif;
   font-size:11pt; line-height:1.55; color:var(--ink);
   counter-reset: chapter;
-  -webkit-print-color-adjust:exact; print-color-adjust:exact;
 }
-p { margin:0 0 3mm 0; text-align:justify; }
-ul, ol { margin:0 0 3mm 0; padding-left:6mm; }
-/* never let an image exceed the page box (a tall cover would clip) */
-img { max-width:100%; max-height:220mm; height:auto; }
+p { margin:0 0 0 0; text-indent:5mm; text-align:justify; hyphens:auto; }
+p:first-of-type, h1 + p, h2 + p, h3 + p { text-indent:0; }  /* no indent after a heading */
+.lead, blockquote p { text-indent:0; }
 
-/* consistent vertical rhythm between atomic units (space after code/math/etc.) */
-.unit { margin:0 0 4mm 0; }
-.unit > *:last-child { margin-bottom:0; }
-
-/* --- headings + chapter/section numbering (CSS counters) --- */
-h1, h2, h3 { font-family: system-ui, "Helvetica Neue", sans-serif; color:var(--brand); }
+/* --- headings: black text, a quiet accent chapter numeral (the signature) --- */
+h1, h2, h3, h4 { font-family: var(--heading-font), system-ui, sans-serif; color:var(--ink); }
 h1 {
   counter-increment: chapter; counter-reset: section;
-  font-size:26pt; font-weight:800; line-height:1.1; margin:0 0 9mm 0;
+  font-size:28pt; font-weight:800; line-height:1.05; letter-spacing:-0.02em; margin:0 0 10mm 0;
 }
 h1::before {
-  content: "Chapter " counter(chapter);
-  display:block; font-size:10pt; letter-spacing:0.24em; text-transform:uppercase;
-  color:var(--muted); font-weight:600; margin-bottom:3mm;
+  content: counter(chapter);
+  display:block; font-family:var(--body-font), serif; font-size:64pt; font-weight:300;
+  line-height:1; color:var(--accent); margin-bottom:2mm;
 }
 h2 { counter-increment: section; font-size:15pt; font-weight:700; margin:7mm 0 3mm 0; }
 h3 { font-size:12.5pt; font-weight:700; margin:5mm 0 2mm 0; }
