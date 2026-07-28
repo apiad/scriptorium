@@ -1,0 +1,18 @@
+name: deck
+extends: report
+mode: deck
+description: >
+  Beautiful 16:9 presentation slides with report-grade visuals — a title slide,
+  section dividers, a slide counter, and the report component vocabulary (KPI
+  tiles, finding cards, stat strips) on slides. Customizable by accent, fonts,
+  and aspect ratio.
+page:
+  size: "16:9"
+  margin: 14mm
+vars:
+  accent: "#4f46e5"
+  accent-dark: "#3730a3"
+  body-font: "Inter"
+  heading-font: "Inter"
+masters:
+  title: {}

@@ -20,12 +20,18 @@ from .highlight import css as hl_css
 from .highlight import highlight
 from .model import Unit
 from .tangle import write as tangle_write
-from .theme import Theme, load_theme
+from .theme import Theme, load_theme, render_template
 
 PX_PER_MM = 96 / 25.4
 PAGE_W, PAGE_H = 210.0, 297.0
 FOOTER_RESERVE = 8.0  # mm kept clear for the stamp on body pages
 EPS = 0.5
+
+# named page sizes (mm) — landscape slides for decks
+_SIZES = {
+    "a4": (210.0, 297.0), "letter": (215.9, 279.4),
+    "16:9": (254.0, 142.875), "4:3": (254.0, 190.5),
+}
 
 
 def _mm(v, default=14.0) -> float:
@@ -33,6 +39,14 @@ def _mm(v, default=14.0) -> float:
         return float(v)
     m = re.match(r"([\d.]+)", str(v or ""))
     return float(m.group(1)) if m else default
+
+
+def _page_size(theme: Theme) -> tuple[float, float]:
+    s = str(theme.meta.get("page", {}).get("size", "A4")).lower().strip()
+    if s in _SIZES:
+        return _SIZES[s]
+    nums = re.findall(r"([\d.]+)mm", s)
+    return (float(nums[0]), float(nums[1])) if len(nums) == 2 else _SIZES["a4"]
 
 
 @dataclass
@@ -43,8 +57,9 @@ class Report:
 
 
 def _geom(theme: Theme):
+    w, h = _page_size(theme)
     margin = _mm(theme.meta.get("page", {}).get("margin", "14mm"))
-    return margin, PAGE_W - 2 * margin, PAGE_H - 2 * margin - FOOTER_RESERVE
+    return margin, w - 2 * margin, h - 2 * margin - FOOTER_RESERVE
 
 
 # module defaults (default theme) so callers/tests can import CONTENT_H
@@ -228,20 +243,21 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
 
 def _emit_css(theme: Theme) -> str:
     margin, _, _ = _geom(theme)
+    w, h = _page_size(theme)
     return (
         # the page margin is ONE value: galley uses it for content width (measure)
         # and exposes it as --page-margin so base applies it as .page padding.
         f":root{{--page-margin:{margin}mm}}"
         + theme.css
         + hl_css()
-        + "@page{size:A4;margin:0}"
+        + f"@page{{size:{w}mm {h}mm;margin:0}}"
         + "html,body{margin:0;padding:0}"
         # engine invariant: units contain their margins so emit heights match
         # what measure computed (prevents collapse drift at page boundaries).
         + ".unit{display:flow-root;}"
-        + f".page{{width:{PAGE_W}mm;height:{PAGE_H}mm;box-sizing:border-box;"
+        + f".page,.slide{{width:{w}mm;height:{h}mm;box-sizing:border-box;"
         "overflow:hidden;page-break-after:always}"
-        ".page:last-child{page-break-after:auto}"
+        + ".page:last-child,.slide:last-child{page-break-after:auto}"
     )
 
 
@@ -286,6 +302,75 @@ def emit(pages: list[list[Unit]], theme: Theme, meta: dict | None = None) -> str
 
     out.append("</body></html>")
     return "".join(out)
+
+
+def _group_slides(units: list[Unit], has_title: bool):
+    """Split the unit stream into slides. A section heading (h1) is a divider
+    slide; a slide heading (h2) starts a content slide; ::: newpage / --- forces a
+    break; a full-page component is its own slide. Returns [(master, [units])]."""
+    slides: list[tuple[str, list[Unit]]] = []
+    cur: list[Unit] = []
+    cur_master = "content"
+
+    def flush():
+        nonlocal cur
+        if cur:
+            slides.append((cur_master, cur))
+            cur = []
+
+    if has_title:
+        slides.append(("title", []))
+    for u in units:
+        if u.is_break:
+            flush()
+        elif u.full_page:
+            flush()
+            slides.append((u.master or "content", [u]))
+        elif u.heading and u.heading_level == 1:
+            flush()
+            slides.append(("section", [u]))
+        elif u.heading and u.heading_level == 2:
+            flush()
+            cur = [u]
+        else:
+            cur.append(u)
+    flush()
+    return slides
+
+
+def emit_deck(slides, theme: Theme, meta: dict) -> str:
+    total = len(slides)
+    out = ["<!DOCTYPE html><html><head><meta charset='utf-8'><style>",
+           _emit_css(theme), "</style></head><body>"]
+    for n, (master, units) in enumerate(slides, 1):
+        out.append(f'<div class="slide {master}">')
+        if master == "title":
+            out.append(render_template(theme.master_template("title"), dict(meta)))
+        else:
+            out.append('<div class="slide-body">')
+            for u in units:
+                out.append(f'<div class="unit">{u.html}</div>')
+            out.append("</div>")
+            out.append(f'<div class="slide-counter">{n} / {total}</div>')
+        out.append("</div>")
+    out.append("</body></html>")
+    return "".join(out)
+
+
+def _render_deck(units, theme, meta, out_path, base_url, content_h) -> Report:
+    slides = _group_slides(units, has_title=bool(meta.get("title")))
+    oversized = []
+    for i, (master, us) in enumerate(slides, 1):
+        if master in ("title", "section"):
+            continue
+        tot = sum(u.height_mm for u in us if not u.full_page)
+        if tot > content_h + EPS:
+            oversized.append(f"slide {i} overflows ({tot:.0f}mm > {content_h:.0f}mm) — trim it")
+    doc = HTML(string=emit_deck(slides, theme, meta), base_url=base_url).render()
+    if len(doc.pages) != len(slides):
+        oversized.append(f"slide-count drift: planned {len(slides)}, rendered {len(doc.pages)}")
+    doc.write_pdf(out_path)
+    return Report(n_pages=len(slides), oversized=oversized, page_of=[])
 
 
 # var names that become CSS custom properties (the customization contract)
@@ -341,6 +426,8 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     units = parse(src, theme, env, meta=meta)
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
     measure(units, theme, base_url=base_url)
+    if str(theme.meta.get("mode", "")) == "deck":  # slides, not flowing pages
+        return _render_deck(units, theme, meta, out_path, base_url, content_h)
     pages, report = pack(units, content_h=content_h)
     doc = HTML(string=emit(pages, theme, meta), base_url=base_url).render()
     actual = len(doc.pages)

@@ -1,0 +1,37 @@
+/* deck (extends report) — 16:9 report-grade slides. Slides use .slide (not .page),
+   so the report portrait page styling stays inert; its components carry over. */
+
+.slide { padding:13mm 16mm; background:#fff; position:relative; overflow:hidden; }
+.slide-body { height:100%; }
+
+/* --- content slide: the h2 is the slide title --- */
+.slide.content { font-size:14pt; line-height:1.5; color:var(--slate-800); }
+.slide.content h2 { font-family:var(--heading-font), sans-serif; font-size:25pt; font-weight:800;
+  letter-spacing:-0.02em; color:var(--slate-900); margin:0 0 6mm 0; padding-bottom:3mm;
+  border-bottom:3px solid var(--accent); }
+.slide.content h2::before, .slide.section h1::before { content:none; }
+.slide.content p { margin:0 0 4mm 0; max-width:none; }
+.slide.content ul, .slide.content ol { font-size:14pt; padding-left:7mm; }
+.slide.content li { margin-bottom:3mm; }
+.slide.content .unit { margin-bottom:5mm; }
+
+/* --- title slide --- */
+.slide.title { background:var(--grad-dark); color:#fff; display:flex; flex-direction:column;
+  justify-content:center; padding:16mm 22mm; }
+.dt-title { font-family:var(--heading-font), sans-serif; font-size:40pt; font-weight:800;
+  letter-spacing:-0.03em; line-height:1.04; color:#fff; }
+.dt-subtitle { font-size:17pt; color:var(--slate-300); margin-top:6mm; font-weight:500; }
+.dt-author { margin-top:14mm; font-size:13pt; color:var(--slate-200); font-weight:600; }
+.dt-date { font-family:var(--mono); font-size:9.5pt; color:var(--accent); letter-spacing:0.1em;
+  text-transform:uppercase; margin-top:2.5mm; }
+
+/* --- section divider slide --- */
+.slide.section { background:var(--grad-dark); color:#fff; display:flex; flex-direction:column; justify-content:center; }
+.slide.section .slide-body { display:flex; flex-direction:column; justify-content:center; }
+.slide.section h1 { font-family:var(--heading-font), sans-serif; color:#fff; font-size:34pt;
+  font-weight:800; letter-spacing:-0.02em; margin:0; }
+.slide.section h1::after { content:""; display:block; width:24mm; height:4px; background:var(--accent); margin-top:6mm; }
+
+/* --- slide counter --- */
+.slide-counter { position:absolute; bottom:8mm; right:13mm; font-family:var(--heading-font), sans-serif;
+  font-size:9pt; font-weight:600; color:var(--slate-400); letter-spacing:0.08em; }

@@ -100,3 +100,17 @@ def test_tall_table_splits_by_rows_repeating_header():
     frags = [u for p in pages for u in p if "<table" in u.html]
     assert report.n_pages >= 2 and len(frags) >= 2
     assert all("<thead>" in u.html for u in frags)  # header repeated on each fragment
+
+
+def test_deck_groups_slides_by_headings():
+    from scriptorium.galley import _group_slides
+    us = [Unit(html="<h1>Part</h1>", heading="Part", heading_level=1),
+          Unit(html="<h2>A</h2>", heading="A", heading_level=2),
+          Unit(html="<p>a</p>"),
+          Unit(html="<h2>B</h2>", heading="B", heading_level=2),
+          Unit(html="<p>b</p>"),
+          Unit(is_break=True),
+          Unit(html="<p>c</p>")]
+    slides = _group_slides(us, has_title=True)
+    assert [m for m, _ in slides] == ["title", "section", "content", "content", "content"]
+    assert len(slides[3][1]) == 2  # slide "B": the h2 + its paragraph
