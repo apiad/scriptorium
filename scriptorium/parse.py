@@ -172,28 +172,35 @@ def _unwrap_p(html: str) -> str:
     return re.sub(r"^<p>(.*)</p>\s*$", r"\1", html.strip(), flags=re.S)
 
 
-def _render_fragment(src: str, theme: Theme) -> str:
+def _scalar(v) -> str:
+    return ", ".join(str(x) for x in v) if isinstance(v, list) else str(v)
+
+
+def _render_fragment(src: str, theme: Theme, meta: dict | None = None) -> str:
     parts = []
     for node in _split_nodes(src):
         if node[0] == "md":
             if node[1].strip():
-                parts.append(_md.render(node[1]))
+                parts.append(_md.render(_rewrite_refs(node[1])))
         else:
             _, name, mods, attrs, inner = node
-            parts.append(_component_html(name, mods, attrs, inner, theme))
+            parts.append(_component_html(name, mods, attrs, inner, theme, meta))
     return "".join(parts)
 
 
-def _component_html(name, mods, attrs, inner, theme: Theme) -> str:
+def _component_html(name, mods, attrs, inner, theme: Theme, meta: dict | None = None) -> str:
     if name == "keep":
-        return f'<div class="keep">{_render_fragment(inner, theme)}</div>'
+        return f'<div class="keep">{_render_fragment(inner, theme, meta)}</div>'
     if theme.is_component(name):
-        props = dict(attrs)
+        # component props default to the document's metadata (author, abstract…),
+        # overridden by explicit attrs; content is the rendered body.
+        props = {k: _scalar(v) for k, v in (meta or {}).items()}
+        props.update(attrs)
         props.setdefault("variant", " ".join(mods))
-        props["content"] = _unwrap_p(_render_fragment(inner, theme))
+        props["content"] = _unwrap_p(_render_fragment(inner, theme, meta))
         return theme.render(name, props)
     classes = " ".join(([name] if name else []) + mods)
-    return f'<div class="{classes}">{_render_fragment(inner, theme)}</div>'
+    return f'<div class="{classes}">{_render_fragment(inner, theme, meta)}</div>'
 
 
 def _tangle_target(f, stem: str) -> str:
@@ -299,23 +306,23 @@ def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = No
                 units.append(Unit(is_break=True, name="newpage"))
                 continue
             if name in _TRANSPARENT:
-                units.extend(parse(inner, theme, env))
+                units.extend(parse(inner, theme, env, meta=meta))
                 continue
             if name == "toc":  # filled after the whole doc is parsed (see fill_toc)
                 units.append(Unit(name="toc", html="", code_src=attrs.get("title", "Contents")))
                 continue
             master = theme.master_of(name)
             if master:
-                props = {k: str(v) for k, v in meta.items()}  # all vars/meta reach masters
+                props = {k: _scalar(v) for k, v in meta.items()}  # all vars/meta reach masters
                 props.update(attrs)
                 props.setdefault("variant", " ".join(mods))
-                props["content"] = _unwrap_p(_render_fragment(inner, theme))
+                props["content"] = _unwrap_p(_render_fragment(inner, theme, meta))
                 html = render_template(theme.master_template(master), props)
                 units.append(Unit(html=html, full_page=True, master=master, name=name))
             else:
                 keep = name == "keep" or theme.hint(name, "keep_together", bool(name))
                 units.append(
-                    Unit(html=_component_html(name, mods, attrs, inner, theme),
+                    Unit(html=_component_html(name, mods, attrs, inner, theme, meta),
                          keep_together=bool(keep), name=name or "div")
                 )
     return units

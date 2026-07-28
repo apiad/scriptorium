@@ -1,13 +1,18 @@
 ---
 title: The Shape of a Good Abstraction
+author: Jane Ashby
+institution: Department of Computer Science, Northwind University
+date: July 2026
+abstract: >
+  An abstraction earns its keep when it hides a decision you would otherwise have
+  to make in a hundred places. This essay distinguishes the load-bearing
+  abstractions from the leaky ones by a single test — can you name the decision it
+  hides? — and argues that the seam belongs between the things that change at
+  different rates.
+keywords: abstraction, interfaces, software design, coupling
 ---
 
-# The Shape of a Good Abstraction
-
-::: {.lead}
-An abstraction earns its keep when it hides a decision you would otherwise have to
-make in a hundred places. This is an essay about how to tell the load-bearing
-abstractions from the leaky ones — before you have shipped them everywhere.
+::: titleblock
 :::
 
 The word *abstraction* has been worn smooth by overuse, so let me be concrete.

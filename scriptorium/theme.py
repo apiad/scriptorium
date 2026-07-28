@@ -26,10 +26,13 @@ import yaml
 THEMES_DIR = Path(__file__).resolve().parent.parent / "themes"
 
 _HOLE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
+_SECTION = re.compile(r"\{\{#(\w+)\}\}(.*?)\{\{/\1\}\}", re.S)
 _URL = re.compile(r"url\(\s*(['\"]?)([^)'\"]+)\1\s*\)")
 
 
 def render_template(tpl: str, props: dict) -> str:
+    # {{#key}}…{{/key}} keeps its body only when key is a non-empty value
+    tpl = _SECTION.sub(lambda m: m.group(2) if str(props.get(m.group(1), "")).strip() else "", tpl)
     return _HOLE.sub(lambda m: str(props.get(m.group(1), "")), tpl)
 
 
