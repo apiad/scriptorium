@@ -4,6 +4,36 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.2.0] - 2026-07-28
+
+The theme system — a small set of archetypes you customize and inherit from,
+spanning conference notes to polished books.
+
+### Features
+- **Theme inheritance** — `extends:` in `theme.yml` merges a parent's CSS,
+  components, masters, and var-defaults (child wins), so a theme is a diff.
+- **`base` + a default lineup** (simple → gorgeous): `note` (handouts),
+  `article` (essays/whitepapers), `report` (data-forward briefings), `book`
+  (classic long-form). Each has a distinct point of view.
+- **Customization contract** — `accent`, `body-font`, `heading-font`,
+  `mono-font`, etc. injected as CSS custom properties; rebrand a document with
+  `vars:` alone, no theme authoring.
+- **Vendored fonts that actually embed** — Inter, Source Serif 4, JetBrains Mono
+  ship as woff2; relative `@font-face` urls are rewritten to absolute at load
+  (they were silently falling back to system fonts before).
+- **Template loops** — `{{#list}}…{{/list}}` iterates with per-item scope,
+  `{{_n}}` index, and `{{.}}` for scalar lists; sections nest and drop when empty.
+- **Academic title block** (article) — title, subtitle, multiple authors with
+  numbered affiliations, date, abstract, and keywords, driven from frontmatter.
+
+### Fixes
+- The page margin is a single value: galley injects it and `base` applies it as
+  `.page` padding, so the visual inset can't disagree with the measured content
+  width (some themes were rendering with no margin).
+
+### Other
+- Scrubbed all project-specific references — scriptorium is a generic tool.
+
 ## [v0.1.0] - 2026-07-28
 
 First release. A Markdown-native document engine that weaves to exact-geometry
