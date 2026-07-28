@@ -592,9 +592,11 @@ scriptorium/
       epub.py
     cli.py
   themes/
-    default/
-    book/             # book theme
-    report/           # rich report theme (cover, KPI tiles, finding cards…)
+    base/             # foundation: var contract + vendored fonts + base styling
+    note/             # utilitarian notes/handouts
+    article/          # polished single document (serif body, sans display)
+    report/           # data-forward report (cover, KPI tiles, finding cards…)
+    book/             # classic long-form book (serif, chapter numerals, TOC)
   docs/
     design.md         # this document
   tests/
