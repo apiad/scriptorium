@@ -42,7 +42,7 @@ a.ref-fig::after {
 }
 
 /* --- page shells (geometry from galley) --- */
-.page { padding:20mm; background:#fff; position:relative; }
+.page { background:#fff; }  /* padding from base (--page-margin) */
 .page.titlepage { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
 .tp-title { font-family:system-ui,sans-serif; font-size:38pt; font-weight:800; color:var(--brand); line-height:1.1; }
 .tp-sub { font-size:14pt; color:var(--muted); margin-top:6mm; max-width:130mm; }

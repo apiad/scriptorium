@@ -227,8 +227,12 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
 
 
 def _emit_css(theme: Theme) -> str:
+    margin, _, _ = _geom(theme)
     return (
-        theme.css
+        # the page margin is ONE value: galley uses it for content width (measure)
+        # and exposes it as --page-margin so base applies it as .page padding.
+        f":root{{--page-margin:{margin}mm}}"
+        + theme.css
         + hl_css()
         + "@page{size:A4;margin:0}"
         + "html,body{margin:0;padding:0}"

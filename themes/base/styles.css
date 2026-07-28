@@ -82,10 +82,16 @@ tbody td strong { color:var(--ink); }
 .three-col > * { break-inside:avoid-column; }
 .keep { display:flow-root; }
 
-/* page furniture positioning (themes restyle the look) */
-.page { position:relative; background:var(--paper); }
-.stamp { position:absolute; bottom:12mm; left:20mm; right:20mm; display:flex;
+/* the page box: galley sets the width/height; base applies the margin as padding
+   (--page-margin is injected from the theme's single margin value). Full-page
+   masters (cover/title/section) override .page padding in their own theme. */
+.page { position:relative; background:var(--paper); padding:var(--page-margin, 20mm); }
+
+/* furniture sits in the margin band, aligned to the content edges */
+.stamp { position:absolute; bottom:calc(var(--page-margin, 20mm) * 0.5);
+  left:var(--page-margin, 20mm); right:var(--page-margin, 20mm); display:flex;
   justify-content:space-between; font-family:var(--heading-font), sans-serif;
   font-size:8pt; color:var(--muted); }
-.runhead { position:absolute; top:12mm; left:20mm; right:20mm; font-family:var(--heading-font), sans-serif;
-  font-size:8pt; letter-spacing:0.08em; color:var(--muted); }
+.runhead { position:absolute; top:calc(var(--page-margin, 20mm) * 0.5);
+  left:var(--page-margin, 20mm); right:var(--page-margin, 20mm);
+  font-family:var(--heading-font), sans-serif; font-size:8pt; letter-spacing:0.08em; color:var(--muted); }

@@ -49,7 +49,7 @@ pre { background:var(--slate-50); border:1px solid var(--slate-200); border-radi
 .unit > *:last-child { margin-bottom:0; }
 
 /* ---- page shells (variants; geometry from galley) ---- */
-.page { padding:14mm; background:var(--slate-50); position:relative; }
+.page { background:var(--slate-50); }  /* padding from base (--page-margin) */
 .page.tinted { background:linear-gradient(180deg,var(--slate-50) 0%, #fff 28%, #fff 100%); }
 .page.dark { background:var(--grad-dark); color:var(--slate-100); }
 .page.no-pad { padding:0; }
