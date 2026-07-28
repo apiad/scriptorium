@@ -194,33 +194,43 @@ def _emit_css(theme: Theme) -> str:
     )
 
 
+def _fill_tokens(tpl: str, mapping: dict) -> str:
+    return re.sub(r"\{(\w+)\}", lambda m: str(mapping.get(m.group(1), "")), tpl)
+
+
 def emit(pages: list[list[Unit]], theme: Theme, meta: dict | None = None) -> str:
     meta = meta or {}
     title = str(meta.get("title", ""))
     total = len(pages)
-    section = title
+    chapter, section = title, ""
+    header = theme.meta.get("masters", {}).get("body", {}).get("header")
     out = ["<!DOCTYPE html><html><head><meta charset='utf-8'><style>",
            _emit_css(theme), "</style></head><body>"]
 
     for n, page in enumerate(pages, 1):
         if len(page) == 1 and page[0].full_page:
-            master = page[0].master
-            classes = theme.master_classes(master)
+            classes = theme.master_classes(page[0].master)
             out.append(f'<div class="page {classes}">{page[0].html}</div>')
             continue
-        # body page: update running section, wrap units, add stamp
+        # body page: track running chapter/section, then wrap units + furniture
         for u in page:
             if u.heading:
-                section = u.heading
+                if u.heading_level == 1:
+                    chapter, section = u.heading, ""
+                elif u.heading_level == 2:
+                    section = u.heading
         classes = theme.master_classes("body")
         out.append(f'<div class="page {classes}">')
+        opens_chapter = bool(page) and page[0].heading_level == 1
+        if header and not opens_chapter:  # running head: verso (even) / recto (odd)
+            side = header.get("verso" if n % 2 == 0 else "recto", "")
+            tokens = {"title": title, "chapter": chapter, "section": section, "page": n, "total": total}
+            out.append(f'<div class="runhead runhead-{"verso" if n % 2 == 0 else "recto"}">'
+                       f"{_fill_tokens(side, tokens)}</div>")
         for u in page:
             out.append(f'<div class="unit">{u.html}</div>')
         if theme.master_furniture("body") == "stamp":
-            out.append(
-                f'<div class="stamp"><span>{title}</span>'
-                f'<span>{section}</span><span>{n} / {total}</span></div>'
-            )
+            out.append(f'<div class="stamp"><span>{chapter}</span><span>{n}</span></div>')
         out.append("</div>")
 
     out.append("</body></html>")
@@ -259,7 +269,10 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
         if isinstance(meta.get("execute"), dict) and meta["execute"].get("interpreters"):
             env.interpreters.update(meta["execute"]["interpreters"])
 
+    from .parse import fill_toc
+
     units = parse(src, theme, env, meta=meta)
+    units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
     measure(units, theme, base_url=base_url)
     pages, report = pack(units, content_h=content_h)
     doc = HTML(string=emit(pages, theme, meta), base_url=base_url).render()

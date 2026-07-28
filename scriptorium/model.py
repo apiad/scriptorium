@@ -21,7 +21,9 @@ class Unit:
     height_mm: float = 0.0  # filled by galley.measure
     full_page: bool = False  # occupies its own page via a master (cover, section)
     master: str | None = None  # page master name when full_page
-    heading: str | None = None  # section title if this unit is a heading
+    heading: str | None = None  # heading text if this unit is a heading
+    heading_level: int = 0  # 1..6
+    heading_id: str | None = None  # id assigned to the heading (for TOC + refs)
     splittable: bool = False  # may be broken across pages at line boundaries
     code_src: str = ""  # raw code (for re-splitting a listing)
     code_lang: str = ""

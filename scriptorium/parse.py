@@ -53,23 +53,30 @@ _HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$")
 _HEAD_ATTR = re.compile(r"^(\s{0,3}#{1,6}\s+.*?)\s*\{([^}]*)\}\s*$")
 
 
+def _slug(text: str) -> str:
+    s = re.sub(r"[^\w\s-]", "", text.lower()).strip()
+    return re.sub(r"[\s_]+", "-", s) or "sec"
+
+
 def _heading_unit(block: str) -> Unit:
-    """Render a heading, assigning {#id .class} attrs to the tag ourselves."""
-    src, attr = block, ""
+    """Render a heading; assign {#id .class} attrs (auto-slug id if none)."""
+    level = len(re.match(r"^\s{0,3}(#{1,6})", block).group(1))
+    src, hid, classes = block, None, []
     m = _HEAD_ATTR.match(block)
     if m:
         src = m.group(1)
         idm = re.search(r"#([\w:.-]+)", m.group(2))
         classes = re.findall(r"\.([\w-]+)", m.group(2))
-        if idm:
-            attr += f' id="{idm.group(1)}"'
-        if classes:
-            attr += f' class="{" ".join(classes)}"'
+        hid = idm.group(1) if idm else None
+    label = _HEADING.match(src).group(1) if _HEADING.match(src) else None
+    if hid is None and label:
+        hid = _slug(label)
+    attr = (f' id="{hid}"' if hid else "") + (f' class="{" ".join(classes)}"' if classes else "")
     html = _md.render(_rewrite_refs(src))
     if attr:
         html = re.sub(r"^<(h[1-6])(\s|>)", rf"<\1{attr}\2", html, count=1)
-    label = (_HEADING.match(src).group(1) if _HEADING.match(src) else None)
-    return Unit(html=html, keep_together=False, name="prose", heading=label)
+    return Unit(html=html, keep_together=False, name="prose",
+                heading=label, heading_level=level, heading_id=hid)
 
 
 def _parse_info(info: str):
@@ -235,6 +242,28 @@ def _body(src: str) -> str:
     return src
 
 
+def fill_toc(units: list[Unit], depth: int = 2) -> list[Unit]:
+    """Replace each `::: toc` placeholder with one unit per heading (so the TOC
+    paginates). Page numbers are added by theme CSS via target-counter."""
+    if not any(u.name == "toc" for u in units):
+        return units
+    heads = [u for u in units if u.heading_id and 1 <= u.heading_level <= depth]
+    out: list[Unit] = []
+    for u in units:
+        if u.name != "toc":
+            out.append(u)
+            continue
+        out.append(Unit(html=f'<div class="toc-h">{escape(u.code_src or "Contents")}</div>', name="toc"))
+        for h in heads:
+            cls = f"toc-entry toc-l{h.heading_level}"
+            out.append(Unit(
+                html=(f'<a class="{cls}" href="#{h.heading_id}">'
+                      f'<span class="toc-txt">{escape(h.heading)}</span>'
+                      f'<span class="toc-lead"></span></a>'),
+                name="toc-entry"))
+    return out
+
+
 def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = None) -> list[Unit]:
     theme = theme or load_theme()
     meta = frontmatter(src) if meta is None else meta
@@ -263,6 +292,9 @@ def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = No
                 continue
             if name in _TRANSPARENT:
                 units.extend(parse(inner, theme, env))
+                continue
+            if name == "toc":  # filled after the whole doc is parsed (see fill_toc)
+                units.append(Unit(name="toc", html="", code_src=attrs.get("title", "Contents")))
                 continue
             master = theme.master_of(name)
             if master:

@@ -15,7 +15,10 @@ vars:
   brand: "#1e3a8a"
 
 masters:
-  body:  { classes: "",          furniture: stamp }
+  body:
+    classes: ""
+    furniture: stamp
+    header: { verso: "{title}", recto: "{chapter}" }
   title: { classes: "titlepage", furniture: none }
 
 components:

@@ -54,6 +54,23 @@ a.ref-fig::after {
   display:flex; justify-content:space-between;
   font-family:system-ui,sans-serif; font-size:8pt; color:var(--muted);
 }
+.runhead {
+  position:absolute; top:11mm; left:20mm; right:20mm;
+  font-family:system-ui,sans-serif; font-size:8pt; letter-spacing:0.1em;
+  text-transform:uppercase; color:var(--muted);
+  border-bottom:1px solid var(--rule); padding-bottom:1.5mm;
+}
+.runhead-recto { text-align:right; }
+.runhead-verso { text-align:left; }
+
+/* --- table of contents (page numbers via target-counter) --- */
+.toc-h { font-family:system-ui,sans-serif; font-size:24pt; font-weight:800; color:var(--brand); margin:0 0 9mm 0; }
+.toc-entry { display:flex; align-items:baseline; gap:2mm; text-decoration:none; color:var(--ink); margin:2.5mm 0; }
+.toc-entry::after { content: target-counter(attr(href url), page); font-variant-numeric:tabular-nums; color:var(--muted); }
+.toc-txt { flex:0 0 auto; }
+.toc-lead { flex:1 1 auto; border-bottom:1px dotted var(--rule); transform:translateY(-1.2mm); }
+.toc-l1 { font-weight:700; margin-top:4mm; }
+.toc-l2 { margin-left:9mm; font-size:10pt; color:var(--muted); }
 
 /* --- code, output, math (shared vocabulary) --- */
 .codeblock { position:relative; }
