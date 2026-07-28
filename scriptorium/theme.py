@@ -25,15 +25,40 @@ import yaml
 
 THEMES_DIR = Path(__file__).resolve().parent.parent / "themes"
 
-_HOLE = re.compile(r"\{\{\s*(\w+)\s*\}\}")
+_HOLE = re.compile(r"\{\{\s*([\w.]+)\s*\}\}")
 _SECTION = re.compile(r"\{\{#(\w+)\}\}(.*?)\{\{/\1\}\}", re.S)
 _URL = re.compile(r"url\(\s*(['\"]?)([^)'\"]+)\1\s*\)")
 
 
+def _scalar(v) -> str:
+    return ", ".join(str(x) for x in v) if isinstance(v, list) else str(v)
+
+
 def render_template(tpl: str, props: dict) -> str:
-    # {{#key}}…{{/key}} keeps its body only when key is a non-empty value
-    tpl = _SECTION.sub(lambda m: m.group(2) if str(props.get(m.group(1), "")).strip() else "", tpl)
-    return _HOLE.sub(lambda m: str(props.get(m.group(1), "")), tpl)
+    """A small mustache: {{key}} holes and {{#key}}…{{/key}} sections.
+
+    A section iterates when key is a list (each item's fields join the scope, with
+    {{_n}} the 1-based index and {{.}} the item itself for scalar lists), renders
+    once for a truthy scalar, and drops when empty. Sections nest.
+    """
+    def section(m):
+        key, body = m.group(1), m.group(2)
+        val = props.get(key)
+        if isinstance(val, list):
+            out = []
+            for i, item in enumerate(val, 1):
+                scope = dict(props)
+                scope["_n"] = i
+                if isinstance(item, dict):
+                    scope.update(item)
+                else:
+                    scope["."] = item
+                out.append(render_template(body, scope))
+            return "".join(out)
+        return render_template(body, props) if str(val or "").strip() else ""
+
+    tpl = _SECTION.sub(section, tpl)
+    return _HOLE.sub(lambda m: _scalar(props.get(m.group(1), "")), tpl)
 
 
 def _rewrite_urls(css: str, root: Path) -> str:

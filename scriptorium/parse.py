@@ -193,8 +193,9 @@ def _component_html(name, mods, attrs, inner, theme: Theme, meta: dict | None = 
         return f'<div class="keep">{_render_fragment(inner, theme, meta)}</div>'
     if theme.is_component(name):
         # component props default to the document's metadata (author, abstract…),
-        # overridden by explicit attrs; content is the rendered body.
-        props = {k: _scalar(v) for k, v in (meta or {}).items()}
+        # overridden by explicit attrs; content is the rendered body. Structured
+        # values (author lists) pass through raw for template sections.
+        props = dict(meta or {})
         props.update(attrs)
         props.setdefault("variant", " ".join(mods))
         props["content"] = _unwrap_p(_render_fragment(inner, theme, meta))
@@ -313,7 +314,7 @@ def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = No
                 continue
             master = theme.master_of(name)
             if master:
-                props = {k: _scalar(v) for k, v in meta.items()}  # all vars/meta reach masters
+                props = dict(meta)  # all vars/meta reach masters (structured, raw)
                 props.update(attrs)
                 props.setdefault("variant", " ".join(mods))
                 props["content"] = _unwrap_p(_render_fragment(inner, theme, meta))

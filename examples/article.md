@@ -1,7 +1,15 @@
 ---
 title: The Shape of a Good Abstraction
-author: Jane Ashby
-institution: Department of Computer Science, Northwind University
+authors:
+  - name: Jane Ashby
+    affiliation: 1
+  - name: John Merrill
+    affiliation: 2
+  - name: Amara Okafor
+    affiliation: 1
+affiliations:
+  - Department of Computer Science, Northwind University
+  - Institute for Advanced Study, Cambridge
 date: July 2026
 abstract: >
   An abstraction earns its keep when it hides a decision you would otherwise have

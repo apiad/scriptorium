@@ -1,8 +1,8 @@
 <div class="titleblock">
   <h1 class="tb-title">{{title}}</h1>
   {{#subtitle}}<div class="tb-subtitle">{{subtitle}}</div>{{/subtitle}}
-  {{#author}}<div class="tb-authors">{{author}}</div>{{/author}}
-  {{#institution}}<div class="tb-affil">{{institution}}</div>{{/institution}}
+  <div class="tb-authors">{{#authors}}<span class="tb-author">{{name}}{{#affiliation}}<sup class="tb-mark">{{affiliation}}</sup>{{/affiliation}}</span>{{/authors}}{{#author}}<span class="tb-author">{{author}}</span>{{/author}}</div>
+  <div class="tb-affils">{{#affiliations}}<div class="tb-affil"><sup class="tb-mark">{{_n}}</sup>{{.}}</div>{{/affiliations}}{{#institution}}<div class="tb-affil">{{institution}}</div>{{/institution}}</div>
   {{#date}}<div class="tb-date">{{date}}</div>{{/date}}
   {{#abstract}}<div class="tb-abstract"><span class="tb-label">Abstract</span>{{abstract}}</div>{{/abstract}}
   {{#keywords}}<div class="tb-keywords"><span class="tb-label">Keywords</span> {{keywords}}</div>{{/keywords}}
