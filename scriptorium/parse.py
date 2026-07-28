@@ -1,22 +1,27 @@
 """Parse Markdown + `:::` fenced-div components into a flat list of Units.
 
-VS1 scope: CommonMark + tables via markdown-it-py; `:::` containers for
-`keep` / `newpage` / a themed component (`finding-card`) / generic class divs.
-Prose runs split at blank lines into per-block units. Nested containers and
-`::: slot` are deferred to a later slice.
+Base: CommonMark + tables (markdown-it-py). Components and page masters come
+from the active theme; `:::` containers render recursively (a grid can contain
+tiles). A component whose theme hint carries a `master` becomes a full-page
+unit (cover, section opener). Frontmatter feeds master/stamp metadata.
 """
 
 import re
 
+import yaml
 from markdown_it import MarkdownIt
 
 from .model import Unit
-from .theme import is_component, render_template
+from .theme import Theme, load_theme, render_template
 
 _md = MarkdownIt("commonmark").enable("table")
 
+# wrappers that carry no box of their own: their children become top-level units
+_TRANSPARENT = {"tinted", "group"}
+
 _FENCE = re.compile(r"^(:{3,})\s*(.*?)\s*$")
-_ATTR = re.compile(r"""(\#[\w-]+)|(\.[\w-]+)|(\w[\w-]*)=("(?:[^"]*)"|'(?:[^']*)'|\S+)""")
+_ATTR = re.compile(r"""(\#[\w-]+)|(\.[\w-]+)|(\w[\w-]*)=("[^"]*"|'[^']*'|\S+)""")
+_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$")
 
 
 def _parse_info(info: str):
@@ -28,11 +33,11 @@ def _parse_info(info: str):
     if tokens:
         name, mods = tokens[0], tokens[1:]
     for m in _ATTR.finditer(tail):
-        if m.group(1):  # #id
+        if m.group(1):
             attrs["id"] = m.group(1)[1:]
-        elif m.group(2):  # .class
+        elif m.group(2):
             mods.append(m.group(2)[1:])
-        elif m.group(3):  # key=val
+        elif m.group(3):
             val = m.group(4)
             if val and val[0] in "\"'":
                 val = val[1:-1]
@@ -46,7 +51,7 @@ def _split_nodes(src: str):
     nodes, buf, i = [], [], 0
     while i < len(lines):
         m = _FENCE.match(lines[i])
-        if m and m.group(2):  # opening fence (has an info string)
+        if m and m.group(2):  # opening fence (has info)
             if buf:
                 nodes.append(("md", "\n".join(buf)))
                 buf = []
@@ -74,7 +79,47 @@ def _split_nodes(src: str):
     return nodes
 
 
-def _strip_frontmatter(src: str) -> str:
+def _unwrap_p(html: str) -> str:
+    return re.sub(r"^<p>(.*)</p>\s*$", r"\1", html.strip(), flags=re.S)
+
+
+def _render_fragment(src: str, theme: Theme) -> str:
+    """Recursively render a chunk (markdown + nested components) to HTML."""
+    parts = []
+    for node in _split_nodes(src):
+        if node[0] == "md":
+            if node[1].strip():
+                parts.append(_md.render(node[1]))
+        else:
+            _, name, mods, attrs, inner = node
+            parts.append(_component_html(name, mods, attrs, inner, theme))
+    return "".join(parts)
+
+
+def _component_html(name, mods, attrs, inner, theme: Theme) -> str:
+    if name == "keep":
+        return f'<div class="keep">{_render_fragment(inner, theme)}</div>'
+    if theme.is_component(name):
+        props = dict(attrs)
+        props.setdefault("variant", " ".join(mods))
+        props["content"] = _unwrap_p(_render_fragment(inner, theme))
+        return theme.render(name, props)
+    classes = " ".join(([name] if name else []) + mods)
+    return f'<div class="{classes}">{_render_fragment(inner, theme)}</div>'
+
+
+def frontmatter(src: str) -> dict:
+    if src.startswith("---\n"):
+        end = src.find("\n---", 3)
+        if end >= 0:
+            try:
+                return yaml.safe_load(src[4:end]) or {}
+            except yaml.YAMLError:
+                return {}
+    return {}
+
+
+def _body(src: str) -> str:
     if src.startswith("---\n"):
         end = src.find("\n---", 3)
         if end >= 0:
@@ -83,10 +128,11 @@ def _strip_frontmatter(src: str) -> str:
     return src
 
 
-def parse(src: str) -> list[Unit]:
-    src = _strip_frontmatter(src)
+def parse(src: str, theme: Theme | None = None) -> list[Unit]:
+    theme = theme or load_theme()
+    meta = frontmatter(src)
     units: list[Unit] = []
-    for node in _split_nodes(src):
+    for node in _split_nodes(_body(src)):
         if node[0] == "md":
             for block in re.split(r"\n\s*\n", node[1]):
                 if not block.strip():
@@ -94,28 +140,32 @@ def parse(src: str) -> list[Unit]:
                 if block.strip() == r"\newpage":
                     units.append(Unit(is_break=True, name="newpage"))
                     continue
-                units.append(Unit(html=_md.render(block), keep_together=False, name="prose"))
+                hm = _HEADING.match(block)
+                units.append(
+                    Unit(html=_md.render(block), keep_together=False, name="prose",
+                         heading=hm.group(1) if hm else None)
+                )
         else:
             _, name, mods, attrs, inner = node
             if name == "newpage":
                 units.append(Unit(is_break=True, name="newpage"))
-            elif name == "keep":
-                units.append(
-                    Unit(html=f'<div class="keep">{_md.render(inner)}</div>',
-                         keep_together=True, name="keep")
-                )
-            elif is_component(name):
+                continue
+            if name in _TRANSPARENT:  # unwrap: children become top-level units
+                units.extend(parse(inner, theme))
+                continue
+            master = theme.master_of(name)
+            if master:
                 props = dict(attrs)
                 props.setdefault("variant", " ".join(mods))
-                props["content"] = _md.render(inner).strip()
-                # unwrap a lone <p> so inline reason text stays inline
-                props["content"] = re.sub(r"^<p>(.*)</p>\s*$", r"\1", props["content"], flags=re.S)
-                units.append(Unit(html=render_template(name, props),
-                                  keep_together=True, name=name))
-            else:  # generic class div (Level 0/1)
-                classes = " ".join(([name] if name else []) + mods)
+                for k in ("title", "org", "org_sub", "date", "edition", "addr"):
+                    props.setdefault(k, str(meta.get(k, "")))
+                props["content"] = _unwrap_p(_render_fragment(inner, theme))
+                html = render_template(theme.master_template(master), props)
+                units.append(Unit(html=html, full_page=True, master=master, name=name))
+            else:
+                keep = name == "keep" or theme.hint(name, "keep_together", bool(name))
                 units.append(
-                    Unit(html=f'<div class="{classes}">{_md.render(inner)}</div>',
-                         keep_together=bool(name), name=name or "div")
+                    Unit(html=_component_html(name, mods, attrs, inner, theme),
+                         keep_together=bool(keep), name=name or "div")
                 )
     return units

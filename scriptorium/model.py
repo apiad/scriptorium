@@ -19,3 +19,6 @@ class Unit:
     is_break: bool = False  # a bare `::: newpage` / `\newpage`
     name: str = "block"  # component name or "block"/"prose"
     height_mm: float = 0.0  # filled by galley.measure
+    full_page: bool = False  # occupies its own page via a master (cover, section)
+    master: str | None = None  # page master name when full_page
+    heading: str | None = None  # section title if this unit is a heading

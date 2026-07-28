@@ -1,0 +1,33 @@
+name: marketing
+description: A generic, marketing-rich report theme — covers, section openers, KPI
+  dashboards, finding cards, timelines, stat strips, pull quotes. Neutral slate
+  palette with a swappable --brand accent. Self-contained (vendored Inter + JetBrains Mono).
+
+page:
+  size: A4
+  margin: 14mm
+
+# Full-page masters and body furniture.
+masters:
+  body:    { classes: "",            furniture: stamp }
+  tinted:  { classes: "tinted",      furniture: stamp }
+  cover:   { classes: "dark cover",  furniture: none }
+  section: { classes: "dark section-opener", furniture: none }
+  back:    { classes: "dark back-cover",     furniture: none }
+
+# Component hints consumed by the galley engine. `master` => full page.
+components:
+  cover:        { master: cover }
+  section:      { master: section }
+  back:         { master: back }
+  kpi-dash:     { keep_together: true }
+  kpi:          { keep_together: true }
+  finding:      { keep_together: true }
+  card:         { keep_together: true }
+  cta:          { keep_together: true }
+  stat-strip:   { keep_together: true }
+  region:       { keep_together: true }
+  tier:         { keep_together: true }
+  pull-quote:   { keep_together: true }
+  callout:      { keep_together: true }
+  toc-item:     { keep_together: true }

@@ -44,10 +44,23 @@ def test_oversized_unit_is_flagged_not_clipped():
     assert huge in pages[0]  # overflowed, still emitted
 
 
-def test_finding_card_renders_template():
-    (unit,) = parse('::: finding-card amber {icon=A title="Risk"}\nbody text\n:::')
-    assert 'class="finding-card amber"' in unit.html
+def test_finding_renders_template():
+    (unit,) = parse('::: finding amber {icon=A title="Risk"}\nbody text\n:::')
+    assert 'class="finding amber"' in unit.html and unit.keep_together
     assert ">A<" in unit.html and "Risk" in unit.html and "body text" in unit.html
+
+
+def test_cover_is_full_page_master():
+    (unit,) = parse('::: cover {title="Acme"}\nA market brief.\n:::')
+    assert unit.full_page and unit.master == "cover"
+    assert "Acme" in unit.html
+
+
+def test_nested_grid_renders_children():
+    src = '::: kpi-dash three\n::: kpi amber {label=TAM value=$4.2M sub=2027}\n:::\n:::'
+    (unit,) = parse(src)
+    assert 'class="kpi-dash three"' in unit.html
+    assert 'class="kpi amber"' in unit.html and "$4.2M" in unit.html
 
 
 def test_render_pdf_produces_pages(tmp_path):
