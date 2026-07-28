@@ -22,3 +22,7 @@ class Unit:
     full_page: bool = False  # occupies its own page via a master (cover, section)
     master: str | None = None  # page master name when full_page
     heading: str | None = None  # section title if this unit is a heading
+    splittable: bool = False  # may be broken across pages at line boundaries
+    code_src: str = ""  # raw code (for re-splitting a listing)
+    code_lang: str = ""
+    code_label: str = ""  # provenance label html, kept on the first fragment

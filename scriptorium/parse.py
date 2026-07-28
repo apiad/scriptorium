@@ -164,7 +164,8 @@ def _code_units(info, body, theme, env, cursor, stem) -> list[Unit]:
         label = f'<span class="code-file">{escape(path)} · L{start}–{end}</span>'
     if f.echo:
         block = f'<span class="code-src">{highlight(body, f.lang)}</span>'
-        units.append(Unit(html=f'<div class="codeblock">{label}{block}</div>', name="code"))
+        units.append(Unit(html=f'<div class="codeblock">{label}{block}</div>', name="code",
+                          splittable=True, code_src=body, code_lang=f.lang, code_label=label))
     if f.run and env is not None:
         out = env.run(body, f.lang)
         if out.strip():

@@ -71,3 +71,22 @@ def test_render_pdf_produces_pages(tmp_path):
     assert out.exists() and out.stat().st_size > 1000
     assert report.n_pages >= 2
     assert report.oversized == []
+
+
+def test_heading_not_orphaned_at_page_foot():
+    filler = Unit(html="<p>x</p>", height_mm=CONTENT_H - 10)
+    head = Unit(html="<h2>H</h2>", heading="H", height_mm=8)
+    body = Unit(html="<p>b</p>", height_mm=30)
+    pages, report = pack([filler, head, body])
+    assert pages[1][0] is head  # heading pushed to page 2 with its content, not stranded
+
+
+def test_long_code_splits_across_pages():
+    filler = Unit(html="<p>x</p>", height_mm=CONTENT_H - 40)
+    lines = "\n".join(f"line{i}" for i in range(40))
+    code = Unit(html="<pre/>", name="code", splittable=True, code_src=lines,
+                code_lang="python", height_mm=200)
+    pages, report = pack([filler, code])
+    assert report.n_pages >= 2
+    assert any(u.name == "code" for u in pages[0])  # part 1 fills the gap
+    assert any(u.name == "code" for u in pages[1])  # part 2 continues

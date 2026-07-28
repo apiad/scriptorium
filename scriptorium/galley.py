@@ -8,6 +8,7 @@ furniture) and the final PDF. Measure and emit share the theme CSS.
 """
 
 import re
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from weasyprint import HTML
 from .execute import ExecEnv
 from .freeze import Freeze
 from .highlight import css as hl_css
+from .highlight import highlight
 from .model import Unit
 from .tangle import write as tangle_write
 from .theme import Theme, load_theme
@@ -81,11 +83,34 @@ def measure(units: list[Unit], theme: Theme, base_url: str | None = None) -> Non
             u.height_mm = heights.get(i, 0.0)
 
 
+MIN_CODE_LINES = 4  # widow/orphan minimum when splitting a listing
+CODE_OVERHEAD = 11.0  # mm of box chrome (padding + label) per code fragment
+
+
+def _split_code(u: Unit, avail: float) -> tuple[Unit, Unit]:
+    """Split a code listing so the first fragment fills `avail`, rest continues."""
+    lines = u.code_src.split("\n")
+    n = len(lines)
+    per = max((u.height_mm - CODE_OVERHEAD) / n, 0.1)  # per-line height, content only
+    fit = int((avail - CODE_OVERHEAD) / per)
+    fit = max(MIN_CODE_LINES, min(fit, n - MIN_CODE_LINES))
+    a, b = "\n".join(lines[:fit]), "\n".join(lines[fit:])
+    cont = '<span class="code-file">…continues</span>'
+    ua = Unit(html=f'<div class="codeblock">{u.code_label}<span class="code-src">{highlight(a, u.code_lang)}</span></div>',
+              name="code", splittable=True, code_src=a, code_lang=u.code_lang, code_label=u.code_label,
+              height_mm=fit * per + CODE_OVERHEAD)
+    ub = Unit(html=f'<div class="codeblock">{cont}<span class="code-src">{highlight(b, u.code_lang)}</span></div>',
+              name="code", splittable=True, code_src=b, code_lang=u.code_lang, code_label=cont,
+              height_mm=(n - fit) * per + CODE_OVERHEAD)
+    return ua, ub
+
+
 def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Unit]], Report]:
     pages: list[list[Unit]] = [[]]
     oversized: list[str] = []
     page_of: list[int] = []
     y = 0.0
+    dq = deque(units)
 
     def new_page():
         nonlocal y
@@ -93,7 +118,14 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
             pages.append([])
             y = 0.0
 
-    for u in units:
+    def place(u):
+        nonlocal y
+        pages[-1].append(u)
+        page_of.append(len(pages) - 1)
+        y += u.height_mm
+
+    while dq:
+        u = dq.popleft()
         if u.is_break:
             new_page()
             continue
@@ -104,23 +136,46 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
             pages.append([])
             y = 0.0
             continue
-        h = u.height_mm
         if u.break_before:
             new_page()
-        if h > content_h + EPS:  # oversized: warn + overflow (never silent-scale)
-            new_page()
-            label = u.name if u.name != "prose" else re.sub(r"<[^>]+>", "", u.html)[:40] + "…"
-            oversized.append(f"{label} ({h:.0f}mm > {content_h:.0f}mm)")
-            pages[-1].append(u)
-            page_of.append(len(pages) - 1)
-            pages.append([])
-            y = 0.0
+        h, avail = u.height_mm, content_h - y
+
+        # keep-with-next: don't strand a heading at the page foot
+        if u.heading and pages[-1] and dq and not dq[0].is_break and not dq[0].full_page:
+            nh = dq[0].height_mm
+            if y + h + nh > content_h + EPS and h + nh <= content_h + EPS:
+                new_page()
+                avail = content_h
+
+        if h > avail + EPS:  # doesn't fit in the space left on this page
+            can_split = u.splittable and u.name == "code" and u.code_src.count("\n") + 1 >= 2 * MIN_CODE_LINES
+            per = (u.height_mm - CODE_OVERHEAD) / (u.code_src.count("\n") + 1) if can_split else 0
+            if can_split and avail - CODE_OVERHEAD >= MIN_CODE_LINES * per:
+                ua, ub = _split_code(u, avail)
+                place(ua)
+                dq.appendleft(ub)
+                new_page()
+                continue
+            if h > content_h + EPS:  # taller than a whole page
+                if pages[-1]:
+                    new_page()
+                if can_split:
+                    ua, ub = _split_code(u, content_h)
+                    place(ua)
+                    dq.appendleft(ub)
+                    new_page()
+                    continue
+                label = u.name if u.name != "prose" else re.sub(r"<[^>]+>", "", u.html)[:40] + "…"
+                oversized.append(f"{label} ({h:.0f}mm > {content_h:.0f}mm)")
+                pages[-1].append(u)
+                page_of.append(len(pages) - 1)
+                pages.append([])
+                y = 0.0
+                continue
+            new_page()  # fits whole on a fresh page — move it there
+            dq.appendleft(u)
             continue
-        if y + h > content_h + EPS:
-            new_page()
-        pages[-1].append(u)
-        page_of.append(len(pages) - 1)
-        y += h
+        place(u)
 
     if not pages[-1]:
         pages.pop()
