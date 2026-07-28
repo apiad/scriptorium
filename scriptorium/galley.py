@@ -56,8 +56,14 @@ def measure(units: list[Unit], theme: Theme, base_url: str | None = None) -> Non
     css = (
         theme.css
         + hl_css()
+        # tall measure page, but a book's content spans several of them, so units
+        # must not straddle a boundary (else a split box mis-measures) and we read
+        # heights across *all* measure pages, not just the first.
         + f"@page{{size:{content_w}mm 4000mm;margin:0}}"
         + "html,body,main{margin:0;padding:0;}"
+        # flow-root contains child margins so heights are additive and collapse-free
+        # (must match emit exactly); break-inside keeps a unit off two measure pages.
+        + ".unit{display:flow-root;break-inside:avoid;}"
     )
     parts = ["<style>", css, "</style><main>"]
     for i, u in enumerate(units):
@@ -68,15 +74,16 @@ def measure(units: list[Unit], theme: Theme, base_url: str | None = None) -> Non
     doc = HTML(string="".join(parts), base_url=base_url).render()
 
     heights: dict[int, float] = {}
-    stack = [doc.pages[0]._page_box]
-    while stack:
-        box = stack.pop()
-        el = getattr(box, "element", None)
-        if el is not None:
-            di = el.get("data-i")
-            if di is not None and int(di) not in heights:
-                heights[int(di)] = box.margin_height() / PX_PER_MM
-        stack.extend(reversed(getattr(box, "children", []) or []))
+    for page in doc.pages:  # content taller than one page spans several
+        stack = [page._page_box]
+        while stack:
+            box = stack.pop()
+            el = getattr(box, "element", None)
+            if el is not None:
+                di = el.get("data-i")
+                if di is not None and int(di) not in heights:
+                    heights[int(di)] = box.margin_height() / PX_PER_MM
+            stack.extend(reversed(getattr(box, "children", []) or []))
 
     for i, u in enumerate(units):
         if not u.full_page:
@@ -188,6 +195,9 @@ def _emit_css(theme: Theme) -> str:
         + hl_css()
         + "@page{size:A4;margin:0}"
         + "html,body{margin:0;padding:0}"
+        # engine invariant: units contain their margins so emit heights match
+        # what measure computed (prevents collapse drift at page boundaries).
+        + ".unit{display:flow-root;}"
         + f".page{{width:{PAGE_W}mm;height:{PAGE_H}mm;box-sizing:border-box;"
         "overflow:hidden;page-break-after:always}"
         ".page:last-child{page-break-after:auto}"
@@ -277,10 +287,15 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     pages, report = pack(units, content_h=content_h)
     doc = HTML(string=emit(pages, theme, meta), base_url=base_url).render()
     actual = len(doc.pages)
-    if actual != report.n_pages:  # geometry drift: a page overflowed its box
+    if actual > report.n_pages:  # a page exceeded its box — content may clip (bad)
         report.oversized.append(
-            f"page-count drift: planned {report.n_pages}, rendered {actual} "
-            "(a page overflowed — check a full-page master or an undersized measure)"
+            f"page OVERFLOW: planned {report.n_pages}, rendered {actual} — a page "
+            "exceeded its box (undersized measure or a too-tall master); content may clip"
+        )
+    elif actual < report.n_pages:  # over-reserved — loose pages, but nothing clips (benign)
+        report.oversized.append(
+            f"loose pagination: planned {report.n_pages}, rendered {actual} — measure "
+            "over-reserved (conservative code-split); no overflow, some pages under-filled"
         )
     doc.write_pdf(out_path)
     return report
