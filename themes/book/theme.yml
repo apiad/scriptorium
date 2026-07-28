@@ -1,0 +1,22 @@
+name: book
+description: A technical-book template. Chapter numbering, cross-references, and
+  the TOC live in CSS (counters + target-counter/target-text), not the engine.
+  Serif body, sans headings, mono code.
+
+page:
+  size: A4
+  margin: 20mm
+
+# vars the project can override (also injected as CSS custom properties)
+vars:
+  title: Untitled
+  subtitle: ""
+  author: ""
+  brand: "#1e3a8a"
+
+masters:
+  body:  { classes: "",          furniture: stamp }
+  title: { classes: "titlepage", furniture: none }
+
+components:
+  title: { master: title }

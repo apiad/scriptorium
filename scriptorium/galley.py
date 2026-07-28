@@ -227,14 +227,22 @@ def emit(pages: list[list[Unit]], theme: Theme, meta: dict | None = None) -> str
     return "".join(out)
 
 
+_APPEARANCE = ("brand", "accent", "ink", "muted")
+
+
 def render_pdf(src: str, out_path: str, base_url: str | None = None,
                theme_name: str = "marketing", cwd: str | None = None,
-               execute: bool = True) -> Report:
+               execute: bool = True, vars: dict | None = None) -> Report:
     from .parse import frontmatter, parse
 
     theme = load_theme(theme_name)
     _, _, content_h = _geom(theme)
     meta = frontmatter(src)
+    if vars:  # project vars feed masters and CSS custom properties
+        meta = {**vars, **meta}
+        overrides = "".join(f"--{k}:{vars[k]};" for k in _APPEARANCE if k in vars)
+        if overrides:
+            theme.css += f":root{{{overrides}}}"
 
     # freeze cache serves both executed code and rendered math
     freeze = Freeze(Path(cwd) / ".scriptorium" / "freeze.json") if cwd else None
@@ -251,7 +259,7 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
         if isinstance(meta.get("execute"), dict) and meta["execute"].get("interpreters"):
             env.interpreters.update(meta["execute"]["interpreters"])
 
-    units = parse(src, theme, env)
+    units = parse(src, theme, env, meta=meta)
     measure(units, theme, base_url=base_url)
     pages, report = pack(units, content_h=content_h)
     doc = HTML(string=emit(pages, theme, meta), base_url=base_url).render()

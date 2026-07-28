@@ -12,6 +12,7 @@ from html import escape
 
 import yaml
 from markdown_it import MarkdownIt
+from mdit_py_plugins.attrs import attrs_block_plugin, attrs_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 
 from .fence import EXT, parse_fence
@@ -20,7 +21,25 @@ from .mathrender import render_display, render_inline
 from .model import Unit
 from .theme import Theme, load_theme, render_template
 
-_md = MarkdownIt("commonmark").enable("table").use(dollarmath_plugin, allow_space=True, double_inline=True)
+_md = (
+    MarkdownIt("commonmark")
+    .enable("table")
+    .use(dollarmath_plugin, allow_space=True, double_inline=True)
+    .use(attrs_plugin)
+    .use(attrs_block_plugin)
+)
+
+# @type-id cross-references -> empty anchors; the theme's CSS fills the text
+# via target-counter/target-text. Requires a hyphenated type prefix so it
+# doesn't match e-mail handles or @mentions.
+_REF = re.compile(r"(?<![\w`])@([a-zA-Z][\w]*)-([\w-]+)")
+
+
+def _rewrite_refs(text: str) -> str:
+    return _REF.sub(
+        lambda m: f'<a class="ref-{m.group(1)}" href="#{m.group(1)}-{m.group(2)}"></a>',
+        text,
+    )
 _md.renderer.rules["math_inline"] = lambda t, i, o, e: render_inline(t[i].content)
 _md.renderer.rules["math_inline_double"] = lambda t, i, o, e: render_display(t[i].content)
 _md.renderer.rules["math_block"] = lambda t, i, o, e: render_display(t[i].content)
@@ -31,6 +50,26 @@ _FENCE = re.compile(r"^(:{3,})\s*(.*?)\s*$")
 _CODEFENCE = re.compile(r"^(`{3,}|~{3,})(.*)$")
 _ATTR = re.compile(r"""(\#[\w-]+)|(\.[\w-]+)|(\w[\w-]*)=("[^"]*"|'[^']*'|\S+)""")
 _HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$")
+_HEAD_ATTR = re.compile(r"^(\s{0,3}#{1,6}\s+.*?)\s*\{([^}]*)\}\s*$")
+
+
+def _heading_unit(block: str) -> Unit:
+    """Render a heading, assigning {#id .class} attrs to the tag ourselves."""
+    src, attr = block, ""
+    m = _HEAD_ATTR.match(block)
+    if m:
+        src = m.group(1)
+        idm = re.search(r"#([\w:.-]+)", m.group(2))
+        classes = re.findall(r"\.([\w-]+)", m.group(2))
+        if idm:
+            attr += f' id="{idm.group(1)}"'
+        if classes:
+            attr += f' class="{" ".join(classes)}"'
+    html = _md.render(_rewrite_refs(src))
+    if attr:
+        html = re.sub(r"^<(h[1-6])(\s|>)", rf"<\1{attr}\2", html, count=1)
+    label = (_HEADING.match(src).group(1) if _HEADING.match(src) else None)
+    return Unit(html=html, keep_together=False, name="prose", heading=label)
 
 
 def _parse_info(info: str):
@@ -196,9 +235,9 @@ def _body(src: str) -> str:
     return src
 
 
-def parse(src: str, theme: Theme | None = None, env=None) -> list[Unit]:
+def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = None) -> list[Unit]:
     theme = theme or load_theme()
-    meta = frontmatter(src)
+    meta = frontmatter(src) if meta is None else meta
     stem = str(meta.get("stem", "doc"))
     cursor: dict[str, int] = {}
     units: list[Unit] = []
@@ -212,11 +251,11 @@ def parse(src: str, theme: Theme | None = None, env=None) -> list[Unit]:
                 if block.strip() == r"\newpage":
                     units.append(Unit(is_break=True, name="newpage"))
                     continue
-                hm = _HEADING.match(block)
-                units.append(
-                    Unit(html=_md.render(block), keep_together=False, name="prose",
-                         heading=hm.group(1) if hm else None)
-                )
+                if _HEADING.match(block):
+                    units.append(_heading_unit(block))
+                else:
+                    units.append(Unit(html=_md.render(_rewrite_refs(block)),
+                                      keep_together=False, name="prose"))
         else:
             _, name, mods, attrs, inner = node
             if name == "newpage":
@@ -227,10 +266,9 @@ def parse(src: str, theme: Theme | None = None, env=None) -> list[Unit]:
                 continue
             master = theme.master_of(name)
             if master:
-                props = dict(attrs)
+                props = {k: str(v) for k, v in meta.items()}  # all vars/meta reach masters
+                props.update(attrs)
                 props.setdefault("variant", " ".join(mods))
-                for k in ("title", "org", "org_sub", "date", "edition", "addr"):
-                    props.setdefault(k, str(meta.get(k, "")))
                 props["content"] = _unwrap_p(_render_fragment(inner, theme))
                 html = render_template(theme.master_template(master), props)
                 units.append(Unit(html=html, full_page=True, master=master, name=name))

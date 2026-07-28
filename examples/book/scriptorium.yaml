@@ -1,0 +1,10 @@
+theme: book
+vars:
+  title: A Little Book of Algorithms
+  subtitle: A two-chapter slice to prove the project model
+  author: Alejandro Piad-Morffis
+  brand: "#7c3aed"
+files:
+  - 00-title.md
+  - 01-search.md
+  - 02-trees.md

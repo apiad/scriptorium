@@ -29,6 +29,19 @@ def main(argv=None) -> int:
     stem = args.input.stem
 
     if args.cmd == "render":
+        if args.input.suffix in (".yaml", ".yml"):  # a project
+            from .project import load as load_project
+
+            proj = load_project(args.input)
+            out = args.output or (args.input.parent / "book.pdf")
+            cwd = str(args.input.resolve().parent)
+            report = render_pdf(proj.src, str(out), base_url=cwd + "/",
+                                theme_name=proj.theme, cwd=cwd,
+                                execute=not args.no_execute, vars=proj.vars)
+            print(f"rendered {out} — {report.n_pages} page(s)")
+            for w in report.oversized:
+                print(f"  ⚠ {w}", file=sys.stderr)
+            return 0
         out = args.output or args.input.with_suffix(".pdf")
         cwd = str(args.input.resolve().parent)
         report = render_pdf(src, str(out), base_url=cwd + "/", theme_name=args.theme,

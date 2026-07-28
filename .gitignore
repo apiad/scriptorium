@@ -8,3 +8,5 @@ build/
 examples/mymath.py
 examples/.scriptorium/
 **/.scriptorium/
+examples/book/book.pdf
+examples/book/.scriptorium/
