@@ -181,14 +181,17 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     _, _, content_h = _geom(theme)
     meta = frontmatter(src)
 
+    # freeze cache serves both executed code and rendered math
+    freeze = Freeze(Path(cwd) / ".scriptorium" / "freeze.json") if cwd else None
+    from . import mathrender
+    mathrender.set_freeze(freeze)
+
     env = None
     if execute:
         # tangle export= blocks first so executed blocks can import them
         stem = str(meta.get("stem", "doc"))
         if cwd:
             tangle_write(src, cwd, doc_stem=stem)
-        freeze = Freeze(Path(cwd) / ".scriptorium" / "freeze.json") if cwd else None
-        interpreters = None
         env = ExecEnv(cwd=cwd, freeze=freeze)
         if isinstance(meta.get("execute"), dict) and meta["execute"].get("interpreters"):
             env.interpreters.update(meta["execute"]["interpreters"])

@@ -435,17 +435,23 @@ Referenceable things carry a type-prefixed id and receive an auto-number:
 
 ## 10. Math pipeline
 
-- Parse `$…$` / `$$…$$`.
-- **HTML:** server-side KaTeX → HTML+CSS (no client-side runtime needed).
-- **PDF:** pre-render each math span to **SVG** (KaTeX server-side), baseline-
-  aligned via SVG `vertical-align`; cached in beaver like execution outputs.
-  WeasyPrint has no LaTeX math and only partial MathML, so SVG is the path.
+- Parse `$…$` / `$$…$$` (markdown-it `dollarmath` plugin).
+- **Renderer: quickjax** — real MathJax v4 running inside an embedded QuickJS
+  engine, **in-process, pure Python, no Node and no LaTeX install**. Each call
+  returns a self-contained SVG (own glyph paths + a computed `vertical-align`,
+  so inline math baselines and scales with font-size). Used for both PDF (SVG
+  embedded directly) and HTML.
+- **No Node dependency.** The earlier plan (Node + KaTeX) is dropped: quickjax
+  gives MathJax-grade fidelity with zero external runtime, which keeps the whole
+  toolchain Python-only and reproducible. WeasyPrint has no native MathML, so
+  SVG is the path regardless. (ziamath, a pure-Python STIX-font renderer, was
+  evaluated and rejected — it needs a baseline heuristic and collides on shared
+  SVG glyph IDs under WeasyPrint.)
+- **Cache:** rendered SVGs are memoized in-process and persisted in the freeze
+  store (keyed `math\0<display>\0<latex>`), so a math-dense book renders each
+  equation once, then serves it from cache on rebuild.
 - **Equation numbering:** display equations get `@eq` counters and a number
-  gutter.
-- **Accepted build dependency:** KaTeX needs a Node runtime at build time — the
-  one non-Python build dep. Pure-Python alternatives (mathtext, latex2mathml +
-  WeasyPrint MathML) are insufficient for the math-dense Codex. Node+KaTeX is
-  the pragmatic choice.
+  gutter (later slice).
 
 ---
 
@@ -604,9 +610,8 @@ Defaults set here in the lighter layers, open to veto on review:
 
 1. **Cross-ref prefixes** (`sec`/`fig`/`tbl`/`lst`/`eq`) and chapter-scoped
    numbering (§9) — Quarto-compatible; confirm the prefix set.
-2. **Node+KaTeX as an accepted build dependency** for math (§10) — the only
-   non-Python build dep. Confirm acceptable, or insist on Python-only (which
-   caps math fidelity).
+2. ~~Node+KaTeX for math~~ — **resolved: quickjax** (MathJax in QuickJS,
+   pure-Python, no Node). Toolchain stays Python-only. See §10.
 3. **`scriptorium.yml`** as the project file with `document`/`report`/`book`
    kinds (§11) — confirm the name and the `structure:` shape.
 4. **Lean HTML search** via a vendored JS index lib (§12.1) — confirm we're not

@@ -9,6 +9,8 @@ dependencies = [
     "weasyprint>=63",
     "pyyaml>=6",
     "pygments>=2.20.0",
+    "quickjax>=0.1.0",
+    "mdit-py-plugins>=0.6.1",
 ]
 
 [project.scripts]

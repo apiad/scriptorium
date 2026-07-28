@@ -199,6 +199,11 @@ thead th { font-size:7.5pt; letter-spacing:0.14em; text-transform:uppercase; fon
 tbody td { padding:3mm 4mm; border-bottom:1px solid var(--slate-200); vertical-align:top; }
 tbody td strong { color:var(--slate-900); }
 
+/* ---- math (quickjax SVG) ---- */
+.math-display { text-align:center; margin:4mm 0; }
+.math-display svg { max-width:100%; }
+.math-err { color:var(--rose); font-family:var(--mono); }
+
 /* ---- code + executed output ---- */
 .hl, pre.output {
   background:var(--slate-50); border:1px solid var(--slate-200); border-radius:8px;

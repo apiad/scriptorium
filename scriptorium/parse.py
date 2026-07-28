@@ -12,13 +12,19 @@ from html import escape
 
 import yaml
 from markdown_it import MarkdownIt
+from mdit_py_plugins.dollarmath import dollarmath_plugin
 
 from .fence import parse_fence
 from .highlight import highlight
+from .mathrender import render_display, render_inline
 from .model import Unit
 from .theme import Theme, load_theme, render_template
 
-_md = MarkdownIt("commonmark").enable("table")
+_md = MarkdownIt("commonmark").enable("table").use(dollarmath_plugin, allow_space=True, double_inline=True)
+_md.renderer.rules["math_inline"] = lambda t, i, o, e: render_inline(t[i].content)
+_md.renderer.rules["math_inline_double"] = lambda t, i, o, e: render_display(t[i].content)
+_md.renderer.rules["math_block"] = lambda t, i, o, e: render_display(t[i].content)
+_md.renderer.rules["math_block_label"] = lambda t, i, o, e: render_display(t[i].content)
 
 _TRANSPARENT = {"tinted", "group"}
 _FENCE = re.compile(r"^(:{3,})\s*(.*?)\s*$")
