@@ -5,6 +5,9 @@ author: Northwind Platform Team
 date: July 2026
 ---
 
+::: toc {title="Agenda"}
+:::
+
 # The problem
 
 ## We ship slowly, and we ship scared
@@ -43,6 +46,10 @@ roll back. A thousand-line change that ships once a month is neither.
 - A test suite you trust enough to gate a release on
 - Feature flags, so that "deployed" and "released" come apart
 
+::: statement
+Small changes, shipped often, **compound**.
+:::
+
 # Where to start
 
 ## One week, one change
@@ -50,3 +57,7 @@ roll back. A thousand-line change that ships once a month is neither.
 Pick the smallest service you own. Put one test in front of it. Deploy it the
 moment the pipeline is green. Do it again tomorrow. The habit is the product —
 the tooling just makes the habit cheap.
+
+::: closing {contact="platform@northwind.example"}
+Ship small. Ship often.
+:::

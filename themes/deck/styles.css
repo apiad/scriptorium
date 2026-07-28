@@ -35,3 +35,24 @@
 /* --- slide counter --- */
 .slide-counter { position:absolute; bottom:8mm; right:13mm; font-family:var(--heading-font), sans-serif;
   font-size:9pt; font-weight:600; color:var(--slate-400); letter-spacing:0.08em; }
+
+/* --- statement slide: one big line --- */
+.slide.statement { background:var(--grad-dark); color:#fff; display:flex; align-items:center; justify-content:center; padding:16mm 24mm; }
+.deck-statement { font-family:var(--heading-font), sans-serif; font-size:34pt; font-weight:800;
+  line-height:1.15; letter-spacing:-0.02em; text-align:center; color:#fff; }
+.deck-statement strong, .deck-statement em { color:var(--accent); font-style:normal; }
+
+/* --- closing slide --- */
+.slide.closing { background:var(--grad-dark); color:#fff; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; padding:16mm; }
+.dc-body { font-family:var(--heading-font), sans-serif; font-size:30pt; font-weight:800; color:#fff; letter-spacing:-0.02em; }
+.dc-contact { margin-top:11mm; font-family:var(--mono); font-size:12pt; color:var(--accent); letter-spacing:0.06em; }
+
+/* --- agenda / TOC slide --- */
+.slide .toc-h { font-family:var(--heading-font), sans-serif; font-size:25pt; font-weight:800;
+  color:var(--slate-900); margin:0 0 7mm 0; padding-bottom:3mm; border-bottom:3px solid var(--accent); }
+.slide .toc-entry { display:flex; align-items:baseline; gap:4mm; font-size:17pt; color:var(--slate-800);
+  margin:4mm 0; text-decoration:none; }
+.slide .toc-entry::before { content:target-counter(attr(href url), page); font-family:var(--mono);
+  font-size:12pt; font-weight:700; color:var(--accent); min-width:9mm; }
+.slide .toc-lead { display:none; }

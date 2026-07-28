@@ -346,6 +346,8 @@ def emit_deck(slides, theme: Theme, meta: dict) -> str:
         out.append(f'<div class="slide {master}">')
         if master == "title":
             out.append(render_template(theme.master_template("title"), dict(meta)))
+        elif len(units) == 1 and units[0].full_page:
+            out.append(units[0].html)  # statement / closing / other full-slide masters
         else:
             out.append('<div class="slide-body">')
             for u in units:
