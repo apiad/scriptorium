@@ -68,3 +68,13 @@ def test_tangle_reproduces_codex_fenwick():
     key = "src/codex/trees/fenwick.py"
     assert key in files
     assert files[key].strip() == committed.read_text(encoding="utf-8").strip()
+
+
+def test_export_provenance_line_ranges():
+    # two blocks tangling to the same file get consecutive line-range labels
+    src = ("```python {export=m.py}\na = 1\nb = 2\n```\n\nprose\n\n"
+           "```python {export=m.py}\nc = 3\n```")
+    units = parse(src)
+    labels = [u.html for u in units if "code-file" in u.html]
+    assert "m.py · L1–2" in labels[0]   # first block occupies lines 1-2
+    assert "m.py · L3–3" in labels[1]   # second block continues at line 3

@@ -14,7 +14,7 @@ import yaml
 from markdown_it import MarkdownIt
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 
-from .fence import parse_fence
+from .fence import EXT, parse_fence
 from .highlight import highlight
 from .mathrender import render_display, render_inline
 from .model import Unit
@@ -146,11 +146,25 @@ def _component_html(name, mods, attrs, inner, theme: Theme) -> str:
     return f'<div class="{classes}">{_render_fragment(inner, theme)}</div>'
 
 
-def _code_units(info, body, theme, env) -> list[Unit]:
+def _tangle_target(f, stem: str) -> str:
+    return f.export or f"{stem}.{EXT.get(f.lang, 'txt')}"
+
+
+def _code_units(info, body, theme, env, cursor, stem) -> list[Unit]:
     f = parse_fence(info)
     units: list[Unit] = []
+    # advance the per-file line cursor for any block that tangles (even if hidden)
+    label = ""
+    if f.tangles:
+        path = _tangle_target(f, stem)
+        n = body.count("\n") + 1 if body else 0
+        start = cursor.get(path, 0) + 1
+        end = start + n - 1
+        cursor[path] = end
+        label = f'<span class="code-file">{escape(path)} · L{start}–{end}</span>'
     if f.echo:
-        units.append(Unit(html=highlight(body, f.lang), name="code"))
+        block = f'<span class="code-src">{highlight(body, f.lang)}</span>'
+        units.append(Unit(html=f'<div class="codeblock">{label}{block}</div>', name="code"))
     if f.run and env is not None:
         out = env.run(body, f.lang)
         if out.strip():
@@ -184,12 +198,14 @@ def _body(src: str) -> str:
 def parse(src: str, theme: Theme | None = None, env=None) -> list[Unit]:
     theme = theme or load_theme()
     meta = frontmatter(src)
+    stem = str(meta.get("stem", "doc"))
+    cursor: dict[str, int] = {}
     units: list[Unit] = []
     for node in _split_nodes(_body(src)):
         if node[0] == "md":
             for kind, *rest in _split_md(node[1]):
                 if kind == "code":
-                    units.extend(_code_units(rest[0], rest[1], theme, env))
+                    units.extend(_code_units(rest[0], rest[1], theme, env, cursor, stem))
                     continue
                 block = rest[0]
                 if block.strip() == r"\newpage":

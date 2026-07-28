@@ -8,10 +8,9 @@ the CI idempotency check.
 
 from pathlib import Path
 
+from .fence import EXT as _EXT
 from .fence import parse_fence
 from .parse import _split_md, _split_nodes, _body
-
-_EXT = {"python": "py", "py": "py", "bash": "sh", "sh": "sh", "node": "js", "js": "js"}
 
 
 def _walk_code(src: str):

@@ -210,6 +210,9 @@ tbody td strong { color:var(--slate-900); }
   padding:3.5mm 4.5mm; font-family:var(--mono); font-size:8.5pt; line-height:1.5;
   overflow:hidden; margin:0;
 }
+.codeblock { position:relative; }
+.code-file { display:block; font-family:var(--mono); font-size:7pt; letter-spacing:0.02em;
+  color:var(--slate-400); margin:0 0 1mm 1mm; text-transform:none; }
 .hl pre { margin:0; background:none; border:0; padding:0; white-space:pre-wrap; word-break:break-word; }
 pre.output { white-space:pre-wrap; word-break:break-word; color:var(--slate-600);
   border-style:dashed; border-left:3px solid var(--accent); }

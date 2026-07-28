@@ -20,6 +20,9 @@ from dataclasses import dataclass
 
 _KV = re.compile(r"""(\w[\w-]*)=("[^"]*"|'[^']*'|\S+)""")
 
+# language -> tangled-file extension (for headless {export})
+EXT = {"python": "py", "py": "py", "bash": "sh", "sh": "sh", "node": "js", "js": "js"}
+
 
 @dataclass
 class Fence:
