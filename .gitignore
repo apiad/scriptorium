@@ -5,3 +5,6 @@ dist/
 build/
 *.egg-info/
 .beaver/
+examples/mymath.py
+examples/.scriptorium/
+**/.scriptorium/

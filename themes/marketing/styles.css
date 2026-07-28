@@ -199,6 +199,16 @@ thead th { font-size:7.5pt; letter-spacing:0.14em; text-transform:uppercase; fon
 tbody td { padding:3mm 4mm; border-bottom:1px solid var(--slate-200); vertical-align:top; }
 tbody td strong { color:var(--slate-900); }
 
+/* ---- code + executed output ---- */
+.hl, pre.output {
+  background:var(--slate-50); border:1px solid var(--slate-200); border-radius:8px;
+  padding:3.5mm 4.5mm; font-family:var(--mono); font-size:8.5pt; line-height:1.5;
+  overflow:hidden; margin:0;
+}
+.hl pre { margin:0; background:none; border:0; padding:0; white-space:pre-wrap; word-break:break-word; }
+pre.output { white-space:pre-wrap; word-break:break-word; color:var(--slate-600);
+  border-style:dashed; border-left:3px solid var(--accent); }
+
 /* ---- back cover ---- */
 .back-cover { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:40mm 22mm; }
 .back-cover h2 { font-size:26pt; color:#fff; margin-bottom:6mm; }

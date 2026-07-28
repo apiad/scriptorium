@@ -9,10 +9,15 @@ furniture) and the final PDF. Measure and emit share the theme CSS.
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from weasyprint import HTML
 
+from .execute import ExecEnv
+from .freeze import Freeze
+from .highlight import css as hl_css
 from .model import Unit
+from .tangle import write as tangle_write
 from .theme import Theme, load_theme
 
 PX_PER_MM = 96 / 25.4
@@ -48,6 +53,7 @@ def measure(units: list[Unit], theme: Theme, base_url: str | None = None) -> Non
     margin, content_w, _ = _geom(theme)
     css = (
         theme.css
+        + hl_css()
         + f"@page{{size:{content_w}mm 4000mm;margin:0}}"
         + "html,body,main{margin:0;padding:0;}"
     )
@@ -124,6 +130,7 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
 def _emit_css(theme: Theme) -> str:
     return (
         theme.css
+        + hl_css()
         + "@page{size:A4;margin:0}"
         + "html,body{margin:0;padding:0}"
         + f".page{{width:{PAGE_W}mm;height:{PAGE_H}mm;box-sizing:border-box;"
@@ -166,15 +173,30 @@ def emit(pages: list[list[Unit]], theme: Theme, meta: dict | None = None) -> str
 
 
 def render_pdf(src: str, out_path: str, base_url: str | None = None,
-               theme_name: str = "marketing") -> Report:
+               theme_name: str = "marketing", cwd: str | None = None,
+               execute: bool = True) -> Report:
     from .parse import frontmatter, parse
 
     theme = load_theme(theme_name)
     _, _, content_h = _geom(theme)
-    units = parse(src, theme)
+    meta = frontmatter(src)
+
+    env = None
+    if execute:
+        # tangle export= blocks first so executed blocks can import them
+        stem = str(meta.get("stem", "doc"))
+        if cwd:
+            tangle_write(src, cwd, doc_stem=stem)
+        freeze = Freeze(Path(cwd) / ".scriptorium" / "freeze.json") if cwd else None
+        interpreters = None
+        env = ExecEnv(cwd=cwd, freeze=freeze)
+        if isinstance(meta.get("execute"), dict) and meta["execute"].get("interpreters"):
+            env.interpreters.update(meta["execute"]["interpreters"])
+
+    units = parse(src, theme, env)
     measure(units, theme, base_url=base_url)
     pages, report = pack(units, content_h=content_h)
-    doc = HTML(string=emit(pages, theme, frontmatter(src)), base_url=base_url).render()
+    doc = HTML(string=emit(pages, theme, meta), base_url=base_url).render()
     actual = len(doc.pages)
     if actual != report.n_pages:  # geometry drift: a page overflowed its box
         report.oversized.append(

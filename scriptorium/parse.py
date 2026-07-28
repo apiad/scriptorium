@@ -1,31 +1,33 @@
-"""Parse Markdown + `:::` fenced-div components into a flat list of Units.
+"""Parse Markdown + `:::` components + code fences into a flat list of Units.
 
 Base: CommonMark + tables (markdown-it-py). Components and page masters come
-from the active theme; `:::` containers render recursively (a grid can contain
-tiles). A component whose theme hint carries a `master` becomes a full-page
-unit (cover, section opener). Frontmatter feeds master/stamp metadata.
+from the active theme. Code fences carry directives (run / export= / name=,
+see fence.py): a run block executes in a subshell and its stdout is spliced
+back — as monospace (Quarto `{lang}`) or as re-parsed markdown (native `{run}`).
+An optional ExecEnv enables execution; without it, code is shown, not run.
 """
 
 import re
+from html import escape
 
 import yaml
 from markdown_it import MarkdownIt
 
+from .fence import parse_fence
+from .highlight import highlight
 from .model import Unit
 from .theme import Theme, load_theme, render_template
 
 _md = MarkdownIt("commonmark").enable("table")
 
-# wrappers that carry no box of their own: their children become top-level units
 _TRANSPARENT = {"tinted", "group"}
-
 _FENCE = re.compile(r"^(:{3,})\s*(.*?)\s*$")
+_CODEFENCE = re.compile(r"^(`{3,}|~{3,})(.*)$")
 _ATTR = re.compile(r"""(\#[\w-]+)|(\.[\w-]+)|(\w[\w-]*)=("[^"]*"|'[^']*'|\S+)""")
 _HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$")
 
 
 def _parse_info(info: str):
-    """Split a `:::` info string into (name, modifiers, attrs)."""
     name, mods, attrs = "", [], {}
     brace = info.find("{")
     head, tail = (info[:brace], info[brace:]) if brace >= 0 else (info, "")
@@ -51,7 +53,7 @@ def _split_nodes(src: str):
     nodes, buf, i = [], [], 0
     while i < len(lines):
         m = _FENCE.match(lines[i])
-        if m and m.group(2):  # opening fence (has info)
+        if m and m.group(2):
             if buf:
                 nodes.append(("md", "\n".join(buf)))
                 buf = []
@@ -79,12 +81,42 @@ def _split_nodes(src: str):
     return nodes
 
 
+def _split_md(text: str):
+    """Split an md region into ('prose', text) and ('code', info, body), keeping
+    fenced code blocks whole (they may contain blank lines)."""
+    lines = text.split("\n")
+    items, buf, i = [], [], 0
+
+    def flush():
+        for b in re.split(r"\n\s*\n", "\n".join(buf)):
+            if b.strip():
+                items.append(("prose", b))
+        buf.clear()
+
+    while i < len(lines):
+        m = _CODEFENCE.match(lines[i])
+        if m:
+            flush()
+            fence, info = m.group(1), m.group(2)
+            close = re.compile(rf"^{re.escape(fence[0])}{{{len(fence)},}}\s*$")
+            j, body = i + 1, []
+            while j < len(lines) and not close.match(lines[j]):
+                body.append(lines[j])
+                j += 1
+            items.append(("code", info, "\n".join(body)))
+            i = j + 1
+        else:
+            buf.append(lines[i])
+            i += 1
+    flush()
+    return items
+
+
 def _unwrap_p(html: str) -> str:
     return re.sub(r"^<p>(.*)</p>\s*$", r"\1", html.strip(), flags=re.S)
 
 
 def _render_fragment(src: str, theme: Theme) -> str:
-    """Recursively render a chunk (markdown + nested components) to HTML."""
     parts = []
     for node in _split_nodes(src):
         if node[0] == "md":
@@ -108,6 +140,21 @@ def _component_html(name, mods, attrs, inner, theme: Theme) -> str:
     return f'<div class="{classes}">{_render_fragment(inner, theme)}</div>'
 
 
+def _code_units(info, body, theme, env) -> list[Unit]:
+    f = parse_fence(info)
+    units: list[Unit] = []
+    if f.echo:
+        units.append(Unit(html=highlight(body, f.lang), name="code"))
+    if f.run and env is not None:
+        out = env.run(body, f.lang)
+        if out.strip():
+            if f.output_mode == "code":
+                units.append(Unit(html=f'<pre class="output">{escape(out)}</pre>', name="output"))
+            else:  # asis: stdout is raw markdown, re-parsed
+                units.extend(parse(out, theme, env))
+    return units
+
+
 def frontmatter(src: str) -> dict:
     if src.startswith("---\n"):
         end = src.find("\n---", 3)
@@ -128,15 +175,17 @@ def _body(src: str) -> str:
     return src
 
 
-def parse(src: str, theme: Theme | None = None) -> list[Unit]:
+def parse(src: str, theme: Theme | None = None, env=None) -> list[Unit]:
     theme = theme or load_theme()
     meta = frontmatter(src)
     units: list[Unit] = []
     for node in _split_nodes(_body(src)):
         if node[0] == "md":
-            for block in re.split(r"\n\s*\n", node[1]):
-                if not block.strip():
+            for kind, *rest in _split_md(node[1]):
+                if kind == "code":
+                    units.extend(_code_units(rest[0], rest[1], theme, env))
                     continue
+                block = rest[0]
                 if block.strip() == r"\newpage":
                     units.append(Unit(is_break=True, name="newpage"))
                     continue
@@ -150,8 +199,8 @@ def parse(src: str, theme: Theme | None = None) -> list[Unit]:
             if name == "newpage":
                 units.append(Unit(is_break=True, name="newpage"))
                 continue
-            if name in _TRANSPARENT:  # unwrap: children become top-level units
-                units.extend(parse(inner, theme))
+            if name in _TRANSPARENT:
+                units.extend(parse(inner, theme, env))
                 continue
             master = theme.master_of(name)
             if master:
