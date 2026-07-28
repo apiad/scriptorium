@@ -2,8 +2,9 @@
 
 The subshell contract: feed the (assembled) source on stdin to the language's
 interpreter, capture stdout, and hand it back for splicing. No kernel, no state
-carried between blocks — state flows through tangled/installed source (the way
-the Codex imports its `codex` package) or through noweb assembly.
+carried between blocks — state flows through tangled/installed source (a document
+importing a package it tangled) or through noweb assembly, or (for cells within a
+document) through accumulated per-file session state.
 """
 
 import os

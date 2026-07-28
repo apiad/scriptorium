@@ -1,9 +1,5 @@
 """VS3 acceptance: fence directives, tangle, and subshell execution + splice."""
 
-from pathlib import Path
-
-import pytest
-
 from scriptorium.execute import ExecEnv
 from scriptorium.fence import parse_fence
 from scriptorium.parse import parse
@@ -60,15 +56,18 @@ def test_freeze_cache_avoids_rerun(tmp_path):
     assert out1 == out2  # second call served from cache, not re-run
 
 
-def test_tangle_reproduces_codex_fenwick():
-    qmd = Path("../books-codex/docs/22_fenwick.qmd")
-    committed = Path("../books-codex/src/codex/trees/fenwick.py")
-    if not (qmd.exists() and committed.exists()):
-        pytest.skip("books-codex repo not present")
-    files = collect(qmd.read_text(encoding="utf-8"))
-    key = "src/codex/trees/fenwick.py"
-    assert key in files
-    assert files[key].strip() == committed.read_text(encoding="utf-8").strip()
+def test_tangle_is_byte_exact_across_interleaved_blocks():
+    # export blocks targeting one file, interleaved with prose, concatenate with a
+    # single newline into byte-exact source (the illiterate-compatible contract).
+    src = (
+        "```python {export=m.py}\nclass A:\n    def __init__(self):\n        self.x = 1\n```\n\n"
+        "Some prose between the blocks.\n\n"
+        "```python {export=m.py}\n    def inc(self):\n        self.x += 1\n```"
+    )
+    assert collect(src)["m.py"] == (
+        "class A:\n    def __init__(self):\n        self.x = 1\n"
+        "    def inc(self):\n        self.x += 1\n"
+    )
 
 
 def test_export_provenance_line_ranges():

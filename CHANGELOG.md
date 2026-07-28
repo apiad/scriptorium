@@ -8,8 +8,8 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 First release. A Markdown-native document engine that weaves to exact-geometry
 paginated PDF, executes code in place, and tangles code to source — validated by
-rendering the full 440-page Algorithm Codex (title/copyright/53 chapters/appendices,
-all 149 `{python}` cells executed).
+rendering a full 440-page technical book (title/copyright pages, dozens of
+chapters and appendices, with every `{python}` cell executed).
 
 ### Features
 - **galley pagination engine** — measure → pack → emit to exact-geometry A4 pages,

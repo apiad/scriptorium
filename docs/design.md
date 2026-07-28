@@ -11,10 +11,10 @@ pagination engine — `galley` — that measures rendered content and packs it i
 physical pages with deterministic geometry, so "print to PDF" yields real pages
 laid out under rules the author controls, not whatever the flow happened to do.
 
-The reference bar for output quality is the hand-crafted DiAItu report at
-`vault/Efforts/Areas/Business/estudio-de-mercado.html` (109 hand-placed A4
-pages, a full component design system). The goal: author that with pure
-Markdown + a little HTML, and let the engine place the pages.
+The reference bar for output quality is a hand-crafted, design-system report —
+~100 hand-placed A4 pages with covers, section openers, KPI tiles, finding
+cards, and the rest of a rich component vocabulary. The goal: author that with
+pure Markdown + a little HTML, and let the engine place the pages.
 
 ---
 
@@ -43,29 +43,25 @@ Markdown + a little HTML, and let the engine place the pages.
 
 ## 1. Vision and scope
 
-Scriptorium is the successor to the current split toolchain:
+Scriptorium is the successor to a split toolchain we want to unify:
 
-- **`catalogo.md`** — Markdown → Quarto/Typst → a *plain* PDF. Easy to author,
-  ordinary-looking.
-- **`estudio-de-mercado.html`** — a gorgeous hand-woven HTML design system →
-  WeasyPrint. Beautiful, but every page hand-placed and hand-balanced to fit
-  297 mm.
-- **`illiterate`** — Rust tangle tool: `export=`, noweb fragments, `--test`.
-- **The books** (`books-codex`, `books-chatbots`, `books-mhai`, `books-tsoc`,
-  `enciclopedia`) — Quarto `type: book`: HTML website first, then PDF, then
-  EPUB, with executable code and cross-references.
+- **Markdown → Quarto/Typst** — a *plain* PDF. Easy to author, ordinary-looking.
+- **Hand-woven HTML → WeasyPrint** — a gorgeous design system, but every page
+  hand-placed and hand-balanced to fit 297 mm.
+- **A Rust tangle tool** (`illiterate`-style) — `export=`, noweb fragments, `--test`.
+- **Quarto `type: book`** — HTML website first, then PDF, then EPUB, with
+  executable code and cross-references.
 
 Scriptorium fuses these into one tool. **In scope:** design-system reports,
 paginated PDF with exact geometry, HTML books (lean), EPUB, executable code,
 tangle, cross-references, math, citations-as-endnotes. **Out of scope:**
 scientific papers destined for LaTeX/journal submission — those stay in LaTeX.
 
-**Non-negotiables** (from the workspace report standard and house conventions):
+**Non-negotiables** (our conventions):
 
 - Markdown is canonical; every output is regenerable from it.
 - Citations render as **numbered endnotes with clickable anchors** by default
-  (never per-page footnotes — Typst mis-places them, and the house report
-  standard bans them).
+  (never per-page footnotes — Typst mis-places them).
 - English is the artifact default; per-document `lang:` localizes generated
   labels ("Figure" → "Figura", "Algorithm" → "Algoritmo").
 
@@ -146,7 +142,7 @@ markdown body  ← the content slot
 - **body** — full Markdown → the `{{content}}` slot.
 - **nesting** — deeper fences with more colons (`::::` wraps `:::`).
 
-**Three power levels** (each grounded in a real DiAItu component):
+**Three power levels** (each drawn from the report theme's vocabulary):
 
 **Level 0 — pure CSS group** (theme ships only CSS):
 ```
@@ -157,8 +153,8 @@ long prose that flows into two columns…
 
 **Level 1 — scalar props + one content slot** (the 90 % case):
 ```
-::: finding-card amber {icon=A title="Riesgo regulatorio"}
-El marco de importación aún no cubre hardware AI-ready.
+::: finding-card amber {icon=A title="Regulatory risk"}
+The import framework does not yet cover the relevant hardware.
 :::
 ```
 Template:
@@ -175,10 +171,10 @@ Template:
 ```
 ::: cover
 ::: slot wordmarks
-![](assets/diaitu.png){.di}
+![](assets/logo.png){.di}
 :::
 ::: slot tag
-Estudio de Mercado — Junio 2026
+Market Brief — June 2026
 :::
 :::
 ```
@@ -207,8 +203,8 @@ Everything else is theme-supplied.
 A theme is a directory scriptorium loads:
 
 ```
-themes/diaitu/
-  theme.yml            # metadata, extends: syalia-ui, fonts, page geometry
+themes/report/
+  theme.yml            # metadata, extends: base, fonts, page geometry
   styles.css           # design tokens + component CSS (lifted from the reports)
   components/
     finding-card.html  # template: {{prop}} / {{content}} / {{slot:name}} holes
@@ -239,9 +235,9 @@ design system *is already HTML*; a theme author lifts their hand-written
 component HTML almost verbatim and pokes a few holes. Lowest friction, matches
 the artifacts we already have.
 
-Themes **extend** a base (default: `syalia-ui` tokens) so reports and books
+Themes **extend** a base (default: the `base` theme's tokens) so reports and books
 share a coherent visual language. A book theme ships `callout` / `aside` /
-`theorem` / `exercise`; the DiAItu report theme ships `finding-card` /
+`theorem` / `exercise`; the report theme ships `finding-card` /
 `kpi-tile` / `timeline` / `compare-table`. Same engine, different vocabulary —
 "custom tags shipped with themes."
 
@@ -384,7 +380,7 @@ the reports use today. Geometry matches the plan to a sub-pixel epsilon (reserve
 
 True bottom-of-page footnotes are circular (footnote height changes `content_h`,
 which changes which page the reference lands on). The house report standard
-already mandates **endnotes** ("Notas y Referencias al final") and bans per-page
+favors **endnotes** (a references section at the end) over per-page
 footnotes. So scriptorium adopts **endnotes** (per-chapter or per-document) as
 the default, sidestepping the circularity and matching convention. True per-page
 footnotes are an opt-in later feature with iterative re-layout.
@@ -487,7 +483,7 @@ a book, a report, or an article. Structure lives in theme CSS (counters,
 # scriptorium.yaml
 theme: book
 vars:
-  title: The Algorithm Codex
+  title: A Field Guide to Algorithms
   author: Alejandro Piad-Morffis
   brand: "#7c3aed"
 code: { root: src }          # tangle target + PYTHONPATH for execution
@@ -544,7 +540,7 @@ MathML with SVG fallback. Lowest priority; built last.
 
 - Syntax: `[@key]` / `@key`, with a `.bib` or CSL-JSON source.
 - **Default mode:** citations resolve to **numbered endnotes with clickable
-  anchors**, matching the house report standard (`# Notas y Referencias`, anchors
+  anchors**, matching a common report convention (a `# References` section, anchors
   `{#ref-N}`, superscript links). This automates what is currently done by hand.
 - **Academic mode:** CSL author-date + a formatted bibliography, for books that
   want it.
@@ -597,8 +593,8 @@ scriptorium/
     cli.py
   themes/
     default/
-    codex/            # book theme
-    diaitu/           # report theme (harvested from estudio-de-mercado.html)
+    book/             # book theme
+    report/           # rich report theme (cover, KPI tiles, finding cards…)
   docs/
     design.md         # this document
   tests/
@@ -613,7 +609,7 @@ Each slice is a thin end-to-end path with a concrete acceptance artifact.
 - **VS1 — the engine loop.** ✅ measure → pack → emit → exact-geometry A4 PDF;
   `::: keep` / `::: newpage`. Verified 2-page PDF.
 - **VS2 — the design system.** ✅ directory-backed theme system + `marketing`
-  theme harvested from `estudio-de-mercado.html`, page masters, drift guard.
+  report theme (cover, KPI tiles, finding cards, timelines), page masters, drift guard.
   Verified 11-page report from Markdown.
 - **VS3 — execute + tangle.** ✅ subshell execute (Quarto-monospace vs native
   raw-splice) + freeze cache + tangle (`export=`, illiterate-compatible,
@@ -627,7 +623,7 @@ Each slice is a thin end-to-end path with a concrete acceptance artifact.
   with CSS-native numbering + `target-counter` cross-refs. Verified 2-chapter
   book, `@chap-trees` → "Chapter 2 (p. 3)".
 - **Next — running heads + auto-TOC** (emit-fill + `::: toc` link-list), then the
-  full 53-chapter Codex build (PYTHONPATH wiring for cross-chapter imports).
+  a full multi-chapter book build (PYTHONPATH wiring for cross-chapter imports).
 - **Later — VS5 HTML book** (lean renderer + search); **VS6** EPUB, CSL citations,
   opt-in `::: float` for figures, per-page footnotes.
 

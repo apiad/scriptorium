@@ -15,7 +15,7 @@ def lowbit(i: int) -> int:
 ```
 
 A Quarto-style `{python}` block runs in a subshell, imports the tangled module,
-and shows its output as monospace — exactly how a ported Codex chapter behaves.
+and shows its output as monospace — the Quarto-compatible execution mode.
 
 ```{python}
 from mymath import lowbit
