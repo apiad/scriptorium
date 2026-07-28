@@ -1,0 +1,15 @@
+/* note (extends base) — engineer's notebook: compact, functional, mono meta.
+   Signature: a hard title rule + a monospace meta line. */
+body { font-size:10pt; line-height:1.48; }
+h1 { font-size:19pt; font-weight:800; letter-spacing:-0.02em; margin:0 0 2mm 0;
+     padding-bottom:2.5mm; border-bottom:2.5px solid var(--ink); }
+h2 { font-size:12.5pt; margin:5mm 0 2mm 0; color:var(--accent-dark); }
+h3 { font-size:11pt; margin:3.5mm 0 1.5mm 0; }
+p { margin:0 0 2.5mm 0; }
+ul, ol { margin:0 0 2.5mm 0; padding-left:5mm; }
+li { margin-bottom:0.6mm; }
+.meta { font-family:var(--mono-font), monospace; font-size:8.5pt; color:var(--muted);
+        letter-spacing:0.02em; margin:0 0 5mm 0; }
+a { color:var(--accent-dark); border-bottom:1px solid var(--rule); }
+.unit { margin:0 0 2.5mm 0; }
+.stamp { font-family:var(--mono-font), monospace; font-size:7.5pt; bottom:9mm; left:16mm; right:16mm; }

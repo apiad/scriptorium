@@ -1,0 +1,15 @@
+name: note
+extends: base
+description: >
+  Conference notes, handouts, minutes — utilitarian and fast. One column, tight
+  margins, functional sans with monospace meta lines. No cover, no ceremony.
+page: { size: A4, margin: 16mm }
+vars:
+  accent: "#0891b2"
+  accent-dark: "#0e7490"
+  body-font: "Inter"
+  heading-font: "Inter"
+masters:
+  body: { classes: "", furniture: stamp }
+components:
+  meta: {}

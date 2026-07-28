@@ -1,0 +1,15 @@
+/* article (extends base) — considered long-form: serif body, sans display,
+   generous measure. Signature: a short accent rule before each section. */
+body { font-family:var(--body-font), Georgia, "DejaVu Serif", serif; font-size:11pt; line-height:1.62; }
+h1 { font-family:var(--heading-font), sans-serif; font-size:30pt; font-weight:800;
+     letter-spacing:-0.025em; line-height:1.04; margin:0 0 5mm 0; }
+h2 { font-family:var(--heading-font), sans-serif; font-size:15pt; font-weight:700; margin:9mm 0 3mm 0; }
+h2::before { content:""; display:block; width:12mm; height:2.5px; background:var(--accent); margin-bottom:3mm; }
+h3 { font-family:var(--heading-font), sans-serif; font-size:12pt; margin:6mm 0 2mm 0; }
+p { margin:0; }
+p + p { text-indent:5mm; }
+.lead { font-size:13pt; line-height:1.5; color:var(--muted); font-style:italic;
+        margin:0 0 7mm 0; max-width:150mm; }
+blockquote { font-style:italic; color:var(--ink); border-left:2px solid var(--accent); padding-left:6mm; }
+a { color:var(--accent-dark); border-bottom:1px solid var(--rule); }
+.stamp { font-size:8pt; bottom:14mm; left:24mm; right:24mm; }

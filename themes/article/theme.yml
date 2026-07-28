@@ -1,0 +1,14 @@
+name: article
+extends: base
+description: >
+  A single polished document — essays, whitepapers, blog-to-PDF. Serif body with
+  a sans display and generous margins. Signature: a short accent rule marking
+  each section, and the sans-display-over-serif-body pairing.
+page: { size: A4, margin: 24mm }
+vars:
+  accent: "#0f766e"
+  accent-dark: "#115e59"
+  body-font: "Source Serif 4"
+  heading-font: "Inter"
+masters:
+  body: { classes: "", furniture: stamp }
