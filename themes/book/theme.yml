@@ -19,7 +19,9 @@ masters:
     classes: ""
     furniture: stamp
     header: { verso: "{title}", recto: "{chapter}" }
-  title: { classes: "titlepage", furniture: none }
+  title:     { classes: "titlepage", furniture: none }
+  copyright: { classes: "copyrightpage", furniture: none }
 
 components:
   title: { master: title }
+  copyright: { master: copyright }

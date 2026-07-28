@@ -140,7 +140,11 @@ def _split_md(text: str):
     items, buf, i = [], [], 0
 
     def flush():
-        for b in re.split(r"\n\s*\n", "\n".join(buf)):
+        # strip HTML comments across the whole prose run (before blank-splitting)
+        # so a multi-line <!-- --> is never cut into unbalanced halves. Code
+        # fences are already separated out, so their contents are untouched.
+        text = re.sub(r"<!--.*?-->", "", "\n".join(buf), flags=re.S)
+        for b in re.split(r"\n\s*\n", text):
             if b.strip():
                 items.append(("prose", b))
         buf.clear()

@@ -13,6 +13,10 @@ body {
 p { margin:0 0 3mm 0; text-align:justify; }
 ul, ol { margin:0 0 3mm 0; padding-left:6mm; }
 
+/* consistent vertical rhythm between atomic units (space after code/math/etc.) */
+.unit { margin:0 0 4mm 0; }
+.unit > *:last-child { margin-bottom:0; }
+
 /* --- headings + chapter/section numbering (CSS counters) --- */
 h1, h2, h3 { font-family: system-ui, "Helvetica Neue", sans-serif; color:var(--brand); }
 h1 {
@@ -48,6 +52,13 @@ a.ref-fig::after {
 .tp-title { font-family:system-ui,sans-serif; font-size:38pt; font-weight:800; color:var(--brand); line-height:1.1; }
 .tp-sub { font-size:14pt; color:var(--muted); margin-top:6mm; max-width:130mm; }
 .tp-author { margin-top:16mm; font-size:12pt; color:var(--ink); letter-spacing:0.04em; }
+
+.page.copyrightpage { display:flex; flex-direction:column; }
+.cp-spacer { flex:1 1 auto; }
+.cp-block { font-family:system-ui,sans-serif; font-size:8.5pt; color:var(--muted); line-height:1.7; }
+.cp-line { margin:0 0 1mm 0; }
+.cp-line strong { color:var(--ink); }
+.cp-muted { margin-top:4mm; }
 
 .stamp {
   position:absolute; bottom:10mm; left:20mm; right:20mm;

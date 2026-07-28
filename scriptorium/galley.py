@@ -51,39 +51,44 @@ def _geom(theme: Theme):
 _MARGIN, CONTENT_W, CONTENT_H = _geom(load_theme())
 
 
+MEASURE_CHUNK = 50  # units per measure render
+MEASURE_PAGE_MM = 4000  # moderate measure page; a 50-unit chunk spans a few of
+# these, well under WeasyPrint's silent per-render ceiling (~21 pages / ~84000mm)
+# that would zero-out a chunk's tail. (An over-tall page is worse, not better.)
+
+
 def measure(units: list[Unit], theme: Theme, base_url: str | None = None) -> None:
-    margin, content_w, _ = _geom(theme)
+    _, content_w, _ = _geom(theme)
     css = (
         theme.css
         + hl_css()
-        # tall measure page, but a book's content spans several of them, so units
-        # must not straddle a boundary (else a split box mis-measures) and we read
-        # heights across *all* measure pages, not just the first.
-        + f"@page{{size:{content_w}mm 4000mm;margin:0}}"
+        + f"@page{{size:{content_w}mm {MEASURE_PAGE_MM}mm;margin:0}}"
         + "html,body,main{margin:0;padding:0;}"
         # flow-root contains child margins so heights are additive and collapse-free
         # (must match emit exactly); break-inside keeps a unit off two measure pages.
         + ".unit{display:flow-root;break-inside:avoid;}"
     )
-    parts = ["<style>", css, "</style><main>"]
-    for i, u in enumerate(units):
-        if u.is_break or u.full_page or not u.html.strip():
-            continue
-        parts.append(f'<div class="unit" data-i="{i}">{u.html}</div>')
-    parts.append("</main>")
-    doc = HTML(string="".join(parts), base_url=base_url).render()
-
+    idxs = [i for i, u in enumerate(units)
+            if not (u.is_break or u.full_page or not u.html.strip())]
     heights: dict[int, float] = {}
-    for page in doc.pages:  # content taller than one page spans several
-        stack = [page._page_box]
-        while stack:
-            box = stack.pop()
-            el = getattr(box, "element", None)
-            if el is not None:
-                di = el.get("data-i")
-                if di is not None and int(di) not in heights:
-                    heights[int(di)] = box.margin_height() / PX_PER_MM
-            stack.extend(reversed(getattr(box, "children", []) or []))
+
+    for start in range(0, len(idxs), MEASURE_CHUNK):
+        batch = idxs[start : start + MEASURE_CHUNK]
+        parts = ["<style>", css, "</style><main>"]
+        for i in batch:
+            parts.append(f'<div class="unit" data-i="{i}">{units[i].html}</div>')
+        parts.append("</main>")
+        doc = HTML(string="".join(parts), base_url=base_url).render()
+        for page in doc.pages:  # a chunk may still span a few measure pages
+            stack = [page._page_box]
+            while stack:
+                box = stack.pop()
+                el = getattr(box, "element", None)
+                if el is not None:
+                    di = el.get("data-i")
+                    if di is not None and int(di) not in heights:
+                        heights[int(di)] = box.margin_height() / PX_PER_MM
+                stack.extend(reversed(getattr(box, "children", []) or []))
 
     for i, u in enumerate(units):
         if not u.full_page:
