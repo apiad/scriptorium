@@ -125,6 +125,7 @@ def _emit_css(theme: Theme) -> str:
     return (
         theme.css
         + "@page{size:A4;margin:0}"
+        + "html,body{margin:0;padding:0}"
         + f".page{{width:{PAGE_W}mm;height:{PAGE_H}mm;box-sizing:border-box;"
         "overflow:hidden;page-break-after:always}"
         ".page:last-child{page-break-after:auto}"
