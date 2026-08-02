@@ -1,12 +1,12 @@
 /* article (extends base) — considered long-form: serif body, sans display,
    generous measure. Signature: a short accent rule before each section. */
-body { font-family:var(--body-font), Georgia, "DejaVu Serif", serif; font-size:11pt; line-height:1.62; }
+body { font-family:var(--body-font), Georgia, "DejaVu Serif", serif; font-size:11pt; line-height:1.62; hyphens:auto; }
 h1 { font-family:var(--heading-font), sans-serif; font-size:30pt; font-weight:800;
      letter-spacing:-0.025em; line-height:1.04; margin:0 0 5mm 0; }
 h2 { font-family:var(--heading-font), sans-serif; font-size:15pt; font-weight:700; margin:9mm 0 3mm 0; }
 h2::before { content:""; display:block; width:12mm; height:2.5px; background:var(--accent); margin-bottom:3mm; }
 h3 { font-family:var(--heading-font), sans-serif; font-size:12pt; margin:6mm 0 2mm 0; }
-p { margin:0; }
+p { margin:0; text-align:justify; text-align-last:left; hyphens:auto; orphans:4; widows:4; }
 p + p { text-indent:5mm; }
 .lead { font-size:13pt; line-height:1.5; color:var(--muted); font-style:italic;
         margin:0 0 7mm 0; max-width:150mm; }
@@ -51,3 +51,10 @@ a { color:var(--accent-dark); border-bottom:1px solid var(--rule); }
   letter-spacing:0.16em; text-transform:uppercase; color:var(--accent); margin-bottom:1.5mm; }
 .tb-keywords { font-size:9.5pt; color:var(--muted); font-style:italic; margin:3mm 0 0 0; }
 .tb-keywords .tb-label { display:inline; margin-right:1.5mm; font-style:normal; }
+
+/* --- table sizing (compact, full-width, readable in narrow columns) --- */
+table { width:100%; font-size:8pt; border-collapse:collapse; }
+th { font-size:7.5pt; font-weight:600; }
+td, th { overflow-wrap:anywhere; hyphens:auto; padding:1mm 2mm; vertical-align:top; }
+thead tr { border-bottom:1pt solid var(--accent); }
+tbody tr:nth-child(even) { background:#f8f8f8; }

@@ -271,7 +271,7 @@ def emit(pages: list[list[Unit]], theme: Theme, meta: dict | None = None) -> str
     total = len(pages)
     chapter, section = title, ""
     header = theme.meta.get("masters", {}).get("body", {}).get("header")
-    out = ["<!DOCTYPE html><html><head><meta charset='utf-8'><style>",
+    out = ["<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><style>",
            _emit_css(theme), "</style></head><body>"]
 
     for n, page in enumerate(pages, 1):
@@ -340,7 +340,7 @@ def _group_slides(units: list[Unit], has_title: bool):
 
 def emit_deck(slides, theme: Theme, meta: dict) -> str:
     total = len(slides)
-    out = ["<!DOCTYPE html><html><head><meta charset='utf-8'><style>",
+    out = ["<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><style>",
            _emit_css(theme), "</style></head><body>"]
     for n, (master, units) in enumerate(slides, 1):
         out.append(f'<div class="slide {master}">')
@@ -425,8 +425,10 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
 
     from .parse import fill_toc
     from .citations import process_citations
+    from .typography import process_typography
 
     src = process_citations(src)
+    src = process_typography(src)
     units = parse(src, theme, env, meta=meta)
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
     measure(units, theme, base_url=base_url)
