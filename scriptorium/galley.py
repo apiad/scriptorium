@@ -172,9 +172,33 @@ def _split_table(u: Unit, avail: float):
     return frag(rows[:fit], fit), frag(rows[fit:], n - fit)
 
 
-# Matches sentence-ending punctuation (with optional inline closing tags) followed by
-# whitespace before an uppercase letter — used to find split points inside a <p>.
-_SENT_BOUND = re.compile(r"([.!?](?:<[^>]+>)*)\s+(?=[A-Z\(\"\u201c])")
+# Matches sentence-ending punctuation followed by whitespace before an uppercase letter,
+# handling two HTML-specific patterns that the naive regex misses:
+#
+#   1. Citation markup between the period and the next sentence:
+#        "...text.^<span id="cite-N-k"...></span><a href="#ref-N">N</a>^ Next"
+#      The ^…^ block (digits and HTML tags only) is not whitespace and not a bare tag,
+#      so (?:<[^>]+>)* never matched it.  We now recognise it explicitly via
+#      (?:\^(?:<[^>]+>|[0-9]+)+\^).
+#
+#   2. Next sentence opening with an HTML tag (e.g. <em>, <strong>):
+#        "...gap simultaneously.\n<em>Passive degradation</em>"
+#      The lookahead (?=[A-Z]) failed because it saw < not a letter.  We now
+#      skip any leading HTML tags in the lookahead prefix via (?:(?:<[^>]+>)\s*)*.
+#
+# The citation sub-pattern (?:\^(?:<[^>]+>|[0-9]+)+\^) is deliberately strict —
+# only digits and tags between carets — so prose like "^some text^" never matches.
+_SENT_BOUND = re.compile(
+    r"([.!?]"
+    r"(?:"
+    r"(?:<[^>]+>)"                       # any HTML tag (closing tag after period)
+    r"|(?:\^(?:<[^>]+>|[0-9]+)+\^)"     # citation markup: ^<span…><a…>N</a>^
+    r"|[^\w\s<^]"                        # other non-word non-space chars (e.g. closing paren)
+    r")*)"
+    r"\s+"
+    r"(?:(?:<[^>]+>)\s*)*"              # skip HTML tags opening the next sentence
+    r"(?=[A-Z\(\"\u201c])"
+)
 MIN_PROSE_SENTENCES = 1   # minimum sentences to keep on each side of a split
 _STRIP_TAGS = re.compile(r"<[^>]+>")
 
@@ -270,6 +294,25 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
         if u.heading and pages[-1] and dq and not dq[0].is_break and not dq[0].full_page:
             nh = dq[0].height_mm
             if y + h + nh > content_h + EPS and h + nh <= content_h + EPS:
+                # Lookback split: fill the current page by splitting the last prose
+                # paragraph before bumping the heading to the next page.
+                last = pages[-1][-1]
+                y_before_last = y - last.height_mm
+                avail_for_last = content_h - y_before_last
+                split = (last.name == "prose"
+                         and last.html.strip().startswith("<p")
+                         and avail_for_last < last.height_mm - EPS)
+                if split:
+                    s = _split_prose_maybe(last, avail_for_last)
+                    if s:
+                        pages[-1].pop()
+                        y = y_before_last
+                        place(s[0])
+                        dq.appendleft(u)   # re-queue heading
+                        dq.appendleft(s[1])  # fragment B before heading
+                        new_page()
+                        avail = content_h
+                        continue
                 new_page()
                 avail = content_h
 
