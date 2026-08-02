@@ -15,20 +15,19 @@ a { color:var(--accent-dark); border-bottom:1px solid var(--rule); }
 .stamp { font-size:8pt; bottom:14mm; left:24mm; right:24mm; }
 
 /* --- bibliography (produced by citations.py pre-processor) --- */
+/* Flexbox: [num | body …] [back] — back-links right-aligned on first line */
 .bib-entry {
-  display: grid;
-  grid-template-columns: 6mm 1fr auto;
-  column-gap: 2mm;
-  align-items: baseline;
+  display: flex;
+  gap: 2mm;
+  align-items: flex-start;
   font-size: 9pt;
   line-height: 1.45;
   margin: 0 0 2.5mm 0;
 }
-.bib-anchor { display: inline; }
-.bib-num { font-weight: 600; color: var(--muted); white-space: nowrap; }
-.bib-body { color: var(--ink); }
+.bib-num { min-width: 7mm; flex-shrink: 0; font-weight: 600; color: var(--muted); text-align: right; white-space: nowrap; }
+.bib-body { flex: 1; color: var(--ink); }
 .bib-body a { color: var(--accent-dark); border-bottom: none; word-break: break-all; }
-.bib-back { white-space: nowrap; font-size: 8pt; color: var(--muted); padding-left: 2mm; }
+.bib-back { flex-shrink: 0; white-space: nowrap; font-size: 8pt; color: var(--muted); padding-left: 2mm; }
 .bib-back-link { color: var(--accent-dark); border-bottom: none; margin-left: 1mm; }
 .cite-anchor { display: inline; }
 

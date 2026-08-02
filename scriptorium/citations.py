@@ -101,17 +101,16 @@ def process_citations(text: str) -> str:
             parts = [f'<a class="bib-back-link" href="#cite-{ref}-{first}">↑ {first}</a>']
             for k in rest:
                 parts.append(f'<a class="bib-back-link" href="#cite-{ref}-{k}">{k}</a>')
-            back_html = f'<span class="bib-back">{" ".join(parts)}</span>'
+            back_inner = " ".join(parts)
         else:
-            back_html = ""
+            back_inner = ""
 
         body_html = _md_fragment(body)
-        anchor_html = f'<span id="ref-{ref}" class="bib-anchor"></span>'
-        label_html = f'<span class="bib-num">{label}.</span>'
+        num_html = f'<span id="ref-{ref}" class="bib-num">{label}.</span>'
+        back_html = f'<span class="bib-back">{back_inner}</span>' if back_inner else ""
         return (
             f'\n<div class="bib-entry">'
-            f"{anchor_html}"
-            f"{label_html}"
+            f"{num_html}"
             f'<span class="bib-body">{body_html}</span>'
             f"{back_html}"
             f"</div>\n"
