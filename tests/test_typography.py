@@ -17,17 +17,15 @@ def _long_para(n: int = SHORT_PARA_WORDS + 5) -> str:
 
 # ── short paragraph wrapping ─────────────────────────────────────────────────
 
-def test_short_para_gets_break_inside_avoid():
-    text = _short_para()
-    out = process_typography(text)
-    assert 'break-inside:avoid' in out
+def test_short_para_gets_keep_block():
+    out = process_typography(_short_para())
+    assert "::: keep" in out
 
 
-def test_short_para_wrapped_in_div():
-    text = _short_para()
-    out = process_typography(text)
-    assert out.startswith('<div style="break-inside:avoid">')
-    assert out.strip().endswith("</div>")
+def test_short_para_wrapped_in_keep():
+    out = process_typography(_short_para())
+    assert out.strip().startswith("::: keep")
+    assert out.strip().endswith(":::")
 
 
 def test_short_para_content_preserved():
@@ -39,9 +37,8 @@ def test_short_para_content_preserved():
 # ── long paragraph — no wrapping ─────────────────────────────────────────────
 
 def test_long_para_not_wrapped():
-    text = _long_para()
-    out = process_typography(text)
-    assert 'break-inside:avoid' not in out
+    out = process_typography(_long_para())
+    assert "::: keep" not in out
 
 
 def test_long_para_content_preserved():
@@ -56,20 +53,34 @@ def test_long_para_content_preserved():
 def test_heading_h1_not_wrapped():
     text = "# A short heading"
     out = process_typography(text)
-    assert 'break-inside:avoid' not in out
+    assert "::: keep" not in out
     assert "# A short heading" in out
 
 
 def test_heading_h2_not_wrapped():
-    text = "## Section heading"
-    out = process_typography(text)
-    assert 'break-inside:avoid' not in out
+    out = process_typography("## Section heading")
+    assert "::: keep" not in out
 
 
 def test_heading_h3_not_wrapped():
-    text = "### Subsection"
+    out = process_typography("### Subsection")
+    assert "::: keep" not in out
+
+
+# ── \newpage is never wrapped ─────────────────────────────────────────────────
+
+def test_newpage_not_wrapped():
+    text = r"\newpage"
     out = process_typography(text)
-    assert 'break-inside:avoid' not in out
+    assert "::: keep" not in out
+    assert r"\newpage" in out
+
+
+def test_newpage_between_paras_preserved():
+    text = f"{_short_para()}\n\n\\newpage\n\n{_short_para()}"
+    out = process_typography(text)
+    assert r"\newpage" in out
+    assert out.count("::: keep") == 2
 
 
 # ── code fences pass through unchanged ───────────────────────────────────────
@@ -77,31 +88,28 @@ def test_heading_h3_not_wrapped():
 def test_code_fence_not_wrapped():
     text = "```python\nx = 1\n```"
     out = process_typography(text)
-    assert 'break-inside:avoid' not in out
+    assert "::: keep" not in out
     assert "x = 1" in out
 
 
 def test_tilde_fence_not_wrapped():
-    text = "~~~python\ny = 2\n~~~"
-    out = process_typography(text)
-    assert 'break-inside:avoid' not in out
+    out = process_typography("~~~python\ny = 2\n~~~")
+    assert "::: keep" not in out
 
 
 def test_colon_fence_not_wrapped():
     text = "::: note\nshort text\n:::"
     out = process_typography(text)
-    assert 'break-inside:avoid' not in out
     assert "short text" in out
+    # the ::: keep wrapper must not appear inside another ::: block
+    assert out.count("::: keep") == 0
 
 
 # ── raw HTML blocks: opening lines are not treated as paragraphs ─────────────
 
 def test_raw_html_opening_line_not_wrapped():
-    # A line that starts with an HTML tag is not wrapped as a paragraph.
-    # The tag line itself passes through directly.
     text = "<div class='custom'></div>"
     out = process_typography(text)
-    # The single-line HTML block is not wrapped in break-inside:avoid
     assert out.strip() == text
 
 
@@ -110,19 +118,34 @@ def test_raw_html_opening_line_not_wrapped():
 def test_two_short_paras_both_wrapped():
     text = f"{_short_para()}\n\n{_short_para()}"
     out = process_typography(text)
-    assert out.count('break-inside:avoid') == 2
+    assert out.count("::: keep") == 2
 
 
 def test_short_then_long_para():
     text = f"{_short_para()}\n\n{_long_para()}"
     out = process_typography(text)
-    assert out.count('break-inside:avoid') == 1
+    assert out.count("::: keep") == 1
 
 
 def test_long_then_short_para():
     text = f"{_long_para()}\n\n{_short_para()}"
     out = process_typography(text)
-    assert out.count('break-inside:avoid') == 1
+    assert out.count("::: keep") == 1
+
+
+# ── markdown inside kept paragraph is not escaped ────────────────────────────
+
+def test_bold_markdown_survives_in_keep_block():
+    text = "This has **bold** text and more words to stay short."
+    out = process_typography(text)
+    assert "::: keep" in out
+    assert "**bold**" in out  # raw markdown preserved — parse() will render it
+
+
+def test_newpage_not_counted_in_word_count():
+    # \newpage alone is 1 word but must never be wrapped
+    out = process_typography(r"\newpage")
+    assert "::: keep" not in out
 
 
 # ── mixed document ────────────────────────────────────────────────────────────
@@ -136,23 +159,17 @@ def test_mixed_document():
         f"{_short_para(15)}\n"
     )
     out = process_typography(text)
-    # Only the two short prose paragraphs should be wrapped
-    assert out.count('break-inside:avoid') == 2
-    # Heading is untouched
+    assert out.count("::: keep") == 2
     assert "## Introduction" in out
-    # Code fence is untouched
     assert "print('hello')" in out
 
 
-# ── content inside code fences is not counted as short paragraphs ─────────────
-
 def test_short_text_inside_code_fence_not_wrapped():
-    text = "```\nhello world\n```"
-    out = process_typography(text)
-    assert 'break-inside:avoid' not in out
+    out = process_typography("```\nhello world\n```")
+    assert "::: keep" not in out
 
 
 def test_content_after_fence_can_be_wrapped():
     text = f"```\ncode\n```\n\n{_short_para()}"
     out = process_typography(text)
-    assert out.count('break-inside:avoid') == 1
+    assert out.count("::: keep") == 1
