@@ -424,7 +424,9 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
             env.interpreters.update(meta["execute"]["interpreters"])
 
     from .parse import fill_toc
+    from .citations import process_citations
 
+    src = process_citations(src)
     units = parse(src, theme, env, meta=meta)
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
     measure(units, theme, base_url=base_url)
