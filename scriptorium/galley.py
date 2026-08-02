@@ -175,7 +175,7 @@ def _split_table(u: Unit, avail: float):
 # Matches sentence-ending punctuation (with optional inline closing tags) followed by
 # whitespace before an uppercase letter — used to find split points inside a <p>.
 _SENT_BOUND = re.compile(r"([.!?](?:<[^>]+>)*)\s+(?=[A-Z\(\"\u201c])")
-MIN_PROSE_SENTENCES = 2   # minimum sentences to keep on each side of a split
+MIN_PROSE_SENTENCES = 1   # minimum sentences to keep on each side of a split
 _STRIP_TAGS = re.compile(r"<[^>]+>")
 
 
@@ -274,8 +274,8 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
                 avail = content_h
 
         if h > avail + EPS:  # doesn't fit in the space left on this page
-            # 1) gap-fill: code and prose can split mid-page; tables/figures stay whole
-            s = _split_code_maybe(u, avail) or _split_prose_maybe(u, avail)
+            # 1) gap-fill: code, prose, and tables can all split mid-page
+            s = _split_code_maybe(u, avail) or _split_prose_maybe(u, avail) or _split_table(u, avail)
             if s:
                 place(s[0]); dq.appendleft(s[1]); new_page(); continue
             # 2) fits whole on a fresh page -> move it there intact
