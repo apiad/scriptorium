@@ -299,10 +299,7 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
                 last = pages[-1][-1]
                 y_before_last = y - last.height_mm
                 avail_for_last = content_h - y_before_last
-                split = (last.name == "prose"
-                         and last.html.strip().startswith("<p")
-                         and avail_for_last < last.height_mm - EPS)
-                if split:
+                if last.name == "prose" and last.html.strip().startswith("<p"):
                     s = _split_prose_maybe(last, avail_for_last)
                     if s:
                         pages[-1].pop()
