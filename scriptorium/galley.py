@@ -172,6 +172,65 @@ def _split_table(u: Unit, avail: float):
     return frag(rows[:fit], fit), frag(rows[fit:], n - fit)
 
 
+# Matches sentence-ending punctuation (with optional inline closing tags) followed by
+# whitespace before an uppercase letter — used to find split points inside a <p>.
+_SENT_BOUND = re.compile(r"([.!?](?:<[^>]+>)*)\s+(?=[A-Z\(\"\u201c])")
+MIN_PROSE_SENTENCES = 2   # minimum sentences to keep on each side of a split
+_STRIP_TAGS = re.compile(r"<[^>]+>")
+
+
+def _split_prose_maybe(u: Unit, avail: float):
+    """Split a prose <p> at a sentence boundary so the first fragment fills `avail`.
+
+    Returns (unit_a, unit_b) or None when the paragraph is too short, the
+    available space is too small to be worth splitting, or no sentence boundary
+    is found.
+    """
+    if u.name != "prose":
+        return None
+    html = u.html.strip()
+    if not html.startswith("<p"):
+        return None  # headings, lists, blockquotes — keep whole
+    if avail < max(0.25 * u.height_mm, 20.0):
+        return None  # too little room; moving the whole unit to the next page is better
+    m = re.match(r"(<p[^>]*>)(.*?)(</p>)", html, re.S)
+    if not m:
+        return None
+    open_tag, inner, close_tag = m.groups()
+    # Collect candidate split positions (offset just after the sentence-ending char + tags)
+    bounds: list[int] = []
+    for mb in _SENT_BOUND.finditer(inner):
+        bounds.append(mb.start() + len(mb.group(1)))
+    n = len(bounds)
+    lo, hi = MIN_PROSE_SENTENCES - 1, n - MIN_PROSE_SENTENCES
+    if lo > hi:
+        return None  # too few sentences to leave the minimum on each side
+    frac = avail / u.height_mm
+    k = max(lo, min(hi, round(frac * n)))
+    split_pos = bounds[k]
+    inner_a = inner[:split_pos]
+    inner_b = inner[split_pos:].lstrip()
+    if not inner_a or not inner_b:
+        return None
+    # Estimate heights by plain-text character proportion (tags don't add visual height)
+    plain_total = len(_STRIP_TAGS.sub("", inner))
+    plain_a = len(_STRIP_TAGS.sub("", inner_a))
+    frac_a = plain_a / plain_total if plain_total else frac
+    ua = Unit(
+        html=f"{open_tag}{inner_a}{close_tag}",
+        name="prose",
+        splittable=True,
+        height_mm=u.height_mm * frac_a,
+    )
+    ub = Unit(
+        html=f"{open_tag}{inner_b}{close_tag}",
+        name="prose",
+        splittable=True,
+        height_mm=u.height_mm * (1.0 - frac_a),
+    )
+    return ua, ub
+
+
 def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Unit]], Report]:
     pages: list[list[Unit]] = [[]]
     oversized: list[str] = []
@@ -215,8 +274,8 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
                 avail = content_h
 
         if h > avail + EPS:  # doesn't fit in the space left on this page
-            # 1) gap-fill: only code splits mid-page (tables/figures stay whole)
-            s = _split_code_maybe(u, avail)
+            # 1) gap-fill: code and prose can split mid-page; tables/figures stay whole
+            s = _split_code_maybe(u, avail) or _split_prose_maybe(u, avail)
             if s:
                 place(s[0]); dq.appendleft(s[1]); new_page(); continue
             # 2) fits whole on a fresh page -> move it there intact
