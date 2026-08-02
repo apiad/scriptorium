@@ -230,14 +230,22 @@ def _split_prose_maybe(u: Unit, avail: float):
     if lo > hi:
         return None  # too few sentences to leave the minimum on each side
     frac = avail / u.height_mm
-    k = max(lo, min(hi, round(frac * n)))
+    # Estimate heights by plain-text character proportion (tags don't add visual height)
+    plain_total = len(_STRIP_TAGS.sub("", inner))
+    # Pick the largest k whose char-count fraction fits within avail — consistent with
+    # the height estimator below.  The old round(frac*n) picked by sentence-index
+    # (uniform-height assumption) which diverges from the char-count estimate when
+    # sentences have unequal lengths, causing fragment A to overflow or leave whitespace.
+    best_k = lo
+    for kk in range(lo, hi + 1):
+        if len(_STRIP_TAGS.sub("", inner[:bounds[kk]])) / plain_total <= frac:
+            best_k = kk
+    k = best_k
     split_pos = bounds[k]
     inner_a = inner[:split_pos]
     inner_b = inner[split_pos:].lstrip()
     if not inner_a or not inner_b:
         return None
-    # Estimate heights by plain-text character proportion (tags don't add visual height)
-    plain_total = len(_STRIP_TAGS.sub("", inner))
     plain_a = len(_STRIP_TAGS.sub("", inner_a))
     frac_a = plain_a / plain_total if plain_total else frac
     ua = Unit(
