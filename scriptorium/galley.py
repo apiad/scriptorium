@@ -425,10 +425,8 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
 
     from .parse import fill_toc
     from .citations import process_citations
-    from .typography import process_typography
 
     src = process_citations(src)
-    src = process_typography(src)
     units = parse(src, theme, env, meta=meta)
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
     measure(units, theme, base_url=base_url)
