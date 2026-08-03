@@ -10,3 +10,4 @@ examples/.scriptorium/
 **/.scriptorium/
 examples/book/book.pdf
 examples/book/.scriptorium/
+.worktrees/
