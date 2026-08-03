@@ -1,10 +1,12 @@
-"""galley — the pagination engine: measure -> pack -> emit.
+"""galley — the pagination engine: emit -> PDF.
 
-Measure renders the content stream once at the true body width and reads each
-unit's border-box height from WeasyPrint's box tree; pack greedily assigns units
-to fixed-height pages honoring keep-together, hard breaks, and full-page masters;
-emit generates `.page` boxes (applying the theme's page masters and stamp
-furniture) and the final PDF. Measure and emit share the theme CSS.
+For document themes (article, book, note, report, base) the engine emits a
+single-flow HTML document; WeasyPrint's CSS Fragmentation Module handles page
+breaks via break-after/inside/before rules — no Python-level bin-packing or
+height measurement.
+
+For deck themes the previous measure -> pack -> emit_deck pipeline is preserved
+because slides use absolute-positioned fixed-size boxes.
 """
 
 import re
@@ -348,64 +350,164 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
     return pages, Report(n_pages=len(pages), oversized=oversized, page_of=page_of)
 
 
-def _emit_css(theme: Theme) -> str:
+def _tpl_to_css_content(tpl: str, meta: dict) -> str:
+    """Translate a running-head template to a CSS content value.
+
+    '{chapter} — {section}' → 'string(chapter) " — " string(section)'
+    '{title}'               → '"My Document Title"'   (static, inlined)
+    '{page} / {total}'      → 'counter(page) " / " counter(pages)'
+    """
+    _CSS_TOKENS = {
+        "chapter": "string(chapter)",
+        "section": "string(section)",
+        "page":    "counter(page)",
+        "total":   "counter(pages)",
+    }
+    parts = re.split(r"(\{[^}]+\})", tpl)
+    css_parts = []
+    for part in parts:
+        if not part:
+            continue
+        if part.startswith("{") and part.endswith("}"):
+            key = part[1:-1]
+            css_parts.append(_CSS_TOKENS.get(key, f'"{meta.get(key, key)}"'))
+        else:
+            css_parts.append(f'"{part}"')
+    return " ".join(css_parts)
+
+
+def _emit_css(theme: Theme, meta: dict | None = None) -> str:
+    meta = meta or {}
     margin, _, _ = _geom(theme)
     w, h = _page_size(theme)
-    return (
-        # the page margin is ONE value: galley uses it for content width (measure)
-        # and exposes it as --page-margin so base applies it as .page padding.
-        f":root{{--page-margin:{margin}mm}}"
-        + theme.css
-        + hl_css()
-        + f"@page{{size:{w}mm {h}mm;margin:0}}"
-        + "html,body{margin:0;padding:0}"
-        # engine invariant: units contain their margins so emit heights match
-        # what measure computed (prevents collapse drift at page boundaries).
-        + ".unit{display:flow-root;}"
-        + f".page,.slide{{width:{w}mm;height:{h}mm;box-sizing:border-box;"
-        "overflow:hidden;page-break-after:always}"
-        + ".page:last-child,.slide:last-child{page-break-after:auto}"
+    masters_cfg = theme.meta.get("masters", {})
+    body_furniture = theme.master_furniture("body")
+    header_cfg = masters_cfg.get("body", {}).get("header")
+
+    parts: list[str] = []
+
+    # ── keep :root custom properties for themes that reference them ──────────
+    parts.append(f":root{{--page-margin:{margin}mm}}")
+    parts.append(theme.css)
+    parts.append(hl_css())
+
+    # ── @page geometry (CSS paged media — replaces fixed .page divs) ─────────
+    parts.append(f"@page{{size:{w}mm {h}mm;margin:{margin}mm}}")
+    parts.append("html,body{margin:0;padding:0}")
+
+    # ── named pages for full-page masters (margin 0 so element fills page) ───
+    for master_name in masters_cfg:
+        if master_name not in ("body",):
+            parts.append(f"@page master-{master_name}{{margin:0}}")
+
+    # ── full-page master divs: break to own page, fill the full sheet ────────
+    parts.append(
+        f".page{{break-before:page;break-after:page;"
+        f"width:{w}mm;height:{h}mm;box-sizing:border-box;"
+        f"position:relative;overflow:hidden}}"
     )
+    # suppress the spurious blank page that would precede the very first element
+    parts.append(".page:first-child{break-before:auto}")
+
+    # ── string-set: let WeasyPrint track chapter / section automatically ──────
+    if body_furniture == "stamp" or header_cfg:
+        parts.append("h1{string-set:chapter content()}")
+        parts.append("h2{string-set:section content()}")
+
+    # ── page furniture: stamp (footer chapter + page number) ─────────────────
+    if body_furniture == "stamp":
+        font = "font-family:var(--heading-font),sans-serif;font-size:7.5pt;color:var(--muted)"
+        parts.append(
+            f"@page{{@bottom-left{{content:string(chapter,first);{font};"
+            f"vertical-align:top;padding-top:3mm}}"
+            f"@bottom-right{{content:counter(page);{font};"
+            f"vertical-align:top;padding-top:3mm}}}}",
+        )
+
+    # ── page furniture: running header (verso / recto) ────────────────────────
+    if header_cfg:
+        font = "font-family:var(--heading-font),sans-serif;font-size:7.5pt;color:var(--muted)"
+        verso = header_cfg.get("verso", "")
+        recto = header_cfg.get("recto", "")
+        if verso:
+            css_v = _tpl_to_css_content(verso, meta)
+            parts.append(
+                f"@page:left{{@top-left{{content:{css_v};{font};"
+                f"vertical-align:bottom;padding-bottom:3mm}}}}"
+            )
+        if recto:
+            css_r = _tpl_to_css_content(recto, meta)
+            parts.append(
+                f"@page:right{{@top-right{{content:{css_r};{font};"
+                f"vertical-align:bottom;padding-bottom:3mm}}}}"
+            )
+
+    # ── fragmentation rules ───────────────────────────────────────────────────
+    parts.extend([
+        # headings always stay with the element that follows them
+        "h1,h2,h3,h4,h5,h6{break-after:avoid}",
+        # author / theme explicit page break
+        ".pagebreak{break-before:page;display:block;height:0;margin:0;padding:0}",
+        # unit classes
+        ".unit{display:flow-root}",
+        ".unit.break-before{break-before:page}",
+        ".unit.keep{break-inside:avoid}",
+        # figures and captions always travel together
+        "figure{break-inside:avoid;margin:4mm 0}",
+        "figcaption{font-size:8.5pt;color:var(--muted);margin-top:2mm}",
+        # images fill the content column width
+        ".unit img,figure img{width:100%;height:auto;display:block}",
+    ])
+
+    # ── deck: fixed-size slide boxes (unchanged from before) ─────────────────
+    parts.extend([
+        f".slide{{width:{w}mm;height:{h}mm;box-sizing:border-box;"
+        "overflow:hidden;page-break-after:always}",
+        ".slide:last-child{page-break-after:auto}",
+    ])
+
+    return "".join(parts)
 
 
 def _fill_tokens(tpl: str, mapping: dict) -> str:
     return re.sub(r"\{(\w+)\}", lambda m: str(mapping.get(m.group(1), "")), tpl)
 
 
-def emit(pages: list[list[Unit]], theme: Theme, meta: dict | None = None) -> str:
+def emit(units: list[Unit], theme: Theme, meta: dict | None = None) -> str:
+    """Emit a single-flow HTML document; CSS Fragmentation handles page breaks."""
     meta = meta or {}
-    title = str(meta.get("title", ""))
-    total = len(pages)
-    chapter, section = title, ""
-    header = theme.meta.get("masters", {}).get("body", {}).get("header")
-    out = ["<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><style>",
-           _emit_css(theme), "</style></head><body>"]
+    out = [
+        "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><style>",
+        _emit_css(theme, meta),
+        "</style></head><body>",
+    ]
 
-    for n, page in enumerate(pages, 1):
-        if len(page) == 1 and page[0].full_page:
-            classes = theme.master_classes(page[0].master)
-            out.append(f'<div class="page {classes}">{page[0].html}</div>')
+    for u in units:
+        if u.is_break:
+            out.append('<div class="pagebreak"></div>')
             continue
-        # body page: track running chapter/section, then wrap units + furniture
-        for u in page:
-            if u.heading:
-                if u.heading_level == 1:
-                    chapter, section = u.heading, ""
-                elif u.heading_level == 2:
-                    section = u.heading
-        classes = theme.master_classes("body")
-        out.append(f'<div class="page {classes}">')
-        opens_chapter = bool(page) and page[0].heading_level == 1
-        if header and not opens_chapter:  # running head: verso (even) / recto (odd)
-            side = header.get("verso" if n % 2 == 0 else "recto", "")
-            tokens = {"title": title, "chapter": chapter, "section": section, "page": n, "total": total}
-            out.append(f'<div class="runhead runhead-{"verso" if n % 2 == 0 else "recto"}">'
-                       f"{_fill_tokens(side, tokens)}</div>")
-        for u in page:
-            out.append(f'<div class="unit">{u.html}</div>')
-        if theme.master_furniture("body") == "stamp":
-            out.append(f'<div class="stamp"><span>{chapter}</span><span>{n}</span></div>')
-        out.append("</div>")
+
+        if u.full_page:
+            # Full-page master (cover, section opener, back cover…): wrap in a
+            # fixed-size .page div assigned to the master's named @page rule.
+            classes = theme.master_classes(u.master)
+            master_page = f"master-{u.master}" if u.master else ""
+            page_attr = f' style="page:{master_page}"' if master_page else ""
+            # Render the master template if the theme defines one
+            if u.master and theme.master_template(u.master) != "{{content}}":
+                content = render_template(theme.master_template(u.master), dict(meta))
+            else:
+                content = u.html
+            out.append(f'<div class="page {classes}"{page_attr}>{content}</div>')
+            continue
+
+        # Regular flow unit
+        cls = ["unit"]
+        if u.break_before:
+            cls.append("break-before")
+        if u.keep_together:
+            cls.append("keep")
+        out.append(f'<div class="{" ".join(cls)}">{u.html}</div>')
 
     out.append("</body></html>")
     return "".join(out)
@@ -536,21 +638,12 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     src = process_citations(src)
     units = parse(src, theme, env, meta=meta)
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
-    measure(units, theme, base_url=base_url)
-    if str(theme.meta.get("mode", "")) == "deck":  # slides, not flowing pages
+
+    if str(theme.meta.get("mode", "")) == "deck":  # slides: keep measure+pack pipeline
+        measure(units, theme, base_url=base_url)
         return _render_deck(units, theme, meta, out_path, base_url, content_h)
-    pages, report = pack(units, content_h=content_h)
-    doc = HTML(string=emit(pages, theme, meta), base_url=base_url).render()
-    actual = len(doc.pages)
-    if actual > report.n_pages:  # a page exceeded its box — content may clip (bad)
-        report.oversized.append(
-            f"page OVERFLOW: planned {report.n_pages}, rendered {actual} — a page "
-            "exceeded its box (undersized measure or a too-tall master); content may clip"
-        )
-    elif actual < report.n_pages:  # over-reserved — loose pages, but nothing clips (benign)
-        report.oversized.append(
-            f"loose pagination: planned {report.n_pages}, rendered {actual} — measure "
-            "over-reserved (conservative code-split); no overflow, some pages under-filled"
-        )
+
+    # Document themes: CSS Fragmentation handles all pagination — no measure, no pack.
+    doc = HTML(string=emit(units, theme, meta), base_url=base_url).render()
     doc.write_pdf(out_path)
-    return report
+    return Report(n_pages=len(doc.pages), oversized=[], page_of=[])
