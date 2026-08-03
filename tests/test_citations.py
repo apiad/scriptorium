@@ -49,11 +49,12 @@ def test_plain_link_form_also_gets_anchor():
 
 
 def test_citation_links_still_point_to_ref_anchors():
-    # After pass 1, links remain as markdown syntax [N](#ref-N) (the full
-    # markdown parser converts them to href= later in the pipeline).
+    # Citations are now emitted as HTML <sup><a href="#ref-N">…</a></sup>
+    # (no longer Markdown [N](#ref-N) syntax — proper superscript output).
     out = _result()
-    assert "(#ref-1)" in out
-    assert "(#ref-2)" in out
+    assert 'href="#ref-1"' in out
+    assert 'href="#ref-2"' in out
+    assert 'class="cite-sup"' in out
 
 
 # ── Pass 2: bibliography back-links ─────────────────────────────────────────

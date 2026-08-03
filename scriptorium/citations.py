@@ -75,18 +75,18 @@ def process_citations(text: str) -> str:
     def _dispatch(m: re.Match) -> str:
         if m.group(1):              # superscript form: ^[N](#ref-N)^
             label, ref = m.group(2), m.group(3)
-            counters[ref] += 1
-            n = counters[ref]
-            occurrences[ref].append(n)
-            anchor = f'<span id="cite-{ref}-{n}" class="cite-anchor"></span>'
-            return f"^{anchor}[{label}](#ref-{ref})^"
         else:                       # plain form: [N](#ref-N)
             label, ref = m.group(5), m.group(6)
-            counters[ref] += 1
-            n = counters[ref]
-            occurrences[ref].append(n)
-            anchor = f'<span id="cite-{ref}-{n}" class="cite-anchor"></span>'
-            return f"{anchor}[{label}](#ref-{ref})"
+        counters[ref] += 1
+        n = counters[ref]
+        occurrences[ref].append(n)
+        # Emit real <sup> HTML — proper superscript regardless of parser support.
+        return (
+            f'<sup class="cite-sup">'
+            f'<span id="cite-{ref}-{n}" class="cite-anchor"></span>'
+            f'<a href="#ref-{ref}" class="cite-link">{label}</a>'
+            f'</sup>'
+        )
 
     text = _COMBINED.sub(_dispatch, text)
 

@@ -100,3 +100,12 @@ tbody td strong { color:var(--ink); }
 .runhead { position:absolute; top:calc(var(--page-margin, 20mm) * 0.5);
   left:var(--page-margin, 20mm); right:var(--page-margin, 20mm);
   font-family:var(--heading-font), sans-serif; font-size:8pt; letter-spacing:0.08em; color:var(--muted); }
+
+/* headings never hyphenate; .no-hyphen protects any inline span */
+h1, h2, h3, h4, h5, h6 { hyphens: none; }
+.no-hyphen { hyphens: none; white-space: nowrap; }
+
+/* in-text citation superscripts */
+.cite-sup { font-size: 0.72em; line-height: 0; vertical-align: super; }
+.cite-sup a.cite-link { color: var(--accent-dark); text-decoration: none; border-bottom: none; }
+.cite-sup a.cite-link:hover { text-decoration: underline; }
