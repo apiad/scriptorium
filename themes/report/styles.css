@@ -80,7 +80,7 @@ pre { background:var(--slate-50); border:1px solid var(--slate-200); border-radi
 .section-opener .badge.rose{border-color:var(--rose)} .section-opener .badge.violet{border-color:var(--violet)}
 .section-opener .badge.teal{border-color:var(--teal)}
 .section-opener .sec-num { font-family:var(--mono); font-size:9pt; font-weight:500; letter-spacing:0.3em; color:var(--slate-400); margin-bottom:4mm; }
-.section-opener .sec-title { font-size:34pt; font-weight:800; color:#fff; letter-spacing:-0.02em; margin-bottom:6mm; line-height:1.05; }
+.section-opener .sec-title { font-size:34pt; font-weight:800; color:#fff; letter-spacing:-0.02em; margin-bottom:6mm; line-height:1.05; hyphens:none; }
 .section-opener .sec-tag { font-size:13pt; color:var(--slate-300); max-width:150mm; line-height:1.5; }
 
 /* ---- TOC ---- */
