@@ -490,15 +490,12 @@ def emit(units: list[Unit], theme: Theme, meta: dict | None = None) -> str:
         if u.full_page:
             # Full-page master (cover, section opener, back cover…): wrap in a
             # fixed-size .page div assigned to the master's named @page rule.
+            # u.html is already fully rendered by the parser (template + content
+            # substituted); never re-render here or {{content}} gets lost.
             classes = theme.master_classes(u.master)
             master_page = f"master-{u.master}" if u.master else ""
             page_attr = f' style="page:{master_page}"' if master_page else ""
-            # Render the master template if the theme defines one
-            if u.master and theme.master_template(u.master) != "{{content}}":
-                content = render_template(theme.master_template(u.master), dict(meta))
-            else:
-                content = u.html
-            out.append(f'<div class="page {classes}"{page_attr}>{content}</div>')
+            out.append(f'<div class="page {classes}"{page_attr}>{u.html}</div>')
             continue
 
         # Regular flow unit
