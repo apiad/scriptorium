@@ -134,6 +134,8 @@ pre { background:var(--slate-50); border:1px solid var(--slate-200); border-radi
 .cta h3 { font-size:11pt; color:var(--accent); margin:0 0 3mm 0; text-transform:uppercase; letter-spacing:0.18em; }
 .cta.amber h3{color:var(--amber)} .cta.emerald h3{color:var(--emerald)} .cta.rose h3{color:var(--rose)}
 .cta p { color:var(--slate-200); margin-bottom:2mm; }
+/* the near-black `strong` above is invisible on a dark surface */
+.cta strong, .page.dark strong { color:#fff; }
 
 /* ---- timeline ---- */
 .timeline { position:relative; padding-left:16mm; }
