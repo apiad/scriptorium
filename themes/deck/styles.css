@@ -52,7 +52,9 @@
 .slide .toc-h { font-family:var(--heading-font), sans-serif; font-size:25pt; font-weight:800;
   color:var(--slate-900); margin:0 0 7mm 0; padding-bottom:3mm; border-bottom:3px solid var(--accent); }
 .slide .toc-entry { display:flex; align-items:baseline; gap:4mm; font-size:17pt; color:var(--slate-800);
-  margin:4mm 0; text-decoration:none; }
+  margin:1.5mm 0; text-decoration:none; }
+/* each entry is its own .unit; the default unit gap would overflow the agenda */
+.slide.content .unit:has(.toc-entry) { margin-bottom:0; }
 .slide .toc-entry::before { content:target-counter(attr(href url), page); font-family:var(--mono);
   font-size:12pt; font-weight:700; color:var(--accent); min-width:9mm; }
 .slide .toc-lead { display:none; }
