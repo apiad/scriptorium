@@ -139,7 +139,9 @@ pre { background:var(--slate-50); border:1px solid var(--slate-200); border-radi
 .timeline { position:relative; padding-left:16mm; }
 .timeline::before { content:''; position:absolute; left:7mm; top:3mm; bottom:3mm; width:3px;
   background:linear-gradient(180deg,var(--slate-700),var(--accent),var(--amber),var(--emerald)); border-radius:2px; }
-.tier { position:relative; padding:3mm 0 3mm 8mm; margin-bottom:2mm; }
+/* own the body colour: a variant class like .tier.accent would otherwise tint
+   the text whenever the content renders tight (no <p> for .tier p to catch) */
+.tier { position:relative; padding:3mm 0 3mm 8mm; margin-bottom:2mm; color:var(--slate-700); }
 .tier::before { content:''; position:absolute; left:-11.5mm; top:4mm; width:10mm; height:10mm;
   border-radius:50%; background:#fff; border:4px solid var(--accent); }
 .tier.amber::before{border-color:var(--amber)} .tier.emerald::before{border-color:var(--emerald)}
