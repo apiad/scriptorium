@@ -392,7 +392,10 @@ def _emit_css(theme: Theme, meta: dict | None = None) -> str:
     parts.append(hl_css())
 
     # ── @page geometry (CSS paged media — replaces fixed .page divs) ─────────
-    parts.append(f"@page{{size:{w}mm {h}mm;margin:{margin}mm}}")
+    # deck: .slide is itself page-sized and carries its own padding, so a page
+    # margin here would double-count and fragment every slide onto a second page.
+    page_margin = 0 if str(theme.meta.get("mode", "")) == "deck" else margin
+    parts.append(f"@page{{size:{w}mm {h}mm;margin:{page_margin}mm}}")
     parts.append("html,body{margin:0;padding:0}")
 
     # ── named pages for full-page masters (margin 0 so element fills page) ───
@@ -578,7 +581,9 @@ def _render_deck(units, theme, meta, out_path, base_url, content_h) -> Report:
     if len(doc.pages) != len(slides):
         oversized.append(f"slide-count drift: planned {len(slides)}, rendered {len(doc.pages)}")
     doc.write_pdf(out_path)
-    return Report(n_pages=len(slides), oversized=oversized, page_of=[])
+    # report what was actually rendered, not what was planned — otherwise a
+    # fragmented slide is invisible in the success line.
+    return Report(n_pages=len(doc.pages), oversized=oversized, page_of=[])
 
 
 # var names that become CSS custom properties (the customization contract)
