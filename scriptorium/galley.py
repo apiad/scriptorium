@@ -604,6 +604,9 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     # theme var defaults, overridden by project vars, then by per-doc frontmatter
     merged = {**theme.vars, **(vars or {})}
     meta = {**merged, **frontmatter(src)}
+    # a single document carries its vars in a frontmatter `vars:` block — same
+    # contract as scriptorium.yaml, and the last word on appearance.
+    merged = {**merged, **(meta.get("vars") or {})}
 
     def _css_val(k, v):
         v = str(v)
