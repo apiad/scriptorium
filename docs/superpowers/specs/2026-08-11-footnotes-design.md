@@ -67,36 +67,71 @@ means the same thing to footnotes, to running heads, and to cross-references.
 
 ## Implementation
 
-### Parsing
+### Why not the markdown-it plugin
 
-Enable `mdit_py_plugins.footnote.footnote_plugin` in the `MarkdownIt` chain in
-`parse.py`. It emits in-text markers as
-`<sup class="footnote-ref"><a href="#fn1" id="fnref1">[1]</a></sup>` and a
-single trailing `<section class="footnotes"><ol class="footnotes-list">…</ol></section>`
-with a `↩︎` back-ref per occurrence.
+`mdit_py_plugins.footnote.footnote_plugin` is the obvious tool and it cannot be
+used here. `parse()` renders **block by block** — `_md.render(_rewrite_refs(block))`
+at `parse.py:300`, once per block — while the plugin resolves references against
+definitions collected within a *single* render call. Verified 2026-08-11: given
+the marker and the definition in separate calls, the marker renders as literal
+`[^a]` text and the definition renders to nothing at all.
 
-### Relocation
+Rewriting `parse()` to render the whole document in one pass would dismantle the
+unit model the entire engine is built on. So the plugin is out.
 
-A new module `scriptorium/footnotes.py`, occupying the pipeline slot
-`citations.py` currently holds in `galley.render_pdf`.
+### A source-to-source pre-processor
 
-The plugin always emits one section at end-of-document. For `chapter` mode the
-engine splits it: walk the rendered units in order, note which `fnrefN` ids
-appear between one `#` and the next, cut the matching `<li>` items out of the
-trailing section, renumber them from 1 within the chapter, and insert a
-`<section class="footnotes">` immediately before the next `#` unit (and at the
-end for the final chapter). Marker text and `id`/`href` pairs are rewritten
-together so links stay resolvable — ids are namespaced per chapter (`fn2-1`,
-`fnref2-1`) to keep them unique across the document.
+`scriptorium/footnotes.py` takes the pipeline slot `citations.py` holds today in
+`galley.render_pdf` — and takes its *shape* too. That `citations.py` was written
+as a pre-processor rather than a plugin now reads as a consequence of the same
+constraint, not an arbitrary choice.
 
-`document` mode leaves the plugin's output where it is. Both modes preserve the
-single continuous HTML flow that v0.3.0's CSS Fragmentation pagination depends
-on — no change to how pages are broken.
+`process_footnotes(src, mode)` runs on the raw source before `parse()` and:
+
+1. Collects `[^id]: body` definitions (a definition runs to the next blank line
+   that is not an indented continuation) and removes them from the flow.
+2. Rewrites each `[^id]` marker in order of appearance to
+   `<sup class="footnote-ref" id="fnref-N"><a href="#fn-N">N</a></sup>`.
+   Inline HTML passes through CommonMark untouched, so no parser change is
+   needed. A marker whose definition is missing is left as literal text and
+   reported.
+3. Emits the collected notes at the boundary the mode dictates.
+
+Because numbering is ours rather than the plugin's, the per-chapter restart is
+native: the counter simply resets at each `#`. Ids stay unique across the
+document by carrying the chapter index (`fn-2-1`, `fnref-2-1`).
+
+No new dependency is added.
+
+### Emitting the notes
+
+Notes are emitted as a `::: footnotes` component — scriptorium's existing
+extension mechanism — whose content is a Markdown ordered list, one item per
+note, each carrying an inline anchor and one back-link per reference:
+
+```markdown
+::: footnotes
+1. <span id="fn-1"></span>The note body, **markdown intact**. [↩](#fnref-1)
+:::
+```
+
+This matters: note bodies are author prose containing links, emphasis and code,
+and routing them through the component path means the real Markdown renderer
+handles them. `citations.py` had to hand-roll a mini-renderer (`_md_fragment`,
+with separate regexes for links, bold and italic) precisely because it emitted
+final HTML. We do not repeat that.
+
+The `base` theme supplies the `footnotes` component template, so themes can
+restyle or relabel the section without engine changes.
+
+`document` mode emits one component at the end; `chapter` mode emits one
+immediately before each `#` after the first, plus one at the end of the document
+for the final chapter. Both preserve the single continuous HTML flow that
+v0.3.0's CSS Fragmentation pagination depends on.
 
 The alternative considered was segmenting the source by chapter and parsing each
-segment independently, which would make per-chapter numbering free. Rejected: it
-fragments the one-flow model and forces cross-references, counters and the TOC
-to be re-stitched across segments.
+segment independently. Rejected: it fragments the one-flow model and forces
+cross-references, counters and the TOC to be re-stitched across segments.
 
 ### Per-page footnotes
 
@@ -105,17 +140,16 @@ pulled to the foot of the page its anchor lands on and auto-numbered. Verified
 2026-08-11 on a three-page render — note 1 at the foot of page 1, note 2 at the
 foot of page 3.
 
-**But GCPM wants the note's content inline at the anchor**, and the plugin puts
-only a marker there, with the content in a trailing section. Applying
-`float: footnote` to the plugin's `.footnote-ref` floats the *marker* — the
+**But GCPM wants the note's content inline at the anchor**, not in a section
+elsewhere. Applying `float: footnote` to a marker floats the *marker* — the
 footnote area ends up containing the text `[1]` while the note itself stays in
-the body flow. Verified 2026-08-11 against the plugin's exact HTML.
+the body flow. Verified 2026-08-11.
 
-So `page` mode is engine work, not a stylesheet: `footnotes.py` moves each
-`<li>`'s content back inline, wrapped in a `<span class="footnote-inline">`, and
-drops the plugin's `<sup>` marker so WeasyPrint's generated call is the only one.
-It reuses the same note→reference map the `chapter` splitter builds, so the
-incremental cost over the other two modes is small — but it is not free, and the
+So `page` mode is engine work, not a stylesheet. `process_footnotes` emits the
+note body inline at the reference site, wrapped in
+`<span class="footnote-inline">`, and emits no marker of its own so WeasyPrint's
+generated call is the only one. It reuses the same definition map the other two
+modes build, so the incremental cost is small — but it is not free, and the
 earlier "CSS only" assessment of it was wrong.
 
 **Limitation, documented rather than solved:** a note referenced more than once
@@ -243,9 +277,14 @@ re-rendered and compared before and after.
 
 ## Testing
 
-The plugin's own parsing is upstream's concern. The tests cover this repo's
-logic:
+Parsing is ours now, not a dependency's, so it is tested rather than assumed:
 
+- `[^id]` markers and `[^id]: body` definitions are recognised; a definition
+  spanning a wrapped line is captured whole; a marker with no definition stays
+  literal and is reported; a definition with no marker is reported.
+- A `[^id]` inside a fenced code block is left alone.
+- Note bodies keep their Markdown — a link and bold text in a note survive to the
+  PDF as a link and bold text, not as literal syntax.
 - `resolve_footnote_mode` precedence: frontmatter beats `theme.yml` beats the
   `document` default.
 - `chapter` mode splits notes into the right chapter, and a note anchored in
