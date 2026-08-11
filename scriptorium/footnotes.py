@@ -150,3 +150,91 @@ def number_and_mark(src: str, notes: dict[str, Note],
         last = m.end()
     out.append(src[last:])
     return "".join(out), (buckets[lead:] if chapter_mode else [buckets[0]])
+
+
+MODES = ("document", "chapter", "page")
+
+
+def resolve_footnote_mode(meta: dict, theme_meta: dict) -> str:
+    """Frontmatter wins, then the theme, then `document`."""
+    mode = meta.get("footnotes") or theme_meta.get("footnotes") or "document"
+    mode = str(mode).strip().lower()
+    if mode not in MODES:
+        raise ValueError(f"unknown footnotes mode {mode!r}; expected one of {MODES}")
+    return mode
+
+
+def _split_frontmatter(src: str) -> tuple[str, str]:
+    """(frontmatter block, body) — same rule parse.frontmatter/_body use.
+
+    The block is held aside: a `---` fence or a YAML `# comment` inside it
+    would otherwise read as document content and shift chapter numbering.
+    """
+    if src.startswith("---\n"):
+        end = src.find("\n---", 3)
+        if end >= 0:
+            nl = src.find("\n", end + 1)
+            return (src[: nl + 1], src[nl + 1 :]) if nl >= 0 else (src, "")
+    return "", src
+
+
+def _component(chapter: int, notes: list[Note]) -> str:
+    """Notes as a `::: footnotes` component; bodies stay Markdown."""
+    items = []
+    for n, note in enumerate(notes, 1):
+        base = f"fnref-{chapter}-{n}"
+        ids = ([base] if len(note.refs) < 2
+               else [f"{base}{_SUFFIX[i]}" for i in range(len(note.refs))])
+        back = " ".join(f"[↩](#{i})" for i in ids)
+        items.append(f'{n}. <span id="fn-{chapter}-{n}"></span>{note.body} {back}')
+    return "::: footnotes\n" + "\n".join(items) + "\n:::\n"
+
+
+def _inline_notes(src: str, notes: dict[str, Note]) -> str:
+    """`page` mode: put each note's body inline at its first reference.
+
+    WeasyPrint's GCPM `float: footnote` pulls the element to the foot of the
+    page its anchor lands on and generates the call number itself, so we emit
+    no marker of our own. A note has one body and therefore one page: a second
+    reference gets a plain superscript, not a duplicate of the text.
+    """
+    spans = _fence_spans(src)
+    seen: dict[str, int] = {}
+    out, last = [], 0
+    for m in _MARK.finditer(src):
+        if _in_span(m.start(), spans) or m.group(1) not in notes:
+            continue
+        note = notes[m.group(1)]
+        out.append(src[last:m.start()])
+        if note.key in seen:
+            out.append(f'<sup class="footnote-ref">{seen[note.key]}</sup>')
+        else:
+            seen[note.key] = len(seen) + 1
+            out.append(f'<span class="footnote-inline">{note.body}</span>')
+        last = m.end()
+    out.append(src[last:])
+    return "".join(out)
+
+
+def process_footnotes(src: str, mode: str = "document") -> str:
+    """Entry point: rewrite markers and emit notes per `mode`."""
+    head, body = _split_frontmatter(src)
+    body, notes = collect_notes(body)
+    if not notes:
+        return head + body
+    if mode == "page":
+        return head + _inline_notes(body, notes)
+
+    marked, groups = number_and_mark(body, notes, chapter_mode=(mode == "chapter"))
+    if mode == "document":
+        return head + marked.rstrip() + "\n\n" + _component(1, groups[0])
+
+    starts = _chapter_starts(marked, _fence_spans(marked))
+    bounds = starts[_lead(marked, starts):] + [len(marked)]
+    out, prev = [], 0
+    for i, group in enumerate(groups):
+        out.append(marked[prev : bounds[i]])
+        if group:
+            out.append("\n" + _component(i + 1, group) + "\n")
+        prev = bounds[i]
+    return head + "".join(out)

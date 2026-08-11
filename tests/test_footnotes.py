@@ -70,3 +70,53 @@ def test_marker_without_a_definition_is_left_literal():
 
     assert "[^missing]" in out
     assert "footnote-ref" not in out
+
+
+import pytest
+
+from scriptorium.footnotes import process_footnotes, resolve_footnote_mode
+
+
+def test_mode_precedence_frontmatter_over_theme_over_default():
+    assert resolve_footnote_mode({}, {}) == "document"
+    assert resolve_footnote_mode({}, {"footnotes": "chapter"}) == "chapter"
+    assert resolve_footnote_mode({"footnotes": "page"}, {"footnotes": "chapter"}) == "page"
+
+
+def test_unknown_mode_raises():
+    with pytest.raises(ValueError, match="footnotes"):
+        resolve_footnote_mode({"footnotes": "endnote"}, {})
+
+
+def test_document_mode_emits_one_component_at_the_end():
+    out = process_footnotes("A[^a]\n\n[^a]: The note.\n", mode="document")
+
+    assert out.count("::: footnotes") == 1
+    assert out.index("::: footnotes") > out.index("A<sup")
+    assert '<span id="fn-1-1"></span>' in out
+    assert "The note." in out and "[↩](#fnref-1-1)" in out
+
+
+def test_chapter_mode_emits_a_component_per_chapter():
+    src = "# One\n\nA[^a]\n\n# Two\n\nB[^b]\n\n[^a]: one\n\n[^b]: two\n"
+    out = process_footnotes(src, mode="chapter")
+
+    assert out.count("::: footnotes") == 2
+    # chapter one's notes come before chapter two's heading
+    assert out.index("::: footnotes") < out.index("# Two")
+    assert "one" in out and "two" in out
+
+
+def test_page_mode_inlines_the_body_and_emits_no_section():
+    out = process_footnotes("A[^a]\n\n[^a]: The note.\n", mode="page")
+
+    assert "::: footnotes" not in out
+    assert '<span class="footnote-inline">The note.</span>' in out
+    assert "footnote-ref" not in out  # WeasyPrint generates the call
+
+
+def test_note_body_keeps_its_markdown():
+    out = process_footnotes("A[^a]\n\n[^a]: See **this** and [that](https://x.dev).\n",
+                            mode="document")
+
+    assert "**this**" in out and "[that](https://x.dev)" in out
