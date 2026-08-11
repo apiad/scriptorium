@@ -4,6 +4,18 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.3.1] - 2026-08-11
+
+### Fixes
+- **A document can declare its own theme.** `theme:` in frontmatter was ignored —
+  the theme was loaded before the frontmatter was read, so every single-file
+  render used `--theme` or fell back to `report`. `scriptorium render talk.md`
+  on a deck therefore produced a flowed report, not slides. Resolution order is
+  now explicit (`--theme`, or a project's `scriptorium.yaml`) → frontmatter
+  `theme:` → default.
+- Every file in `examples/` declares its theme, so the examples render correctly
+  straight from the README with no flag.
+
 ## [v0.3.0] - 2026-08-11
 
 Slides and scholarship: a 16:9 deck format, LaTeX-style citations, and a
