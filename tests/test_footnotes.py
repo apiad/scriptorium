@@ -131,8 +131,15 @@ def test_book_theme_renders_a_notes_section_per_chapter(tmp_path):
            "[^a]: First note.\n\n[^b]: Second note.\n")
     out = tmp_path / "b.pdf"
     render_pdf(src, str(out), execute=False)
-
     assert out.exists() and out.stat().st_size > 1000
+
+    import subprocess
+    text = subprocess.run(["pdftotext", "-layout", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    # chapter one's notes sit with chapter one — not collected at the end,
+    # which is exactly what `document` mode would do instead.
+    assert text.index("First note.") < text.index("Two")
+    assert text.index("Two") < text.index("Second note.")
 
 
 def test_footnote_text_reaches_the_pdf_and_the_marker_does_not_leak(tmp_path):
