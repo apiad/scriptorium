@@ -24,6 +24,11 @@ Markdown → parse → [tangle | execute] → measure → pack → emit → PDF
 - **`execute.py`** — run code in a subshell, splice stdout, per-file session
   state, freeze cache, `PYTHONPATH`.
 - **`tangle.py`** — `export=` extraction (illiterate-compatible, byte-exact).
+- **`footnotes.py`** — `[^a]` markers + `[^a]: body` definitions → endnotes per
+  document/chapter, or GCPM per-page floats. It runs on the **raw source, before
+  `parse()`**, and must stay that way: `parse()` renders block by block, so a
+  markdown-it plugin would never see a marker and its definition in one render
+  call. Presentation lives in `components/footnotes.html` + theme CSS.
 - **`mathrender.py`** — LaTeX → SVG via quickjax (no Node).
 - **`theme.py`** — theme loading + `extends:` inheritance + the mustache template
   engine (`{{holes}}`, `{{#sections}}` / loops).

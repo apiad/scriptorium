@@ -51,6 +51,21 @@ want customizable.
   hint has `master: <name>` (it renders as its own page). `theme.yml masters:`
   sets each master's `classes` and `furniture` (`stamp` = the footer).
 
+## Footnotes
+
+`theme.yml` takes a top-level `footnotes:` key — `document` (the `base` default),
+`chapter`, or `page`. A document's frontmatter `footnotes:` overrides it; an
+unrecognised value is a hard error, not a silent fallback. `book` sets `chapter`
+because notes belong with their chapter, not 300 pages away.
+
+The engine emits collected notes as a `::: footnotes` component, so
+`components/footnotes.html` is a normal component template you can restyle or
+relabel — `base` ships `<section class="footnotes">{{content}}</section>` and the
+content is a plain `<ol>`. Style `.footnotes` / `.footnote-ref` in your CSS; for
+`page` mode style `.footnote-inline` and the `@page { @footnote { … } }` area.
+Leave the hint at `keep_together: false`: an endnotes section is routinely taller
+than a page, and keeping it together would overflow it.
+
 ## The template engine (mustache-lite)
 
 - `{{key}}` — a hole (lists join with commas).

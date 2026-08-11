@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Features
+- **Markdown footnotes.** `[^a]` markers with `[^a]: body` definitions, numbered
+  automatically, collected into an endnotes section at the end of the document
+  or of each chapter — or floated to the foot of the page. The mode is the
+  `footnotes:` key (`document` | `chapter` | `page`), frontmatter over theme;
+  `book` defaults to `chapter`. Note bodies keep their Markdown, and a note
+  referenced twice gets a back-link per call site.
+- **Per-page footnotes**, via WeasyPrint's CSS GCPM `float: footnote`. The
+  design previously rejected these as circular; that applied to the Python
+  bin-packer v0.3.0 replaced.
+
+### Fixes
+- **Cross-references no longer delete prose.** `@type-id` matched *any*
+  hyphenated prefix and rewrote it to an anchor with no target, which renders
+  empty — so `@smith-2020`, `@piad-morffis-2024` or a GitHub handle silently
+  vanished from the PDF. Only `fig` `tbl` `sec` `eq` `lst` `thm` `chap` are
+  rewritten now; everything else stays literal text, which also frees the `@key`
+  namespace for a future citations feature.
+
+### Removed
+- `citations.py` and the hand-numbered `^[N](#ref-N)^` / `### N {#ref-N}` house
+  convention it served, with its `.cite-*` and `.bib-*` CSS. Markdown footnotes
+  replace it outright. Documents still written the old way degrade to visible
+  literal text, not a crash.
+
 ## [v0.3.1] - 2026-08-11
 
 ### Fixes

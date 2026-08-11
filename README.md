@@ -143,17 +143,29 @@ All five `extend` a `base` theme; build your own by extending any of them. See
 - **Code** — `python {run}` executes; `{export=path}` tangles; `{run export=path}`
   does both; `{python}` is Quarto-compatible.
 - **Math** — `$inline$` and `$$display$$`.
-- **Cross-references** — `@type-id` (e.g. `@fig-plot`, `@sec-intro`) resolves to
-  "Figure 3.2 (p. 41)" via theme CSS.
+- **Cross-references** — `@type-id` resolves to "Figure 3.2 (p. 41)" via theme
+  CSS. The prefix must be one of `fig` `tbl` `sec` `eq` `lst` `thm` `chap`;
+  anything else (`@smith-2020`, a handle) stays literal text.
+- **Footnotes** — `A claim.[^a]` with `[^a]: The note.` anywhere in the file.
+  Numbering is automatic; a note referenced twice gets two back-links.
 - **Layout** — `::: keep` (keep-together), `::: newpage`.
+
+Where the notes land is the `footnotes:` key — frontmatter wins over the theme:
+
+| Value | Behaviour |
+|---|---|
+| `document` | one endnotes section at the end (default; `book` overrides) |
+| `chapter` | one section before each `#`, numbering restarts (the `book` default) |
+| `page` | true bottom-of-page footnotes |
 
 The full design is in [`docs/design.md`](docs/design.md).
 
 ## Status
 
 Current release: **v0.3.1**. Solid and in use: exact-geometry PDF, the theme
-system, code execution, tangle, math, and the deck format. On the roadmap: a lean
-HTML-book renderer and EPUB output, real floats, and per-page footnotes.
+system, code execution, tangle, math, footnotes, and the deck format. On the
+roadmap: a lean HTML-book renderer and EPUB output, real floats, and CSL
+citations.
 
 ## License
 

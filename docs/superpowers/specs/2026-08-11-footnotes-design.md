@@ -1,6 +1,6 @@
 # Footnotes as endnotes — design
 
-*Status: approved, not yet implemented. 2026-08-11.*
+*Status: implemented in v0.4.0. 2026-08-11.*
 
 Scriptorium claims footnote support in two places and delivers it in neither.
 `docs/design.md` line 104 lists footnotes among the supported Markdown, and §7.4
@@ -120,8 +120,11 @@ handles them. `citations.py` had to hand-roll a mini-renderer (`_md_fragment`,
 with separate regexes for links, bold and italic) precisely because it emitted
 final HTML. We do not repeat that.
 
-The `base` theme supplies the `footnotes` component template, so themes can
-restyle or relabel the section without engine changes.
+The `base` theme supplies the `footnotes` component template — as
+`themes/base/components/footnotes.html`, since a theme's `components:` YAML key
+carries hints (`keep_together`) rather than templates — so themes can restyle or
+relabel the section without engine changes. The hint is `keep_together: false`:
+an endnotes section is routinely taller than a page.
 
 `document` mode emits one component at the end; `chapter` mode emits one
 immediately before each `#` after the first, plus one at the end of the document
@@ -153,8 +156,9 @@ earlier "CSS only" assessment of it was wrong.
 
 **Limitation, documented rather than solved:** a note referenced more than once
 has one body and several call sites. In `page` mode it is inlined at its *first*
-reference; later markers render as a plain superscript linking to that page's
-note rather than duplicating the text. `document` and `chapter` modes keep the
+reference; later markers render as a plain superscript carrying the same number
+rather than duplicating the text. (As built they carry no link: there is one
+body on one page, and a cross-page hop to it earns nothing in print.) `document` and `chapter` modes keep the
 full multi-back-link behaviour.
 
 Worth recording either way: `docs/design.md` §7.4 rejects per-page footnotes as

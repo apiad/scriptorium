@@ -378,12 +378,29 @@ the reports use today. Geometry matches the plan to a sub-pixel epsilon (reserve
 
 ### 7.4 Footnotes — endnotes by default
 
-True bottom-of-page footnotes are circular (footnote height changes `content_h`,
-which changes which page the reference lands on). The house report standard
-favors **endnotes** (a references section at the end) over per-page
-footnotes. So scriptorium adopts **endnotes** (per-chapter or per-document) as
-the default, sidestepping the circularity and matching convention. True per-page
-footnotes are an opt-in later feature with iterative re-layout.
+`[^a]` markers with `[^a]: body` definitions, collected into an endnotes section
+at the end of the **document** or of each **chapter**, or floated to the foot of
+the **page**. The `footnotes:` key selects the mode, frontmatter over theme;
+`book` defaults to `chapter`, everything else to `document`. Implemented in
+`footnotes.py`.
+
+It is a **source-to-source pre-processor**, not a markdown-it plugin, and this is
+forced: `parse()` renders block by block, so a plugin never sees a marker and its
+definition in the same render call — the marker survives as literal text and the
+definition renders to nothing. The pre-processor rewrites markers to inline
+`<sup>` HTML and re-emits note bodies as a `::: footnotes` component, so the real
+Markdown renderer handles the links and emphasis in author prose.
+
+**Per-page footnotes are implemented, and the circularity objection is retired.**
+This section previously rejected them as circular — footnote height changes
+`content_h`, which changes which page the reference lands on. That was true of
+the Python bin-packer it was written against. v0.3.0 handed document pagination
+to WeasyPrint, so the circularity is WeasyPrint's to resolve, and CSS GCPM
+(`float: footnote`) resolves it. `page` mode is still engine work rather than a
+stylesheet: GCPM wants the note's content inline at the anchor, so the
+pre-processor inlines the body there and emits no marker of its own — WeasyPrint
+generates the call number. A note referenced more than once has one body and
+therefore one page; later references get a plain superscript.
 
 ---
 
