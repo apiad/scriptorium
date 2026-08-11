@@ -135,6 +135,53 @@ inheriting the superscript look v0.3.0 established for citations: small, raised,
 accent-coloured, no underline. The plugin renders markers as `[1]`; the brackets
 are suppressed in CSS so the output matches the existing superscript form.
 
+## Forward compatibility with citations
+
+Footnotes are not citations, and this design deliberately does not build them.
+A citation resolves a *key* against a bibliography database and formats it by a
+style; a footnote is prose the author wrote at the point of reference. A future
+citations feature (`.bib` / CSL-JSON, author-date and numeric styles, a generated
+references section) gets its own spec. These are the boundaries it must be able
+to rely on.
+
+**Syntax namespace.** `[^id]` belongs to footnotes. `@key` and `[@key]` are
+reserved for citations and must not be consumed here.
+
+There is already a conflict, independent of this work. `_REF` in `parse.py`
+matches `@type-id` with *any* hyphenated prefix, so common BibTeX keys are
+silently rewritten into empty cross-reference anchors — verified 2026-08-11:
+
+| Source | Today |
+|---|---|
+| `@fig-plot` | cross-reference (intended) |
+| `@smith2020` | untouched |
+| `@smith-2020` | `<a class="ref-smith" href="#smith-2020">` |
+| `[@piad-morffis-2024]` | `<a class="ref-piad" href="#piad-morffis-2024">` |
+
+The resolution is to restrict cross-references to a known prefix set — `fig-`,
+`tbl-`, `sec-`, `eq-`, `lst-`, `thm-` — which is Quarto's own convention and
+frees the whole `@key` space. Whether that rides along with this work or lands
+with the citations spec is a scoping decision; either way, citations must not be
+designed around the current greedy behaviour.
+
+**Separate sections, separate counters.** Footnotes emit
+`<section class="footnotes">`; a bibliography must emit a distinct container
+(`<section class="references">`) with its own counter. A document may carry both
+— a Chicago-style paper has explanatory notes *and* a reference list — so
+neither may assume it owns "the section at the end". Note that a bibliography is
+normally document-final even when `footnotes: chapter` puts notes per chapter;
+placement is decided per feature, not shared.
+
+**Reusable note insertion.** In notes-bibliography styles a citation *is* a
+footnote. `footnotes.py` therefore exposes note insertion — anchor, body,
+back-link, renumber — as a callable primitive rather than a closed
+source-to-source transform, so a citation engine can emit into the footnote
+apparatus instead of reimplementing it.
+
+**Parallel configuration.** The `footnotes:` key leaves room for a sibling
+`citations:` / `bibliography:` key resolved by the same frontmatter-over-theme
+precedence.
+
 ## Deletion
 
 Removed outright, not deprecated:
