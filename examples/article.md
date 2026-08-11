@@ -28,13 +28,13 @@ The word *abstraction* has been worn smooth by overuse, so let me be concrete.
 An abstraction is a boundary. On one side sits a decision — a data layout, a
 protocol, an ordering rule. On the other side sits everyone who would otherwise
 have to know that decision to get their work done. A good boundary lets them not
-know, and keeps letting them not know as the decision changes.
+know, and keeps letting them not know as the decision changes.[^parnas]
 
-The leaky ones fail that second test. They hide the decision on a sunny day and
-surface it the moment anything goes wrong, which is exactly when you least want a
-new thing to learn. The abstraction that makes the easy case easy and the hard
-case impossible has not saved you any work; it has only deferred it to the worst
-possible moment.
+The leaky ones fail that second test.[^spolsky] They hide the decision on a sunny
+day and surface it the moment anything goes wrong, which is exactly when you least
+want a new thing to learn. The abstraction that makes the easy case easy and the
+hard case impossible has not saved you any work; it has only deferred it to the
+worst possible moment.
 
 ## Hiding a decision, not a mechanism
 
@@ -56,9 +56,9 @@ touching both sides at once — which is the observable symptom of a leak. Put i
 in the right place and the same changes stay on one side.
 
 So the question to ask, before writing the interface, is not "what operations do
-I need" but "what will change independently." The seam belongs between the things
-that move at different rates. Get that right and the interface almost writes
-itself; get it wrong and no amount of interface polish will save you.
+I need" but "what will change independently."[^rates] The seam belongs between the
+things that move at different rates. Get that right and the interface almost
+writes itself; get it wrong and no amount of interface polish will save you.
 
 ## When not to
 
@@ -67,3 +67,12 @@ never changes, and that everyone already understands is pure overhead — a toll
 booth on a road with no traffic. Abstraction is a bet that a decision will change
 or spread; when you are confident it will do neither, the honest move is to
 inline it and move on.
+
+[^parnas]: Parnas, D. L. *On the Criteria To Be Used in Decomposing Systems into
+    Modules.* Communications of the ACM 15(12), 1972.
+    [dl.acm.org](https://dl.acm.org/doi/10.1145/361598.361623).
+[^spolsky]: Spolsky, J. *The Law of Leaky Abstractions*, 2002 — the canonical
+    statement of the failure mode, and still the shortest.
+[^rates]: The rate-of-change heuristic is older than the term "abstraction" as we
+    use it; it is the same instinct that puts a **joint** where a building
+    expands, not where the drawing happens to end.
