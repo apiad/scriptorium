@@ -114,3 +114,25 @@ def test_deck_groups_slides_by_headings():
     slides = _group_slides(us, has_title=True)
     assert [m for m, _ in slides] == ["title", "section", "content", "content", "content"]
     assert len(slides[3][1]) == 2  # slide "B": the h2 + its paragraph
+
+
+def test_frontmatter_theme_is_honoured_and_explicit_wins():
+    from scriptorium.galley import DEFAULT_THEME, resolve_theme_name
+    deck_doc = "---\ntheme: deck\ntitle: T\n---\n\n# S\n"
+
+    assert resolve_theme_name(deck_doc) == "deck"           # frontmatter beats the default
+    assert resolve_theme_name(deck_doc, "book") == "book"   # --theme beats frontmatter
+    assert resolve_theme_name("# no frontmatter\n") == DEFAULT_THEME
+
+
+def test_render_pdf_uses_the_theme_named_in_frontmatter(tmp_path):
+    # Reachability: examples/deck.md declares `theme: deck`, so rendering it with
+    # no explicit theme must produce 16:9 slides, not A4 pages of the default theme.
+    src = Path("examples/deck.md").read_text(encoding="utf-8")
+    declared = render_pdf(src, str(tmp_path / "declared.pdf"), base_url="examples/",
+                          execute=False)
+    overridden = render_pdf(src, str(tmp_path / "overridden.pdf"), base_url="examples/",
+                            theme_name="report", execute=False)
+
+    assert declared.n_pages == 12  # the deck path emits one page per slide
+    assert overridden.n_pages != declared.n_pages  # --theme really did override

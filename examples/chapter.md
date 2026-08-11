@@ -1,4 +1,5 @@
 ---
+theme: book
 title: Executable chapter
 stem: chapter
 ---

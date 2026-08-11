@@ -1,4 +1,5 @@
 ---
+theme: article
 title: The Shape of a Good Abstraction
 authors:
   - name: Jane Ashby

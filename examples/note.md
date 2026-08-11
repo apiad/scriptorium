@@ -1,4 +1,5 @@
 ---
+theme: note
 title: Consensus Without a Leader
 ---
 

@@ -1,4 +1,5 @@
 ---
+theme: report
 title: Scriptorium VS1 sample
 lang: en
 ---

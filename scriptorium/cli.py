@@ -17,7 +17,8 @@ def main(argv=None) -> int:
     r.add_argument("input", type=Path)
     r.add_argument("-o", "--output", type=Path, default=None)
     r.add_argument("--no-execute", action="store_true", help="do not run code blocks")
-    r.add_argument("--theme", default="report")
+    r.add_argument("--theme", default=None,
+                   help="override the document's frontmatter `theme:`")
 
     t = sub.add_parser("tangle", help="extract export= code blocks to source files")
     t.add_argument("input", type=Path)

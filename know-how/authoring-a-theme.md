@@ -22,6 +22,13 @@ themes/<name>/
 `note` and `article` are small deltas on `base`; `deck` extends `report` to reuse
 its component vocabulary.
 
+## How a theme gets picked
+
+`resolve_theme_name` in `galley.py`: an explicit theme wins (`--theme`, or a
+project's `scriptorium.yaml theme:`), then the document's own frontmatter
+`theme:`, then `DEFAULT_THEME`. A single `.md` that renders standalone should
+declare its theme in frontmatter — every file in `examples/` does.
+
 ## The customization contract (vars)
 
 Every theme honors these, injected as CSS custom properties:

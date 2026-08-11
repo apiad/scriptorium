@@ -1,4 +1,5 @@
 ---
+theme: book
 title: Fenwick trees
 stem: fenwick
 ---

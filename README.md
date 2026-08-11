@@ -12,8 +12,11 @@ decks.
 ```bash
 scriptorium render report.md              # a single document   -> report.pdf
 scriptorium render book.yaml              # a multi-file project -> book.pdf
-scriptorium render talk.md --theme deck   # 16:9 slides
+scriptorium render talk.md --theme deck   # override the declared theme
 ```
+
+A document picks its own theme in frontmatter (`theme: deck`); `--theme` overrides
+it, and a project's `scriptorium.yaml` decides for every file it lists.
 
 ## Why
 
@@ -89,7 +92,7 @@ for n in range(1, 4):
 ````
 
 ```bash
-scriptorium render guide.md --theme article    # -> guide.pdf
+scriptorium render guide.md    # theme from frontmatter -> guide.pdf
 ```
 
 A multi-file project is a `scriptorium.yaml`:

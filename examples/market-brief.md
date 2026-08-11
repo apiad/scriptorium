@@ -1,4 +1,5 @@
 ---
+theme: report
 title: Northwind
 org: Northwind Analytics
 org_sub: Market Intelligence · Confidential

@@ -593,13 +593,26 @@ _APPEARANCE = {
 }
 
 
+DEFAULT_THEME = "report"
+
+
+def resolve_theme_name(src: str, explicit: str | None = None) -> str:
+    """An explicit theme (`--theme`, or a project's `scriptorium.yaml`) wins; then
+    the document's own frontmatter `theme:`; then the default."""
+    from .parse import frontmatter
+
+    if explicit:
+        return explicit
+    return str(frontmatter(src).get("theme") or DEFAULT_THEME)
+
+
 def render_pdf(src: str, out_path: str, base_url: str | None = None,
-               theme_name: str = "report", cwd: str | None = None,
+               theme_name: str | None = None, cwd: str | None = None,
                execute: bool = True, vars: dict | None = None,
                code_root: str | None = None) -> Report:
     from .parse import frontmatter, parse
 
-    theme = load_theme(theme_name)
+    theme = load_theme(resolve_theme_name(src, theme_name))
     _, _, content_h = _geom(theme)
     # theme var defaults, overridden by project vars, then by per-doc frontmatter
     merged = {**theme.vars, **(vars or {})}
