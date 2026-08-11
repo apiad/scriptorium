@@ -89,7 +89,7 @@ def test_unknown_mode_raises():
 
 
 def test_document_mode_emits_one_component_at_the_end():
-    out = process_footnotes("A[^a]\n\n[^a]: The note.\n", mode="document")
+    out, _ = process_footnotes("A[^a]\n\n[^a]: The note.\n", mode="document")
 
     assert out.count("::: footnotes") == 1
     assert out.index("::: footnotes") > out.index("A<sup")
@@ -99,7 +99,7 @@ def test_document_mode_emits_one_component_at_the_end():
 
 def test_chapter_mode_emits_a_component_per_chapter():
     src = "# One\n\nA[^a]\n\n# Two\n\nB[^b]\n\n[^a]: one\n\n[^b]: two\n"
-    out = process_footnotes(src, mode="chapter")
+    out, _ = process_footnotes(src, mode="chapter")
 
     assert out.count("::: footnotes") == 2
     # chapter one's notes come before chapter two's heading
@@ -108,7 +108,7 @@ def test_chapter_mode_emits_a_component_per_chapter():
 
 
 def test_page_mode_inlines_the_body_and_emits_no_section():
-    out = process_footnotes("A[^a]\n\n[^a]: The note.\n", mode="page")
+    out, _ = process_footnotes("A[^a]\n\n[^a]: The note.\n", mode="page")
 
     assert "::: footnotes" not in out
     assert '<span class="footnote-inline">The note.</span>' in out
@@ -116,8 +116,8 @@ def test_page_mode_inlines_the_body_and_emits_no_section():
 
 
 def test_note_body_keeps_its_markdown():
-    out = process_footnotes("A[^a]\n\n[^a]: See **this** and [that](https://x.dev).\n",
-                            mode="document")
+    out, _ = process_footnotes("A[^a]\n\n[^a]: See **this** and [that](https://x.dev).\n",
+                               mode="document")
 
     assert "**this**" in out and "[that](https://x.dev)" in out
 
@@ -177,3 +177,29 @@ def test_page_mode_floats_the_note_to_the_foot_of_its_anchors_page(tmp_path):
     # ...and at the foot of it: below the body text that follows the anchor,
     # which an un-floated note (still in the flow) would sit above.
     assert page.rindex("After paragraph") < page.index("Note belonging")
+
+
+def test_unresolved_marker_and_uncited_definition_are_warned():
+    out, warnings = process_footnotes("A[^missing] and B[^b]\n\n[^b]: two\n\n[^c]: three\n")
+
+    assert "[^missing]" in out          # still literal, never deleted
+    assert any("missing" in w for w in warnings)
+    assert any("c" in w and "never referenced" in w for w in warnings)
+    assert not any("[^b]" in w for w in warnings)   # b is fine, no noise
+
+
+def test_render_surfaces_footnote_warnings(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\n---\n\n"
+           "# H\n\nA claim.[^nope]\n\n[^a]: An orphan note.\n")
+    report = render_pdf(src, str(tmp_path / "w.pdf"), execute=False)
+
+    assert any("nope" in w for w in report.warnings)
+
+
+def test_uncited_definitions_emit_no_empty_section():
+    # v0.4.0 emitted a bare `::: footnotes` / `:::` pair here, which renders as
+    # an empty ruled band in the PDF.
+    out, warnings = process_footnotes("A claim, no marker.\n\n[^a]: An orphan.\n")
+
+    assert "::: footnotes" not in out
+    assert any("never referenced" in w for w in warnings)

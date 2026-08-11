@@ -11,7 +11,7 @@ because slides use absolute-positioned fixed-size boxes.
 
 import re
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from weasyprint import HTML
@@ -56,6 +56,7 @@ class Report:
     n_pages: int
     oversized: list[str]
     page_of: list[int]
+    warnings: list[str] = field(default_factory=list)
 
 
 def _geom(theme: Theme):
@@ -653,15 +654,17 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     from .parse import fill_toc
     from .footnotes import process_footnotes, resolve_footnote_mode
 
-    src = process_footnotes(src, resolve_footnote_mode(meta, theme.meta))
+    src, warnings = process_footnotes(src, resolve_footnote_mode(meta, theme.meta))
     units = parse(src, theme, env, meta=meta)
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
 
     if str(theme.meta.get("mode", "")) == "deck":  # slides: keep measure+pack pipeline
         measure(units, theme, base_url=base_url)
-        return _render_deck(units, theme, meta, out_path, base_url, content_h)
+        report = _render_deck(units, theme, meta, out_path, base_url, content_h)
+        report.warnings = warnings
+        return report
 
     # Document themes: CSS Fragmentation handles all pagination — no measure, no pack.
     doc = HTML(string=emit(units, theme, meta), base_url=base_url).render()
     doc.write_pdf(out_path)
-    return Report(n_pages=len(doc.pages), oversized=[], page_of=[])
+    return Report(n_pages=len(doc.pages), oversized=[], page_of=[], warnings=warnings)

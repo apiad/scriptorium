@@ -176,18 +176,31 @@ def _inline_notes(src: str, notes: dict[str, Note]) -> str:
     return "".join(out)
 
 
-def process_footnotes(src: str, mode: str = "document") -> str:
+def _audit(body: str, notes: dict[str, Note]) -> list[str]:
+    """Markers with no definition, and definitions nobody references."""
+    spans = fence_spans(body)
+    seen = {m.group(1) for m in _MARK.finditer(body) if not in_span(m.start(), spans)}
+    warnings = [f"footnote [^{k}] has no definition" for k in sorted(seen - set(notes))]
+    warnings += [f"footnote definition [^{k}] is never referenced"
+                 for k in sorted(set(notes) - seen)]
+    return warnings
+
+
+def process_footnotes(src: str, mode: str = "document") -> tuple[str, list[str]]:
     """Entry point: rewrite markers and emit notes per `mode`."""
     head, body = split_frontmatter(src)
     body, notes = collect_notes(body)
+    warnings = _audit(body, notes)
     if not notes:
-        return head + body
+        return head + body, warnings
     if mode == "page":
-        return head + _inline_notes(body, notes)
+        return head + _inline_notes(body, notes), warnings
 
     marked, groups = number_and_mark(body, notes, chapter_mode=(mode == "chapter"))
     if mode == "document":
-        return head + marked.rstrip() + "\n\n" + _component(1, groups[0])
+        if not groups[0]:  # definitions exist but nothing cites them
+            return head + marked, warnings
+        return head + marked.rstrip() + "\n\n" + _component(1, groups[0]), warnings
 
     starts = _chapter_starts(marked, fence_spans(marked))
     bounds = starts[_lead(marked, starts):] + [len(marked)]
@@ -197,4 +210,4 @@ def process_footnotes(src: str, mode: str = "document") -> str:
         if group:
             out.append("\n" + _component(i + 1, group) + "\n")
         prev = bounds[i]
-    return head + "".join(out)
+    return head + "".join(out), warnings
