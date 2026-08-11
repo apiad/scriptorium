@@ -120,3 +120,53 @@ def test_note_body_keeps_its_markdown():
                             mode="document")
 
     assert "**this**" in out and "[that](https://x.dev)" in out
+
+
+from scriptorium.galley import render_pdf
+
+
+def test_book_theme_renders_a_notes_section_per_chapter(tmp_path):
+    src = ("---\ntheme: book\ntitle: T\n---\n\n"
+           "# One\n\nAlpha.[^a]\n\n# Two\n\nBeta.[^b]\n\n"
+           "[^a]: First note.\n\n[^b]: Second note.\n")
+    out = tmp_path / "b.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    assert out.exists() and out.stat().st_size > 1000
+
+
+def test_footnote_text_reaches_the_pdf_and_the_marker_does_not_leak(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\n---\n\n"
+           "# H\n\nA claim.[^a]\n\n[^a]: The supporting note.\n")
+    out = tmp_path / "a.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "The supporting note." in text
+    assert "[^a]" not in text  # no literal marker syntax survived
+
+
+def test_page_mode_floats_the_note_to_the_foot_of_its_anchors_page(tmp_path):
+    def filler(tag, n):
+        return "\n\n".join(f"{tag} paragraph {i}. " * 40 for i in range(n))
+
+    src = ("---\ntheme: article\ntitle: T\nfootnotes: page\n---\n\n"
+           f"# H\n\n{filler('Before', 10)}\n\nThe late claim.[^a]\n\n"
+           f"{filler('After', 10)}\n\n[^a]: Note belonging to the anchor page.\n")
+    out = tmp_path / "p.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    pages = subprocess.run(["pdftotext", str(out), "-"],
+                           capture_output=True, text=True).stdout.split("\f")
+    anchor = [p for p in pages if "The late claim." in p]
+    assert len(anchor) == 1, "anchor text not found on exactly one page"
+    page = anchor[0]
+
+    # same page as its anchor...
+    assert "Note belonging to the anchor page." in page
+    # ...and at the foot of it: below the body text that follows the anchor,
+    # which an un-floated note (still in the flow) would sit above.
+    assert page.rindex("After paragraph") < page.index("Note belonging")

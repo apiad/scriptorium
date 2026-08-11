@@ -19,3 +19,11 @@ vars:
   body-font: "Inter"
   heading-font: "Inter"
   mono-font: "JetBrains Mono"
+
+# Where footnote definitions collect: document | chapter | page.
+# Frontmatter `footnotes:` overrides this per document.
+footnotes: document
+
+components:
+  footnotes:
+    keep_together: false   # an endnotes section is often taller than a page

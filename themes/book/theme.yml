@@ -28,3 +28,6 @@ masters:
 components:
   title: { master: title }
   copyright: { master: copyright }
+
+# A book's notes belong with their chapter, not 300 pages away.
+footnotes: chapter
