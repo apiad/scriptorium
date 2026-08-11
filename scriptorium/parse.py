@@ -30,16 +30,22 @@ _md = (
 )
 
 # @type-id cross-references -> empty anchors; the theme's CSS fills the text
-# via target-counter/target-text. Requires a hyphenated type prefix so it
-# doesn't match e-mail handles or @mentions.
+# via target-counter/target-text. The prefix must be one we know: anything else
+# is ordinary prose (a BibTeX key, a handle) and rewriting it would delete it
+# from the page, since an anchor with no target renders empty. The free @key
+# namespace is reserved for a future citations feature.
+_REF_PREFIXES = frozenset({"fig", "tbl", "sec", "eq", "lst", "thm", "chap"})
 _REF = re.compile(r"(?<![\w`])@([a-zA-Z][\w]*)-([\w-]+)")
 
 
 def _rewrite_refs(text: str) -> str:
-    return _REF.sub(
-        lambda m: f'<a class="ref-{m.group(1)}" href="#{m.group(1)}-{m.group(2)}"></a>',
-        text,
-    )
+    def sub(m):
+        kind, target = m.group(1), m.group(2)
+        if kind not in _REF_PREFIXES:
+            return m.group(0)
+        return f'<a class="ref-{kind}" href="#{kind}-{target}"></a>'
+
+    return _REF.sub(sub, text)
 _md.renderer.rules["math_inline"] = lambda t, i, o, e: render_inline(t[i].content)
 _md.renderer.rules["math_inline_double"] = lambda t, i, o, e: render_display(t[i].content)
 _md.renderer.rules["math_block"] = lambda t, i, o, e: render_display(t[i].content)

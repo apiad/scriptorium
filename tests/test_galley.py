@@ -136,3 +136,19 @@ def test_render_pdf_uses_the_theme_named_in_frontmatter(tmp_path):
 
     assert declared.n_pages == 12  # the deck path emits one page per slide
     assert overridden.n_pages != declared.n_pages  # --theme really did override
+
+
+def test_refs_only_match_known_prefixes():
+    from scriptorium.parse import _rewrite_refs
+
+    # known prefixes still resolve
+    assert 'href="#fig-plot"' in _rewrite_refs("see @fig-plot")
+    assert 'href="#chap-two"' in _rewrite_refs("see @chap-two")
+
+    # bibtex keys and handles survive as literal text
+    for s in ["@smith-2020", "@piad-morffis-2024", "@colinhacks-x"]:
+        assert _rewrite_refs(f"cite {s}") == f"cite {s}"
+
+    # the regression that motivated this: prose was silently deleted
+    out = _rewrite_refs("See @sec-intro and mail me @piad-morffis-2024.")
+    assert "mail me @piad-morffis-2024." in out
