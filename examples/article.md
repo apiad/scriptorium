@@ -19,6 +19,10 @@ abstract: >
   hides? — and argues that the seam belongs between the things that change at
   different rates.
 keywords: abstraction, interfaces, software design, coupling
+bibliography:
+  parnas1972: "Parnas, D. L. *On the Criteria To Be Used in Decomposing Systems into Modules.* Communications of the ACM 15(12), 1972. [dl.acm.org](https://dl.acm.org/doi/10.1145/361598.361623)."
+  brooks1975: "Brooks, F. P. *The Mythical Man-Month*. Addison-Wesley, 1975."
+  spolsky2002: "Spolsky, J. *The Law of Leaky Abstractions*, 2002."
 ---
 
 ::: titleblock
@@ -28,9 +32,9 @@ The word *abstraction* has been worn smooth by overuse, so let me be concrete.
 An abstraction is a boundary. On one side sits a decision — a data layout, a
 protocol, an ordering rule. On the other side sits everyone who would otherwise
 have to know that decision to get their work done. A good boundary lets them not
-know, and keeps letting them not know as the decision changes.[^parnas]
+know, and keeps letting them not know as the decision changes.[@parnas1972]
 
-The leaky ones fail that second test.[^spolsky] They hide the decision on a sunny
+The leaky ones fail that second test.[@spolsky2002] They hide the decision on a sunny
 day and surface it the moment anything goes wrong, which is exactly when you least
 want a new thing to learn. The abstraction that makes the easy case easy and the
 hard case impossible has not saved you any work; it has only deferred it to the
@@ -42,7 +46,8 @@ The most common mistake is to abstract the mechanism instead of the decision. A
 cache that exposes `get` and `set` has hidden a hash table, which nobody needed
 hidden. A cache that guarantees a freshness bound has hidden a decision — how
 stale is too stale — that every caller would otherwise have to make and re-make.
-The first is a thin coat of paint; the second is a boundary worth defending.
+The first is a thin coat of paint; the second is a boundary worth
+defending.[@brooks1975]
 
 The test is simple: name the decision the abstraction makes on your behalf. If
 you cannot name one, you have wrapped a mechanism, not hidden a decision, and the
@@ -68,11 +73,6 @@ booth on a road with no traffic. Abstraction is a bet that a decision will chang
 or spread; when you are confident it will do neither, the honest move is to
 inline it and move on.
 
-[^parnas]: Parnas, D. L. *On the Criteria To Be Used in Decomposing Systems into
-    Modules.* Communications of the ACM 15(12), 1972.
-    [dl.acm.org](https://dl.acm.org/doi/10.1145/361598.361623).
-[^spolsky]: Spolsky, J. *The Law of Leaky Abstractions*, 2002 — the canonical
-    statement of the failure mode, and still the shortest.
 [^rates]: The rate-of-change heuristic is older than the term "abstraction" as we
     use it; it is the same instinct that puts a **joint** where a building
     expands, not where the drawing happens to end.

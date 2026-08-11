@@ -29,6 +29,12 @@ Markdown → parse → [tangle | execute] → measure → pack → emit → PDF
   `parse()`**, and must stay that way: `parse()` renders block by block, so a
   markdown-it plugin would never see a marker and its definition in one render
   call. Presentation lives in `components/footnotes.html` + theme CSS.
+- **`citations.py`** — `[@key]` spans against a declared `bibliography:` map →
+  a numbered `::: references` section. Runs on the raw source **after**
+  `footnotes.py`, so a citation inside a note body is numbered by where the note
+  renders. Entries are prose: never parse them for author or year.
+- **`source.py`** — the shared source scanner (fence spans, frontmatter split)
+  both pre-processors use.
 - **`mathrender.py`** — LaTeX → SVG via quickjax (no Node).
 - **`theme.py`** — theme loading + `extends:` inheritance + the mustache template
   engine (`{{holes}}`, `{{#sections}}` / loops).

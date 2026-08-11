@@ -148,6 +148,11 @@ All five `extend` a `base` theme; build your own by extending any of them. See
   anything else (`@smith-2020`, a handle) stays literal text.
 - **Footnotes** — `A claim.[^a]` with `[^a]: The note.` anywhere in the file.
   Numbering is automatic; a note referenced twice gets two back-links.
+- **Citations** — `[@key]` and `[@a; @b]` render as `[1]` / `[1, 2]` against a
+  `bibliography:` map in frontmatter (or in `scriptorium.yaml` for a project),
+  and collect into a references section. Cited works only; add `nocite: [key]`
+  for anything you want listed without citing. Entries are Markdown prose, so
+  numeric styles only — author-date needs CSL, which is not built.
 - **Layout** — `::: keep` (keep-together), `::: newpage`.
 
 Where the notes land is the `footnotes:` key — frontmatter wins over the theme:

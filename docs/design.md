@@ -404,6 +404,35 @@ therefore one page; later references get a plain superscript.
 
 ---
 
+### 7.5 Citations — numbered, prose entries
+
+`[@key]` and `[@a; @b]` resolve against a `bibliography:` map the author declares
+in frontmatter (or, for a project, as a top-level key in `scriptorium.yaml`).
+They render as a bracketed `[1]` / `[1, 2]` and collect into a generated
+`<section class="references">` — cited works only, in order of first appearance,
+plus anything listed under `nocite:`. Implemented in `citations.py`, which runs
+right after `footnotes.py` so a citation inside a note body is numbered by where
+the note renders rather than where its definition sat.
+
+Notes and references are **separate apparatuses**: distinct sections, distinct
+counters, and distinct marks — footnotes are bare superscripts, citations are
+bracketed and on the baseline — so a document may carry both without ambiguity.
+
+**Entries are opaque Markdown prose, and that is the defining trade.** The engine
+numbers, orders and links them; it never inspects them for an author or a year.
+Author-date (`(Parnas, 1972)`) is therefore not deferred but *impossible by
+construction*: reaching it means a real bibliography parser (`.bib` / CSL-JSON)
+and a style engine, which is a separate feature tracked in `tasks.md`. The trade
+is deliberate — formatting entries is exactly what CSL exists to do, and doing it
+halfway produces output that reads as a worse IEEE.
+
+Bare `@key` is deliberately **not** a citation. §7.4's neighbouring fix narrowed
+`@type-id` to a known prefix set precisely because a loose `@word` rule was
+rewriting prose into empty anchors; requiring brackets keeps citations and
+cross-references separable at the parser rather than by convention.
+
+---
+
 ## 8. Page masters and PDF furniture
 
 Because we emit our own `.page` divs under `@page { margin: 0 }`, we draw

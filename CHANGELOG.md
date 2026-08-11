@@ -4,6 +4,27 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Features
+- **Numbered citations.** `[@key]` and `[@a; @b]` resolve against a
+  `bibliography:` map declared in frontmatter — or, for a multi-file project, as
+  a top-level key in `scriptorium.yaml` — and render as `[1]` / `[1, 2]`,
+  collecting into a generated references section. Cited works only, numbered by
+  first appearance, with `nocite:` for anything to be listed without citing.
+  Entries are Markdown prose, so their links and emphasis survive to the page.
+  Notes and references are separate apparatuses: distinct sections, distinct
+  counters, bracketed `[1]` versus a bare superscript.
+- **`Report.warnings`**, printed by the CLI beside the oversize warnings.
+  Document renders previously emitted no warnings at all.
+
+### Fixes
+- **Footnote problems are now actually reported.** The v0.4.0 design said an
+  unresolved `[^marker]` was reported; it was silently skipped, because there
+  was no channel to report it on. A marker with no definition and a definition
+  nobody references both warn now.
+- **No more empty notes section.** A document whose only footnote definition was
+  never cited emitted a bare `::: footnotes` block, which rendered as an empty
+  ruled band.
+
 ## [v0.4.0] - 2026-08-11
 
 Footnotes: real Markdown `[^id]` notes as endnotes or page-bottom floats,

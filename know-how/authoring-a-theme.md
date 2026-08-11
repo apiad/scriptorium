@@ -66,6 +66,19 @@ content is a plain `<ol>`. Style `.footnotes` / `.footnote-ref` in your CSS; for
 Leave the hint at `keep_together: false`: an endnotes section is routinely taller
 than a page, and keeping it together would overflow it.
 
+## Citations
+
+Citations work the same way and are a *separate* apparatus: the engine emits
+collected entries as a `::: references` component, so `components/references.html`
+is a normal template you can restyle. `base` ships
+`<section class="references">{{content}}</section>` with the same
+`keep_together: false` hint, for the same reason.
+
+Style `.references` and `.cite-ref` in your CSS. Keep them visually distinct from
+the footnote apparatus — `base` renders citations as bracketed `[1]` on the
+baseline and footnotes as bare raised numerals, which is what lets a document
+carry both without the reader having to guess which sequence a mark belongs to.
+
 ## The template engine (mustache-lite)
 
 - `{{key}}` — a hole (lists join with commas).
