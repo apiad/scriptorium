@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.5.0] - 2026-08-11
+
+Citations: `[@key]` against an author-declared bibliography, collected into
+a references section distinct from the footnote apparatus.
+
 ### Features
 - **Numbered citations.** `[@key]` and `[@a; @b]` resolve against a
   `bibliography:` map declared in frontmatter — or, for a multi-file project, as
