@@ -162,7 +162,7 @@ The full design is in [`docs/design.md`](docs/design.md).
 
 ## Status
 
-Current release: **v0.3.1**. Solid and in use: exact-geometry PDF, the theme
+Current release: **v0.4.0**. Solid and in use: exact-geometry PDF, the theme
 system, code execution, tangle, math, footnotes, and the deck format. On the
 roadmap: a lean HTML-book renderer and EPUB output, real floats, and CSL
 citations.

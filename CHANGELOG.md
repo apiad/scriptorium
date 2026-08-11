@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.4.0] - 2026-08-11
+
+Footnotes: real Markdown `[^id]` notes as endnotes or page-bottom floats,
+replacing the hand-numbered house convention.
+
 ### Features
 - **Markdown footnotes.** `[^a]` markers with `[^a]: body` definitions, numbered
   automatically, collected into an endnotes section at the end of the document
