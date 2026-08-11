@@ -23,6 +23,8 @@ This design replaces both with real Markdown footnotes.
 - Bottom-of-page footnotes as a third mode, now that they are cheap (see
   *Per-page footnotes* below).
 - `citations.py` and the `ref-N` convention are deleted, not deprecated.
+- Cross-references stop consuming the `@key` namespace, so a future citations
+  feature has somewhere to live — and prose stops silently vanishing.
 
 Non-goals: CSL / BibTeX bibliographies, author-date citation styles, footnotes
 inside deck slides beyond what falls out of `document` mode.
@@ -158,11 +160,32 @@ silently rewritten into empty cross-reference anchors — verified 2026-08-11:
 | `@smith-2020` | `<a class="ref-smith" href="#smith-2020">` |
 | `[@piad-morffis-2024]` | `<a class="ref-piad" href="#piad-morffis-2024">` |
 
-The resolution is to restrict cross-references to a known prefix set — `fig-`,
-`tbl-`, `sec-`, `eq-`, `lst-`, `thm-` — which is Quarto's own convention and
-frees the whole `@key` space. Whether that rides along with this work or lands
-with the citations spec is a scoping decision; either way, citations must not be
-designed around the current greedy behaviour.
+**This is also a live correctness bug, and it is in scope for this work.** An
+`@type-id` with no matching target renders as an *empty* anchor, so the text
+disappears from the page. Verified 2026-08-11 — the source
+
+```markdown
+See @sec-intro and mail me @piad-morffis-2024.
+```
+
+renders in the PDF as `See and mail me .` Any `@word-word` in prose — a BibTeX
+key, a GitHub handle, `@okta-`, `@colinhacks-` — is silently deleted. (Fenced
+code is safe: fences become units before `_rewrite_refs` runs.)
+
+The resolution is to restrict `_REF` to a known prefix set, which is Quarto's own
+convention and frees the whole `@key` space:
+
+```
+fig- tbl- sec- eq- lst- thm- chap-
+```
+
+`chap-` is included because it is in real use in the workspace; Quarto's list
+alone would have broken existing documents. Anything outside the set is left as
+literal text — visible, not vanished. The set lives as a documented module-level
+constant in `parse.py`.
+
+A dangling reference *with* a known prefix still renders empty; making that warn
+is a follow-up, not part of this work.
 
 **Separate sections, separate counters.** Footnotes emit
 `<section class="footnotes">`; a bibliography must emit a distinct container
@@ -234,6 +257,9 @@ logic:
 - `page` mode inlines note content and emits no leftover trailing section; a
   render-level test asserts the note text lands on the same page as its anchor.
 - An unrecognised `footnotes:` value raises rather than silently defaulting.
+- `_REF` narrowing: every prefix in the known set still resolves; `@smith-2020`,
+  `@piad-morffis-2024` and `@colinhacks-x` survive as literal text; the
+  `See @sec-intro and mail me @piad-morffis-2024.` case keeps its second half.
 - Render-level: a book-theme document with notes in two chapters produces two
   `<section class="footnotes">` blocks in the emitted HTML.
 
