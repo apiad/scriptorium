@@ -27,3 +27,5 @@ footnotes: document
 components:
   footnotes:
     keep_together: false   # an endnotes section is often taller than a page
+  references:
+    keep_together: false   # and so is a reference list

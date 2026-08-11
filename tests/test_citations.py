@@ -145,3 +145,38 @@ def test_frontmatter_is_held_aside():
 
     assert out.startswith("---\ntitle: T\n---\n")
     assert out.count("::: references") == 1
+
+
+from scriptorium.galley import render_pdf
+
+
+def test_citation_text_reaches_the_pdf_and_no_syntax_leaks(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\n"
+           "bibliography:\n  parnas: \"Parnas, D. L. On the Criteria. CACM, 1972.\"\n"
+           "---\n\n# H\n\nA claim.[@parnas]\n")
+    out = tmp_path / "c.pdf"
+    report = render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "Parnas, D. L." in text
+    assert "[@parnas]" not in text
+    assert "[1]" in text            # bracketed, not a bare superscript
+    assert report.warnings == []
+
+
+def test_footnotes_and_citations_coexist_with_separate_counters(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\n"
+           "bibliography:\n  vogel: \"Vogel, E. F. Deng Xiaoping. Belknap, 2011.\"\n"
+           "---\n\n# H\n\nA claim[^n] and a source.[@vogel]\n\n"
+           "[^n]: An explanatory note.\n")
+    out = tmp_path / "both.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "An explanatory note." in text and "Vogel, E. F." in text
+    # both are number 1 of their own sequence
+    assert "[1]" in text

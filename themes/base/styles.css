@@ -113,6 +113,14 @@ h1, h2, h3, h4, h5, h6 { hyphens: none; }
 .footnotes ol { font-size: 9pt; line-height: 1.45; padding-left: 6mm; margin: 0; }
 .footnotes li { margin: 0 0 1.5mm 0; }
 .footnotes a { color: var(--accent-dark); border-bottom: none; }
+/* citation markers + the references section */
+.cite-ref { white-space: nowrap; }
+.cite-ref a { color: var(--accent-dark); text-decoration: none; border-bottom: none; }
+.references { margin-top: 6mm; padding-top: 3mm; border-top: 0.3mm solid var(--rule); }
+.references ol { font-size: 9pt; line-height: 1.45; padding-left: 6mm; margin: 0; }
+.references li { margin: 0 0 1.5mm 0; }
+.references a { color: var(--accent-dark); border-bottom: none; }
+
 /* `footnotes: page` — WeasyPrint's GCPM footnote area, ruled off from the body */
 .footnote-inline { float: footnote; font-size: 9pt; }
 @page { @footnote { border-top: 0.3mm solid #e5e7eb; margin-top: 4mm; padding-top: 2mm; } }
