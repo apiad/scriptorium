@@ -22,6 +22,7 @@ class Project:
     src: str  # assembled markdown
     base_dir: Path
     code_root: str | None = None
+    meta: dict = field(default_factory=dict)  # content keys: bibliography, nocite
 
 
 def _strip_frontmatter(text: str) -> str:
@@ -43,6 +44,9 @@ def load(path: str | Path) -> Project:
     base = path.parent
     theme = spec.get("theme", "book")
     vars = spec.get("vars", {}) or {}
+    # content keys, distinct from `vars` (which is the appearance contract and
+    # the target of {{substitution}}): a bibliography is content, not styling.
+    meta = {k: spec[k] for k in ("bibliography", "nocite") if k in spec}
 
     bodies = []
     for i, rel in enumerate(spec.get("files", [])):
@@ -53,4 +57,5 @@ def load(path: str | Path) -> Project:
     src = substitute("\n\n".join(bodies), vars)
 
     code_root = (spec.get("code") or {}).get("root")
-    return Project(theme=theme, vars=vars, src=src, base_dir=base, code_root=code_root)
+    return Project(theme=theme, vars=vars, src=src, base_dir=base,
+                   code_root=code_root, meta=meta)

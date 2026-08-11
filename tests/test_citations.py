@@ -180,3 +180,26 @@ def test_footnotes_and_citations_coexist_with_separate_counters(tmp_path):
     assert "An explanatory note." in text and "Vogel, E. F." in text
     # both are number 1 of their own sequence
     assert "[1]" in text
+
+
+def test_project_level_bibliography_reaches_the_render(tmp_path):
+    from scriptorium.project import load
+
+    (tmp_path / "a.md").write_text("# One\n\nA claim.[@parnas]\n")
+    (tmp_path / "scriptorium.yaml").write_text(
+        "theme: book\n"
+        "bibliography:\n  parnas: \"Parnas, D. L. On the Criteria. CACM, 1972.\"\n"
+        "files: [a.md]\n")
+    proj = load(tmp_path / "scriptorium.yaml")
+
+    assert proj.meta["bibliography"]["parnas"].startswith("Parnas")
+    assert "bibliography" not in proj.vars   # content, not appearance
+
+    out = tmp_path / "b.pdf"
+    render_pdf(proj.src, str(out), theme_name=proj.theme, execute=False,
+               vars=proj.vars, project_meta=proj.meta)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "Parnas, D. L." in text and "[@parnas]" not in text

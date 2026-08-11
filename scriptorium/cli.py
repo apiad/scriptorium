@@ -39,7 +39,7 @@ def main(argv=None) -> int:
             report = render_pdf(proj.src, str(out), base_url=cwd + "/",
                                 theme_name=proj.theme, cwd=cwd,
                                 execute=not args.no_execute, vars=proj.vars,
-                                code_root=proj.code_root)
+                                code_root=proj.code_root, project_meta=proj.meta)
             print(f"rendered {out} — {report.n_pages} page(s)")
             for w in report.oversized:
                 print(f"  ⚠ {w}", file=sys.stderr)
