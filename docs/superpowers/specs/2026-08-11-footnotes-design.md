@@ -39,9 +39,8 @@ The claim.[^a]
 [^a]: The supporting note, with a [link](https://example.com).
 ```
 
-A note referenced more than once gets one back-link per occurrence — the
-double-sided behaviour `citations.py` hand-rolled, provided natively by the
-plugin.
+A note referenced more than once gets one back-link per occurrence — the same
+double-sided behaviour `citations.py` provided, kept.
 
 ## Configuration
 
@@ -168,8 +167,8 @@ is corrected as part of this work.
 
 `.footnote-ref` and `.footnotes` styles land in `themes/base/styles.css`,
 inheriting the superscript look v0.3.0 established for citations: small, raised,
-accent-coloured, no underline. The plugin renders markers as `[1]`; the brackets
-are suppressed in CSS so the output matches the existing superscript form.
+accent-coloured, no underline. Markers carry the bare number — no brackets — so
+the output matches the superscript form readers already have.
 
 ## Forward compatibility with citations
 
