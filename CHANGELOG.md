@@ -4,6 +4,54 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.3.0] - 2026-08-11
+
+Slides and scholarship: a 16:9 deck format, LaTeX-style citations, and a
+pagination engine rebuilt on CSS Fragmentation instead of Python bin-packing.
+
+### Features
+- **Deck format** — a theme with `mode: deck` renders 16:9 (or 4:3, or explicit
+  `WxH`) slides instead of flowing pages, split at section (`#` → divider) and
+  slide (`##` → content) boundaries. Page geometry is theme-driven. Oversized
+  slides warn rather than auto-shrink.
+- **Deck masters** — `::: toc` becomes an agenda slide listing sections with
+  their slide numbers; `statement` gives a full-bleed single-line slide;
+  `closing` a final slide with a contact line. The `deck` theme extends
+  `report`, so KPI tiles, finding cards, and stat strips drop straight onto
+  slides.
+- **Citations** — `^[N](#ref-N)^` and `[N](#ref-N)` render as true superscript
+  links and gain double-sided hyperlinks: each bibliography entry carries
+  back-links (↑ 1, 2, …) to every place it is cited.
+- **CSS Fragmentation pagination** — document themes now emit one continuous
+  flow and let WeasyPrint break it: `break-after: avoid` on headings,
+  `break-inside: avoid` on keep blocks and figures, named `@page` rules for
+  full-page masters, `@page` margin boxes for running heads and stamps, and
+  `string-set` for automatic running chapter/section titles. Prose flows across
+  page boundaries instead of leaving gaps. The deck path keeps the measure/pack
+  pipeline.
+- **Article typography** — justified text with real hyphenation (`lang` reaches
+  pyphen), orphan/widow control, and compact full-width tables that never
+  overflow the margin.
+- **Frontmatter `vars:`** — a single document can override `accent`, fonts, and
+  other theme vars from its own frontmatter, same contract as `scriptorium.yaml`.
+
+### Fixes
+- Deck slides no longer fragment onto a second page each — `@page` was adding
+  the theme margin on top of the slide's own padding. The reported page count is
+  now the PDF's real page count, not the slide count.
+- A five-section agenda fits on one slide again (stacked unit gap and entry
+  margins were compounding).
+- `report`: bold text is visible on dark surfaces (`.cta`, `.page.dark`), `.tier`
+  owns its body colour, and `.sec-title` does not hyphenate.
+- Headings never hyphenate, with a `.no-hyphen` utility for inline spans.
+- Bibliography entries lay out with flexbox, so back-links stay right-aligned on
+  the entry's first line instead of wrapping to their own row.
+- Full-page masters render from the pre-rendered template HTML.
+
+### Other
+- Public README, `AGENTS.md`, and `know-how/` (galley engine, theme authoring,
+  deck format, releasing).
+
 ## [v0.2.0] - 2026-07-28
 
 The theme system — a small set of archetypes you customize and inherit from,
