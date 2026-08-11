@@ -12,8 +12,9 @@ renderer handles the author's links and emphasis.
 import re
 from dataclasses import dataclass, field
 
+from .source import fence_spans, in_span, line_offsets, split_frontmatter
+
 _DEF = re.compile(r"^\[\^([\w-]+)\]:[ \t]*(.*)$")
-_FENCE = re.compile(r"^(`{3,}|~{3,}).*$", re.MULTILINE)
 
 
 @dataclass
@@ -21,33 +22,6 @@ class Note:
     key: str
     body: str
     refs: list[int] = field(default_factory=list)
-
-
-def _fence_spans(src: str) -> list[tuple[int, int]]:
-    """Character ranges covered by fenced code blocks."""
-    spans, open_at, marker = [], None, None
-    for m in _FENCE.finditer(src):
-        tick = m.group(1)
-        if open_at is None:
-            open_at, marker = m.start(), tick
-        elif tick[0] == marker[0] and len(tick) >= len(marker):
-            spans.append((open_at, m.end()))
-            open_at, marker = None, None
-    if open_at is not None:
-        spans.append((open_at, len(src)))
-    return spans
-
-
-def _in_span(pos: int, spans: list[tuple[int, int]]) -> bool:
-    return any(a <= pos < b for a, b in spans)
-
-
-def _line_offsets(lines: list[str]) -> list[int]:
-    offsets, pos = [], 0
-    for line in lines:
-        offsets.append(pos)
-        pos += len(line) + 1
-    return offsets
 
 
 def _is_continuation(line: str) -> bool:
@@ -61,16 +35,16 @@ def collect_notes(src: str) -> tuple[str, dict[str, Note]]:
     indented continuation, so a note wrapped across several lines is captured
     whole. Definitions inside a code fence are prose, not notes.
     """
-    spans = _fence_spans(src)
+    spans = fence_spans(src)
     lines = src.split("\n")
-    offsets = _line_offsets(lines)
+    offsets = line_offsets(lines)
     notes: dict[str, Note] = {}
     dropped: set[int] = set()
 
     i = 0
     while i < len(lines):
         m = _DEF.match(lines[i])
-        if not m or _in_span(offsets[i], spans):
+        if not m or in_span(offsets[i], spans):
             i += 1
             continue
         parts, dropped_here = [m.group(2).strip()], [i]
@@ -99,7 +73,7 @@ _SUFFIX = "abcdefghijklmnopqrstuvwxyz"
 
 
 def _chapter_starts(src: str, spans: list[tuple[int, int]]) -> list[int]:
-    return [m.start() for m in _H1.finditer(src) if not _in_span(m.start(), spans)]
+    return [m.start() for m in _H1.finditer(src) if not in_span(m.start(), spans)]
 
 
 def _lead(src: str, starts: list[int]) -> int:
@@ -118,7 +92,7 @@ def number_and_mark(src: str, notes: dict[str, Note],
     Two passes: a back-link suffix is only emitted for notes referenced more
     than once, and that count is not known until every marker has been seen.
     """
-    spans = _fence_spans(src)
+    spans = fence_spans(src)
     starts = _chapter_starts(src, spans) if chapter_mode else []
     lead = _lead(src, starts)
     buckets: list[list[Note]] = [[] for _ in range(len(starts) + 1)]
@@ -126,7 +100,7 @@ def number_and_mark(src: str, notes: dict[str, Note],
     hits: list[tuple[re.Match, int, int, int, Note]] = []
 
     for m in _MARK.finditer(src):
-        if _in_span(m.start(), spans) or m.group(1) not in notes:
+        if in_span(m.start(), spans) or m.group(1) not in notes:
             continue
         note = notes[m.group(1)]
         bucket = sum(1 for s in starts if s <= m.start())
@@ -164,20 +138,6 @@ def resolve_footnote_mode(meta: dict, theme_meta: dict) -> str:
     return mode
 
 
-def _split_frontmatter(src: str) -> tuple[str, str]:
-    """(frontmatter block, body) — same rule parse.frontmatter/_body use.
-
-    The block is held aside: a `---` fence or a YAML `# comment` inside it
-    would otherwise read as document content and shift chapter numbering.
-    """
-    if src.startswith("---\n"):
-        end = src.find("\n---", 3)
-        if end >= 0:
-            nl = src.find("\n", end + 1)
-            return (src[: nl + 1], src[nl + 1 :]) if nl >= 0 else (src, "")
-    return "", src
-
-
 def _component(chapter: int, notes: list[Note]) -> str:
     """Notes as a `::: footnotes` component; bodies stay Markdown."""
     items = []
@@ -198,11 +158,11 @@ def _inline_notes(src: str, notes: dict[str, Note]) -> str:
     no marker of our own. A note has one body and therefore one page: a second
     reference gets a plain superscript, not a duplicate of the text.
     """
-    spans = _fence_spans(src)
+    spans = fence_spans(src)
     seen: dict[str, int] = {}
     out, last = [], 0
     for m in _MARK.finditer(src):
-        if _in_span(m.start(), spans) or m.group(1) not in notes:
+        if in_span(m.start(), spans) or m.group(1) not in notes:
             continue
         note = notes[m.group(1)]
         out.append(src[last:m.start()])
@@ -218,7 +178,7 @@ def _inline_notes(src: str, notes: dict[str, Note]) -> str:
 
 def process_footnotes(src: str, mode: str = "document") -> str:
     """Entry point: rewrite markers and emit notes per `mode`."""
-    head, body = _split_frontmatter(src)
+    head, body = split_frontmatter(src)
     body, notes = collect_notes(body)
     if not notes:
         return head + body
@@ -229,7 +189,7 @@ def process_footnotes(src: str, mode: str = "document") -> str:
     if mode == "document":
         return head + marked.rstrip() + "\n\n" + _component(1, groups[0])
 
-    starts = _chapter_starts(marked, _fence_spans(marked))
+    starts = _chapter_starts(marked, fence_spans(marked))
     bounds = starts[_lead(marked, starts):] + [len(marked)]
     out, prev = [], 0
     for i, group in enumerate(groups):
