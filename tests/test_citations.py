@@ -66,3 +66,82 @@ def test_bare_at_key_is_not_a_citation():
     out, entries, _ = number_citations("Mail @parnas about it.\n", BIB)
 
     assert "@parnas" in out and "cite-ref" not in out and entries == []
+
+
+import pytest
+
+from scriptorium.citations import process_citations
+
+META = {"bibliography": BIB}
+
+
+def test_document_gets_one_references_component_at_the_end():
+    out, warnings = process_citations("A claim.[@parnas]\n", META)
+
+    assert out.count("::: references") == 1
+    assert out.index("::: references") > out.index("A claim.")
+    assert '<span id="cite-1"></span>' in out
+    assert "Parnas, D. L." in out and "[↩](#citeref-1-1)" in out
+    assert warnings == []
+
+
+def test_uncited_entry_is_omitted():
+    out, _ = process_citations("Only one.[@parnas]\n", META)
+
+    assert "Parnas" in out and "Vogel" not in out
+
+
+def test_nocite_adds_an_entry_without_a_citation():
+    meta = {"bibliography": BIB, "nocite": ["vogel"]}
+    out, _ = process_citations("Only one.[@parnas]\n", meta)
+
+    assert "Parnas" in out and "Vogel" in out
+    assert out.index("Parnas") < out.index("Vogel")   # cited first, then nocite
+
+
+def test_nocite_key_with_no_entry_warns():
+    meta = {"bibliography": BIB, "nocite": ["ghost"]}
+    _, warnings = process_citations("A[@parnas]\n", meta)
+
+    assert any("ghost" in w for w in warnings)
+
+
+def test_repeated_citation_gets_a_back_link_each():
+    out, _ = process_citations("A[@parnas] again[@parnas]\n", META)
+
+    assert "[↩](#citeref-1-1)" in out and "[↩](#citeref-1-2)" in out
+
+
+def test_entry_body_keeps_its_markdown():
+    meta = {"bibliography": {"x": "See **this** and [that](https://x.dev)."}}
+    out, _ = process_citations("A[@x]\n", meta)
+
+    assert "**this**" in out and "[that](https://x.dev)" in out
+
+
+def test_no_citations_emits_no_section():
+    out, warnings = process_citations("Plain prose.\n", META)
+
+    assert "::: references" not in out and warnings == []
+
+
+def test_author_placed_block_is_filled_in_place():
+    src = "A[@parnas]\n\n::: references\n:::\n\n## Appendix\n\nTail.\n"
+    out, _ = process_citations(src, META)
+
+    assert out.count("::: references") == 1
+    assert out.index("Parnas") < out.index("## Appendix")   # not appended at the end
+
+
+def test_two_reference_blocks_is_an_error():
+    src = "A[@parnas]\n\n::: references\n:::\n\n::: references\n:::\n"
+    with pytest.raises(ValueError, match="references"):
+        process_citations(src, META)
+
+
+def test_frontmatter_is_held_aside():
+    src = "---\ntitle: T\n---\n\nA[@parnas]\n"
+    out, _ = process_citations(src, META)
+
+    assert out.startswith("---\ntitle: T\n---\n")
+    assert out.count("::: references") == 1

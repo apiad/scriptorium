@@ -66,3 +66,60 @@ def number_citations(src: str, bib: dict[str, str]) -> tuple[str, list[Entry], l
 
     out.append(src[last:])
     return "".join(out), list(entries.values()), warnings
+
+
+_REFS_OPEN = re.compile(r"^:{3,}[ \t]*references[ \t]*$")
+_REFS_CLOSE = re.compile(r"^:{3,}[ \t]*$")
+
+
+def _placeholder(src: str) -> tuple[int, int] | None:
+    """Character range of an author-written `::: references` block, if any."""
+    spans = fence_spans(src)
+    lines = src.split("\n")
+    offsets = line_offsets(lines)
+    found = None
+    for i, line in enumerate(lines):
+        if not _REFS_OPEN.match(line) or in_span(offsets[i], spans):
+            continue
+        for j in range(i + 1, len(lines)):
+            if _REFS_CLOSE.match(lines[j]):
+                if found is not None:
+                    raise ValueError("two `::: references` blocks; there can be only one")
+                found = (offsets[i], offsets[j] + len(lines[j]) + 1)
+                break
+        else:
+            raise ValueError("`::: references` block is never closed")
+    return found
+
+
+def _component(entries: list[Entry]) -> str:
+    """Entries as a `::: references` component; bodies stay Markdown."""
+    items = []
+    for entry in entries:
+        back = " ".join(f"[↩](#citeref-{entry.number}-{k})"
+                        for k in range(1, entry.refs + 1))
+        items.append(f'{entry.number}. <span id="cite-{entry.number}"></span>'
+                     f"{entry.body} {back}".rstrip())
+    return "::: references\n" + "\n".join(items) + "\n:::\n"
+
+
+def process_citations(src: str, meta: dict) -> tuple[str, list[str]]:
+    """Entry point: number citations and emit the references section."""
+    bib = meta.get("bibliography") or {}
+    head, body = split_frontmatter(src)
+    marked, entries, warnings = number_citations(body, bib)
+
+    for key in meta.get("nocite") or []:
+        if key not in bib:
+            warnings.append(f"nocite key {key!r} has no bibliography entry")
+        elif not any(e.key == key for e in entries):
+            entries.append(Entry(key=key, body=bib[key], number=len(entries) + 1))
+
+    if not entries:
+        return head + marked, warnings
+
+    block = _component(entries)
+    at = _placeholder(marked)
+    if at:
+        return head + marked[: at[0]] + block + marked[at[1] :], warnings
+    return head + marked.rstrip() + "\n\n" + block, warnings
