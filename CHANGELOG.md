@@ -10,6 +10,11 @@ All notable changes to this project are documented here. Format: Keep a Changelo
   the citations were. The apparatus is now one arrow followed by the page number
   of each call site (`↩ 4, 7, 12`), resolved by CSS `target-counter` — the same
   mechanism the `book` theme already uses for cross-references and its TOC.
+- **Table headers and bold row labels never hyphenate.** Narrow columns turned
+  `APPROACH / SYSTEM` into `AP-PROACH / SYSTEM` and `CodeAct (Python)` into
+  `CodeAct (Py-thon)`. Both are labels rather than prose, so the same rule that
+  already protects headings and inline code now covers them; wrapping at spaces
+  is still allowed.
 
 ## [v0.6.0] - 2026-08-12
 

@@ -103,6 +103,14 @@ tbody td strong { color:var(--ink); }
 
 /* headings never hyphenate; .no-hyphen protects any inline span */
 h1, h2, h3, h4, h5, h6 { hyphens: none; }
+/* Table headers are labels, not prose, and they are letter-spaced small caps
+   in every theme — hyphenating one gives "AP-PROACH / SYSTEM". Same argument
+   as headings, and column widths make it far more likely to fire. */
+thead th { hyphens: none; overflow-wrap: break-word; }
+/* A bold cell is a row label, not prose: "CodeAct (Py-thon)" and
+   "JSONS-chemaBench" are wrong answers for the same reason the inline-code
+   rule exists. Wrapping at spaces is still allowed and reads fine. */
+tbody td strong { hyphens: none; overflow-wrap: break-word; }
 .no-hyphen { hyphens: none; white-space: nowrap; }
 
 /* Inline code never hyphenates: a soft hyphen inserted into an identifier
