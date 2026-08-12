@@ -13,6 +13,10 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Fixes
 
+- **The `book` theme's table of contents is half as tall.** 190 entries took 8
+  pages against LaTeX's 5, mostly because `fill_toc` emits each entry as its own
+  Unit and `.unit` carries the paragraph rhythm — 3.5mm under a one-line link.
+  Zeroed for TOC entries, plus tighter leading. Now 5 pages.
 - **`footnotes:` in a `scriptorium.yaml` is no longer ignored.** It was missing
   from `project.py`'s content-key tuple, so a project asking for
   `footnotes: document` silently got the theme's default instead — for `book`,
