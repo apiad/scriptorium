@@ -80,6 +80,7 @@ def number_citations(
     sources, warnings = _normalise(bib)
     spans = fence_spans(src)
     entries: dict[str, Entry] = {}
+    author_only: list[str] = []
     out, last = [], 0
 
     def warn(message: str) -> None:
@@ -109,6 +110,15 @@ def number_citations(
         out.append(src[last:m.start()])
         last = m.end()
 
+        if sigil == "-":
+            # No mark, so no entry: a work in the references list with a number
+            # nothing points at is worse than no entry. Plain text, not a link —
+            # linking would need a number that may not exist yet at this point
+            # in the pass, and one pass is worth more than a hyperlink on a name.
+            author_only.append(keys[0])
+            out.append(f'<span class="cite-author">{author}</span>')
+            continue
+
         links = []
         for k in keys:
             entry = entries.get(k)
@@ -125,6 +135,13 @@ def number_citations(
         out.append(f'{prefix}<span class="cite-ref">[{", ".join(links)}]</span>')
 
     out.append(src[last:])
+
+    # Deferred to here, not checked at the call site: whether a work is cited
+    # elsewhere is only knowable once the whole document has been walked.
+    for key in author_only:
+        if key not in entries and key not in nocite:
+            warn(f"[-@{key}] names an author but the work is never cited")
+
     return "".join(out), list(entries.values()), warnings
 
 
@@ -166,14 +183,19 @@ def _component(entries: list[Entry]) -> str:
 def process_citations(src: str, meta: dict) -> tuple[str, list[str]]:
     """Entry point: number citations and emit the references section."""
     bib = meta.get("bibliography") or {}
+    nocite = meta.get("nocite") or []
     head, body = split_frontmatter(src)
-    marked, entries, warnings = number_citations(body, bib)
+    marked, entries, warnings = number_citations(body, bib, nocite)
 
-    for key in meta.get("nocite") or []:
-        if key not in bib:
+    # Malformed-entry warnings were already reported by number_citations.
+    sources, _ = _normalise(bib)
+    for key in nocite:
+        if key not in sources:
             warnings.append(f"nocite key {key!r} has no bibliography entry")
         elif not any(e.key == key for e in entries):
-            entries.append(Entry(key=key, body=bib[key], number=len(entries) + 1))
+            entries.append(Entry(key=key, body=sources[key].text,
+                                 number=len(entries) + 1,
+                                 author=sources[key].author))
 
     if not entries:
         return head + marked, warnings

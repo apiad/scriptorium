@@ -213,6 +213,39 @@ def test_narrative_sigil_inside_a_code_fence_is_left_alone():
     assert "[+@tam]" in out and entries == []
 
 
+def test_author_only_emits_the_name_and_no_mark():
+    out, entries, _ = number_citations(
+        "[-@tam]'s framework applies.[@tam]\n", NAMED
+    )
+
+    assert '<span class="cite-author">Tam et al.</span>\'s framework' in out
+    assert out.count("cite-ref") == 1        # only the real citation numbered
+    assert len(entries) == 1 and entries[0].refs == 1
+
+
+def test_author_only_alone_creates_no_entry_and_warns():
+    out, entries, warnings = number_citations("[-@tam] is well known.\n", NAMED)
+
+    assert '<span class="cite-author">Tam et al.</span>' in out
+    assert entries == []
+    assert any("tam" in w and "never cited" in w for w in warnings)
+
+
+def test_author_only_is_quiet_when_the_work_is_in_nocite():
+    _, entries, warnings = number_citations(
+        "[-@tam] is well known.\n", NAMED, nocite=["tam"]
+    )
+
+    assert entries == [] and warnings == []
+
+
+def test_author_only_on_an_entry_with_no_author_stays_literal_and_warns():
+    out, _, warnings = number_citations("[-@plain] argued.\n", NAMED)
+
+    assert "[-@plain]" in out and "cite-author" not in out
+    assert any("plain" in w and "author" in w for w in warnings)
+
+
 from scriptorium.galley import render_pdf
 
 
