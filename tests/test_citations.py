@@ -1,6 +1,6 @@
 """Numbered citations: span parsing, numbering, nocite, emission."""
 
-from scriptorium.citations import number_citations
+from scriptorium.citations import _normalise, number_citations
 
 BIB = {
     "parnas": "Parnas, D. L. *On the Criteria…* CACM 15(12), 1972.",
@@ -145,6 +145,36 @@ def test_frontmatter_is_held_aside():
 
     assert out.startswith("---\ntitle: T\n---\n")
     assert out.count("::: references") == 1
+
+
+def test_normalise_reads_a_prose_string_as_text_with_no_author():
+    sources, warnings = _normalise({"parnas": "Parnas, D. L. *On the Criteria…*"})
+
+    assert sources["parnas"].text == "Parnas, D. L. *On the Criteria…*"
+    assert sources["parnas"].author is None and warnings == []
+
+
+def test_normalise_reads_a_mapping_entry():
+    sources, warnings = _normalise(
+        {"tam": {"author": "Tam et al.", "text": "Tam, Z. R., … *Let Me Speak Freely?*"}}
+    )
+
+    assert sources["tam"].author == "Tam et al."
+    assert sources["tam"].text == "Tam, Z. R., … *Let Me Speak Freely?*"
+    assert warnings == []
+
+
+def test_normalise_drops_a_mapping_with_no_text_and_warns():
+    sources, warnings = _normalise({"ghost": {"author": "Nobody"}})
+
+    assert "ghost" not in sources
+    assert any("ghost" in w and "text" in w for w in warnings)
+
+
+def test_normalise_rejects_a_value_that_is_neither_prose_nor_mapping():
+    sources, warnings = _normalise({"odd": 42})
+
+    assert "odd" not in sources and any("odd" in w for w in warnings)
 
 
 from scriptorium.galley import render_pdf

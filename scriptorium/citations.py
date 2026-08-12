@@ -28,6 +28,42 @@ class Entry:
     body: str
     number: int
     refs: int = 0
+    author: str | None = None
+
+
+@dataclass(frozen=True)
+class _Source:
+    """A bibliography value after normalisation: prose, plus an optional name.
+
+    `author` is whatever the author declared, verbatim. It is never derived from
+    the key or read out of `text` — deriving it is right for `tam-2024` and
+    silently wrong for `willard-2023` (two authors) and `fan-2026` (one), which
+    is exactly the class of error a reader notices and the engine cannot see.
+    """
+
+    text: str
+    author: str | None = None
+
+
+def _normalise(bib: dict) -> tuple[dict[str, _Source], list[str]]:
+    """Collapse prose-string and mapping entries into one internal shape."""
+    sources: dict[str, _Source] = {}
+    warnings: list[str] = []
+    for key, value in bib.items():
+        if isinstance(value, str):
+            sources[key] = _Source(text=value)
+        elif isinstance(value, dict):
+            text = value.get("text")
+            if not text:
+                warnings.append(f"bibliography entry {key!r} has no `text:`")
+                continue
+            sources[key] = _Source(text=text, author=value.get("author"))
+        else:
+            warnings.append(
+                f"bibliography entry {key!r} is neither prose nor an "
+                f"{{author, text}} mapping"
+            )
+    return sources, warnings
 
 
 def number_citations(src: str, bib: dict[str, str]) -> tuple[str, list[Entry], list[str]]:
