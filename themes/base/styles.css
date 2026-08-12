@@ -105,6 +105,13 @@ tbody td strong { color:var(--ink); }
 h1, h2, h3, h4, h5, h6 { hyphens: none; }
 .no-hyphen { hyphens: none; white-space: nowrap; }
 
+/* Inline code never hyphenates: a soft hyphen inserted into an identifier
+   reads as part of it. `FechaRetiro` broken across a narrow table column
+   came out as `FechaRe-tiro`, which in a document whose subject IS the exact
+   column names is not a blemish but a wrong answer. Wrapping is still
+   allowed — break-word splits the token without inventing a character. */
+code { hyphens: none; overflow-wrap: break-word; }
+
 /* footnote markers + the endnotes section */
 .footnote-ref { font-size: 0.72em; line-height: 0; vertical-align: super; }
 .footnote-ref a { color: var(--accent-dark); text-decoration: none; border-bottom: none; }
