@@ -184,9 +184,13 @@ shrug — `test_project_level_bibliography_reaches_the_render` has the shape.
 
 ### Themes
 
-`.cite-author` is added to the base stylesheet as an unstyled hook (the name
-should inherit body prose by default — it *is* body prose). Themes that want it
-distinct override it. `themes/base/components/references.html` is untouched.
+`.cite-author` is the theming hook, and it gets **no base rule**. Written out,
+an "unstyled hook" is `.cite-author { font: inherit; color: inherit; }` — which
+is what a `<span>` already does. That is dead code wearing the costume of
+configuration; the class is a hook whether or not `styles.css` mentions it. It
+is documented in §7.5 instead, so a theme author can find it. Themes that want
+the name distinct add their own rule. `themes/base/styles.css` and
+`themes/base/components/references.html` are both untouched.
 
 ## Documentation
 
