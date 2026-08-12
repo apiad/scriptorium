@@ -99,6 +99,8 @@ A multi-file project is a `scriptorium.yaml`:
 
 ```yaml
 theme: book
+css: book.css           # this project's own stylesheet, after the theme's
+glossary: glossary.yaml
 vars:
   title: The Book
   author: A. Writer
@@ -109,6 +111,9 @@ files:
   - 02-body.md
 code: { root: src }     # tangle target + PYTHONPATH for executed code
 ```
+
+`css:` takes a path or a list, resolved against the project file and appended
+after the theme's own rules — enough to restyle a book without authoring a theme.
 
 ```bash
 scriptorium render scriptorium.yaml     # concatenates the files -> book.pdf
@@ -177,6 +182,29 @@ All five `extend` a `base` theme; build your own by extending any of them. See
 
   Full author-date — `(Tam, 2024)` everywhere, alphabetical ordering — still
   needs CSL, which is not built.
+- **Glossary** — `[~key]` renders the term as declared; `[display]{~key}` supplies
+  its own text (`[*the AI effect*]{~ai-effect}`). Entries come from `glossary:` —
+  a mapping, or a path to a YAML file of one — and collect into a `::: glossary`
+  section, alphabetical by term, each carrying the pages where it appears. Every
+  declared entry is listed, whether or not the body glosses it; `glossary-label:`
+  gives the section a heading, unset means none.
+
+  ```yaml
+  glossary: glossary.yaml     # or an inline mapping
+  ```
+  ```yaml
+  ai-effect:
+    term: "AI effect"
+    definition: "The pattern by which a solved task stops counting."
+  ```
+
+  Markers nest — a glossed term inside another's display text — and the inner,
+  more specific term keeps the link while the outer keeps only its anchor, since
+  an `<a>` inside an `<a>` is not valid HTML. A marker inside `code` or a fenced
+  block is code, and is left alone.
+- **Book structure** — `# Title {.part}` is a part divider: it takes a part
+  numeral, not a chapter one, and starts its own page. `{.unnumbered}` keeps a
+  heading out of the chapter count, `{.unlisted}` keeps it out of the contents.
 - **Layout** — `::: keep` (keep-together), `::: newpage`.
 
 Where the notes land is the `footnotes:` key — frontmatter wins over the theme:

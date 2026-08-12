@@ -13,13 +13,34 @@ Actionable items for scriptorium. One line each; link the spec when there is one
       engine. Its own spec when the time comes. Raised 2026-08-11 while designing
       the prose-entry version; narrowed 2026-08-12 when the narrative forms
       shipped — see `docs/superpowers/specs/2026-08-12-narrative-citations-design.md`.
-- [ ] **Glossary, and the last of the book apparatus.** `[~key]` /
+- [ ] **Inline code is code, for citations and footnotes too.** `glossary.py`
+      now skips `` `code` `` spans via `source.code_spans`; `citations.py` and
+      `footnotes.py` still protect fenced blocks only, so a `[@key]` or `[^a]`
+      written inside a code span is rewritten and injects raw HTML into a
+      literal. Same one-line fix in each `finditer` guard. Found 2026-08-12 in
+      the glossary acceptance run, where the manuscript glosses a term inside
+      `` `kubectl apply --dry-run=server` ``.
+- [ ] **Chapter endnotes land on the next chapter's page.** With
+      `footnotes: chapter`, the endnotes section is injected before the next `#`
+      — which in a project falls *after* the per-file `\newpage`, so a chapter's
+      notes open the following chapter's page instead of closing their own.
+      Visible throughout *Mostly Harmless AI*; the part-divider case is worked
+      around with `break-before: page` on `h1.part`, but chapters still show it.
+      Probably wants the endnotes emitted before the break rather than after.
+      Found 2026-08-12 in the glossary acceptance run.
+- [ ] **A heading with no blank line after it loses its attributes.** `# Title
+      {.part}` immediately followed by prose is one block, never reaches
+      `_heading_unit`, and silently renders the attribute list as literal text
+      with no id, no classes and no TOC entry. Valid CommonMark, and it fails
+      quietly. Found 2026-08-12 while migrating the manuscript.
+- [x] **Glossary, and the last of the book apparatus.** `[~key]` /
       `[display]{~key}` markers, a `::: glossary` section with page back-links, a
-      `css:` project key, and `{.part}` / `{.unnumbered}` in the `book` theme —
-      everything *Mostly Harmless AI* needs to leave Quarto with no build step of
-      its own. Includes a real TOC bug: a heading containing inline HTML prints
-      its markup into the table of contents. Approved 2026-08-12 — see
-      `docs/superpowers/specs/2026-08-12-glossary-and-book-apparatus-design.md`.
+      `css:` project key, and `{.part}` / `{.unnumbered}` in the `book` theme.
+      Shipped 2026-08-12 — spec at
+      `docs/superpowers/specs/2026-08-12-glossary-and-book-apparatus-design.md`,
+      plan at `docs/superpowers/plans/2026-08-12-glossary-and-book-apparatus-plan.md`.
+      Acceptance: *Mostly Harmless AI* renders 307 pages in 50 s with no
+      warnings, 505 of 515 entries carrying page lists.
 - [ ] **HTML and EPUB renderers.** Deferred out of the glossary design above, but
       they are what actually retires Quarto: *Mostly Harmless AI* ships an HTML
       book to books.apiad.net and an EPUB on Gumroad, and until these exist the

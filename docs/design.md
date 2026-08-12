@@ -614,6 +614,36 @@ MathML with SVG fallback. Lowest priority; built last.
 
 ---
 
+## 13b. Glossary
+
+A third member of the apparatus family, alongside footnotes and references, and
+built the same way: a source-to-source pre-processor over the raw text, not a
+markdown-it plugin, because `parse()` renders block by block and would never see
+a marker and its entry in one call.
+
+- **Syntax.** `[~key]` takes the entry's declared `term`; `[display]{~key}`
+  supplies its own text. Both are consumed before Markdown parsing, so neither
+  collides with a reference link.
+- **Data.** `glossary:` is a mapping of `key → {term, definition}`, or a path to
+  a YAML file of one, resolved against the project. Definitions are opaque
+  Markdown prose on the same contract as a bibliography entry: the engine sorts
+  and links them, never inspects them.
+- **Emission.** A `::: glossary` placeholder is replaced by one block per entry,
+  sorted case-insensitively by term. Every declared entry appears, mentioned or
+  not — a glossary is a reader's apparatus, not an attribution record, which is
+  where it deliberately parts company with citations.
+- **Back-references** are empty anchors filled by CSS `target-counter`, exactly
+  as citation back-links are. Two mentions on one page yield a repeated number;
+  measured at 2 entries in 505 on a real book, which is not worth a second
+  render pass to dedupe.
+- **Order.** Runs last, after footnotes and citations, so a term glossed inside a
+  note body is paged where the note actually renders.
+- **Nesting.** Only the innermost marker matches, and both patterns sweep every
+  pass to a joint fixpoint. The outer of a nested pair keeps its anchor but not
+  its link: an `<a>` inside an `<a>` is invalid and strands a `</a>` mid-sentence.
+
+---
+
 ## 14. CLI and build workflow
 
 - `scriptorium render [target]` — all outputs or one (`pdf` / `html` / `epub`).

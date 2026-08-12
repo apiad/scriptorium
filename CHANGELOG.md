@@ -4,6 +4,38 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+The book apparatus: a glossary, part dividers, unnumbered front matter, a cover,
+and a stylesheet a project can call its own. Everything *Mostly Harmless AI*
+needed to leave Quarto — it renders in 50 s over 307 pages with no warnings.
+
+### Features
+
+- **Glossary.** `[~key]` and `[display]{~key}` mark a glossed term; entries come
+  from `glossary:` (a mapping, or a path to a YAML file of one) and collect into
+  a `::: glossary` section, alphabetical by term, each with the pages where it
+  appears. `glossary-label:` names the section; unset means no heading. Joins the
+  footnotes/references apparatus contract rather than starting its own.
+- **`css:`** — a path or list, resolved against the project file and appended
+  after the theme's rules. A book can now carry a stylesheet without authoring a
+  theme inside this repo.
+- **`{.part}` and `{.unnumbered}`** in the `book` theme. A part divider takes a
+  part numeral, not a chapter one, and starts its own page; unnumbered front
+  matter no longer consumes chapters 1–3. `{.unlisted}` keeps a heading out of
+  the table of contents.
+- **A cover master** for `book`: full-bleed artwork from a `cover-image` var.
+
+### Fixes
+
+- **A heading label is text.** `fill_toc` escaped the raw source of a heading, so
+  any inline HTML in one printed as markup in the table of contents. Stripped
+  where the label is built, so every consumer of `Unit.heading` benefits.
+- **`_unwrap_p` only unwraps a single paragraph.** The greedy `.*` under `re.S`
+  spanned a multi-paragraph component body end to end, stripping the first `<p>`
+  and the last `</p>` and leaving the rest unbalanced — the first paragraph
+  escaped its wrapper and stopped matching its theme's `p` rules.
+- **Inline code is code.** The glossary pre-processor protected fenced blocks but
+  not `` `code` `` spans, and injected raw `<a>` markup into a literal.
+
 ## [v0.7.0] - 2026-08-12
 
 A readable references apparatus: a heading you name, back-links that say which

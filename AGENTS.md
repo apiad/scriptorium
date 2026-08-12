@@ -33,8 +33,17 @@ Markdown → parse → [tangle | execute] → measure → pack → emit → PDF
   a numbered `::: references` section. Runs on the raw source **after**
   `footnotes.py`, so a citation inside a note body is numbered by where the note
   renders. Entries are prose: never parse them for author or year.
-- **`source.py`** — the shared source scanner (fence spans, frontmatter split)
-  both pre-processors use.
+- **`glossary.py`** — `[~key]` / `[display]{~key}` markers against a declared
+  `glossary:` map → a sorted `::: glossary` section with page back-links. Runs on
+  the raw source **after `citations.py`**, so a term glossed inside a note body is
+  paged where the note renders. Markers nest; only the innermost matches, and the
+  outer of a nested pair keeps an anchor but not a link, because `<a>` inside
+  `<a>` is invalid and strands a `</a>` mid-sentence.
+- **`source.py`** — the shared source scanner (fence spans, inline code spans,
+  frontmatter split) the pre-processors use. `code_spans` exists because a
+  marker inside `` `code` `` is code: rewriting one injects raw HTML into a
+  literal. **`citations.py` and `footnotes.py` do not yet use it** — see
+  `tasks.md`.
 - **`mathrender.py`** — LaTeX → SVG via quickjax (no Node).
 - **`theme.py`** — theme loading + `extends:` inheritance + the mustache template
   engine (`{{holes}}`, `{{#sections}}` / loops).
