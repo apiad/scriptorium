@@ -61,6 +61,10 @@ a.ref-fig::after {
 .tp-sub { font-size:14pt; color:var(--muted); margin-top:6mm; max-width:130mm; }
 .tp-author { margin-top:16mm; font-size:12pt; color:var(--ink); letter-spacing:0.04em; }
 
+/* The cover is the one page with no margin: the artwork is the page. */
+.page.coverpage { padding:0; overflow:hidden; }
+.cover-img { width:100%; height:100%; object-fit:cover; display:block; }
+
 .page.copyrightpage { display:flex; flex-direction:column; }
 .cp-spacer { flex:1 1 auto; }
 .cp-block { font-family:system-ui,sans-serif; font-size:8.5pt; color:var(--muted); line-height:1.7; }

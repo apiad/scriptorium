@@ -16,6 +16,7 @@ vars:
   accent-dark: "#7c2d12"
   body-font: "Source Serif 4"
   heading-font: "Inter"
+  cover-image: ""          # path to the cover art, resolved against the project
 
 masters:
   body:
@@ -24,10 +25,12 @@ masters:
     header: { verso: "{title}", recto: "{chapter}" }
   title:     { classes: "titlepage", furniture: none }
   copyright: { classes: "copyrightpage", furniture: none }
+  cover:     { classes: "coverpage", furniture: none }
 
 components:
   title: { master: title }
   copyright: { master: copyright }
+  cover: { master: cover }
 
 # A book's notes belong with their chapter, not 300 pages away.
 footnotes: chapter

@@ -70,3 +70,23 @@ def test_front_matter_and_parts_do_not_consume_chapter_numbers(tmp_path):
     assert "1CLASSICALAI" in compact
     assert "PARTIFOUNDATIONS" in compact
     assert "1PREFACE" not in compact and "2PREFACE" not in compact
+
+
+def test_cover_master_renders_a_full_page(tmp_path):
+    import base64
+
+    from scriptorium.galley import render_pdf
+
+    # The canonical 1x1 transparent PNG — a real decodable image, because
+    # WeasyPrint drops one it cannot parse and the page count would still be 2.
+    (tmp_path / "c.png").write_bytes(base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGA"
+        "hKmMIQAAAABJRU5ErkJggg=="))
+    src = ("---\ntheme: book\ntitle: T\ncover-image: c.png\n---\n\n"
+           "::: cover\n:::\n\n# One\n\nBody.\n")
+    out = tmp_path / "cov.pdf"
+    report = render_pdf(src, str(out), base_url=str(tmp_path) + "/",
+                        cwd=str(tmp_path), execute=False)
+
+    assert report.n_pages == 2      # the cover is its own page
+    assert report.warnings == []
