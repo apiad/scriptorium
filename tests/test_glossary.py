@@ -120,3 +120,63 @@ def test_a_marker_inside_a_code_fence_is_left_alone():
 
     assert "[~ai-effect]" in out
     assert entries["ai-effect"].refs == 0
+
+
+# --- the section ----------------------------------------------------------
+
+import pytest
+
+from scriptorium.glossary import process_glossary
+
+
+def test_section_replaces_the_placeholder_and_sorts_by_term():
+    src = "Text with [~tesler-larry] and [~ai-effect].\n\n::: glossary\n:::\n"
+    out, warnings = process_glossary(src, {"glossary": GLOSS}, None)
+
+    assert "::: glossary" in out
+    body = out.split("::: glossary")[1]
+    assert body.index("AI effect") < body.index("Tesler, Larry")   # alphabetical
+    assert warnings == []
+
+
+def test_mentioned_entries_carry_one_arrow_and_an_empty_anchor_per_mention():
+    src = "[~ai-effect] then [~ai-effect].\n\n::: glossary\n:::\n"
+    out, _ = process_glossary(src, {"glossary": GLOSS}, None)
+
+    assert "↩ " in out
+    assert '<a class="gloss-back" href="#glossref-ai-effect-1"></a>' in out
+    assert '<a class="gloss-back" href="#glossref-ai-effect-2"></a>' in out
+
+
+def test_an_unmentioned_entry_is_listed_without_a_page_list():
+    src = "[~ai-effect] only.\n\n::: glossary\n:::\n"
+    out, _ = process_glossary(src, {"glossary": GLOSS}, None)
+
+    assert "Tesler, Larry" in out                    # still defined for the reader
+    assert "glossref-tesler-larry" not in out        # but points nowhere
+
+
+def test_no_glossary_key_is_a_no_op():
+    src = "Plain text.\n"
+    out, warnings = process_glossary(src, {}, None)
+
+    assert out == src and warnings == []
+
+
+def test_two_placeholders_is_an_error():
+    src = "::: glossary\n:::\n\n::: glossary\n:::\n"
+    with pytest.raises(ValueError, match="only one"):
+        process_glossary(src, {"glossary": GLOSS}, None)
+
+
+def test_an_unclosed_placeholder_is_an_error():
+    src = "Text.\n\n::: glossary\n"
+    with pytest.raises(ValueError, match="never closed"):
+        process_glossary(src, {"glossary": GLOSS}, None)
+
+
+def test_frontmatter_is_preserved():
+    src = "---\ntitle: T\n---\n\n[~ai-effect]\n\n::: glossary\n:::\n"
+    out, _ = process_glossary(src, {"glossary": GLOSS}, None)
+
+    assert out.startswith("---\ntitle: T\n---\n")

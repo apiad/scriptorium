@@ -14,7 +14,7 @@ from pathlib import Path
 
 import yaml
 
-from .source import fence_spans, in_span
+from .source import fence_spans, in_span, line_offsets, split_frontmatter
 
 # `[display]{~key}` and the bare `[~key]`. Excluding `[` as well as `]` from the
 # display class is what makes the first pattern match the INNERMOST span of a
@@ -124,3 +124,71 @@ def mark_terms(src: str, entries: dict[str, Entry]) -> tuple[str, list[str]]:
         if not (display_hits or bare_hits):
             break
     return src, warnings
+
+
+_GLOSS_OPEN = re.compile(r"^:{3,}[ \t]*glossary[ \t]*$")
+_GLOSS_CLOSE = re.compile(r"^:{3,}[ \t]*$")
+
+
+def _placeholder(src: str) -> tuple[int, int] | None:
+    """Character range of an author-written `::: glossary` block, if any."""
+    spans = fence_spans(src)
+    lines = src.split("\n")
+    offsets = line_offsets(lines)
+    found = None
+    for i, line in enumerate(lines):
+        if not _GLOSS_OPEN.match(line) or in_span(offsets[i], spans):
+            continue
+        for j in range(i + 1, len(lines)):
+            if _GLOSS_CLOSE.match(lines[j]):
+                if found is not None:
+                    raise ValueError("two `::: glossary` blocks; there can be only one")
+                found = (offsets[i], offsets[j] + len(lines[j]) + 1)
+                break
+        else:
+            raise ValueError("`::: glossary` block is never closed")
+    return found
+
+
+def _component(entries: list[Entry]) -> str:
+    """Entries as a `::: glossary` component; definitions stay Markdown.
+
+    One blank-line-separated block per entry, so the section renders as many
+    paragraphs rather than one wall — and sorted here, not in the theme, because
+    alphabetical order is the glossary's contract with the reader.
+    """
+    items = []
+    for entry in sorted(entries, key=lambda e: e.term.lower()):
+        # One arrow, then an empty anchor per mention: only the paged renderer
+        # knows what page a mention landed on, so target-counter fills them in.
+        back = ""
+        if entry.refs:
+            links = ", ".join(
+                f'<a class="gloss-back" href="#glossref-{entry.key}-{k}"></a>'
+                for k in range(1, entry.refs + 1))
+            back = f" ↩ {links}"
+        items.append(f'<span class="gloss-term" id="gloss-{entry.key}"></span>'
+                     f"**{entry.term}** — {entry.definition}{back}")
+    return "::: glossary\n" + "\n\n".join(items) + "\n:::\n"
+
+
+def process_glossary(src: str, meta: dict,
+                     base_dir: Path | None) -> tuple[str, list[str]]:
+    """Entry point: link glossed terms and emit the glossary section."""
+    spec = meta.get("glossary")
+    if not spec:
+        return src, []
+
+    entries, warnings = load_entries(spec, base_dir)
+    head, body = split_frontmatter(src)
+    marked, mark_warnings = mark_terms(body, entries)
+    warnings = warnings + mark_warnings
+
+    if not entries:
+        return head + marked, warnings
+
+    block = _component(list(entries.values()))
+    at = _placeholder(marked)
+    if at:
+        return head + marked[: at[0]] + block + marked[at[1]:], warnings
+    return head + marked.rstrip() + "\n\n" + block, warnings
