@@ -120,7 +120,7 @@ an error, an unclosed block is an error.
 ### Which entries appear
 
 All of them, sorted case-insensitively by `term`. Mentioned entries carry a page
-list; unmentioned ones simply have none — the manuscript has 17.
+list; unmentioned ones simply have none — the manuscript has 10.
 
 This diverges from citations, where only cited works are listed and `nocite:`
 opts extras in, and the divergence is deliberate. A bibliography is an
@@ -289,7 +289,7 @@ proves it. The check gets mutation-tested by breaking `target-counter` and
 confirming it goes red, per `AGENTS.md`.
 
 Acceptance is the manuscript itself: it renders without warnings, chapter
-numbering starts at 1, parts are dividers, and 498 of the 515 entries carry page
+numbering starts at 1, parts are dividers, and 505 of the 515 entries carry page
 lists.
 
 ## After this lands
@@ -315,5 +315,12 @@ of them decided a design point rather than merely illustrating one.
 | Markers carrying emphasis | 226 | The bare form cannot be the only one |
 | Nested markers | 5 | Fixpoint rewrite, inner keeps the link |
 | Markers on heading lines | 8 | The TOC label bug is real, not theoretical |
-| Entries never mentioned | 17 of 515 | Unmentioned entries still render |
-| Page lists with a duplicate | 2 of ~490 sampled | One render pass, no dedupe |
+| Entries never mentioned | 10 of 515 | Unmentioned entries still render |
+| Page lists with a duplicate | 2 of 505 | One render pass, no dedupe |
+
+The "never mentioned" and "with a page list" counts were first measured as 17
+and 498. Both were wrong, and wrong for a reason worth recording: the smoke-test
+script that produced them stripped heading attributes with a `\s*$` pattern,
+which under `re.M` also ate the newline after the attribute block — destroying
+the 8 markers that sit on heading lines. The engine is not implicated; the
+measuring instrument was. Corrected against the acceptance render.
