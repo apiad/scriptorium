@@ -276,3 +276,32 @@ def test_a_long_glossary_paginates_and_keeps_its_tail(tmp_path):
     assert report.n_pages > 2                      # it paginated
     assert "Term 119" in _text(out)                # and nothing fell off the end
     assert report.warnings == []
+
+
+# --- the links, not the styling -------------------------------------------
+
+def _link_dests(pdf_path, page_index):
+    import pypdf
+
+    page = pypdf.PdfReader(str(pdf_path)).pages[page_index]
+    out = []
+    for annot in page.get("/Annots") or []:
+        obj = annot.get_object()
+        if obj.get("/Subtype") == "/Link" and obj.get("/Dest"):
+            out.append(str(obj["/Dest"]))
+    return out
+
+
+def test_the_glossary_links_resolve_in_both_directions(tmp_path):
+    # A source or text grep passes on styled-but-dead text. The whole feature is
+    # that the link resolves, and only the annotation proves it.
+    src = ("---\ntheme: article\ntitle: T\n"
+           "glossary:\n  ai-effect:\n    term: \"AI effect\"\n    definition: \"A pattern.\"\n"
+           "---\n\n# H\n\nThe [~ai-effect] is real.\n\n::: newpage\n:::\n\n"
+           "::: glossary\n:::\n")
+    out = tmp_path / "links.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    assert "gloss-ai-effect" in _link_dests(out, 0)        # body -> entry
+    assert "glossref-ai-effect-1" in _link_dests(out, 1)   # entry -> body
+    assert "↩ 1" in _text(out)          # and the back-link resolved to a real page
