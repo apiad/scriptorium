@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Features
+
+- **`footnotes-label`.** The generated endnotes section can carry a heading, the
+  last of the three apparatus components to get one — `references` and `glossary`
+  already had theirs. Unset means no heading, so nothing changes for a document
+  that does not ask.
+
 ## [v0.8.0] - 2026-08-12
 
 The book apparatus: a glossary, part dividers, unnumbered front matter, a cover,

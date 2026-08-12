@@ -203,3 +203,33 @@ def test_uncited_definitions_emit_no_empty_section():
 
     assert "::: footnotes" not in out
     assert any("never referenced" in w for w in warnings)
+
+
+# --- the endnotes section can carry a heading -------------------------------
+
+def test_footnotes_label_becomes_the_section_heading(tmp_path):
+    # Mirrors test_references_label_becomes_the_section_heading: the label's
+    # language belongs to the author, so it is a var, not a baked-in string.
+    src = ("---\ntheme: article\ntitle: T\nfootnotes-label: References and Notes\n"
+           "---\n\n# H\n\nA claim.[^n]\n\n[^n]: The note body.\n")
+    out = tmp_path / "label.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "References and Notes" in text
+    assert "The note body." in text
+
+
+def test_footnotes_section_is_unlabelled_by_default(tmp_path):
+    # Empty default: an endnotes block separated by a rule, as before.
+    src = "---\ntheme: article\ntitle: T\n---\n\n# H\n\nA claim.[^n]\n\n[^n]: The note body.\n"
+    out = tmp_path / "plain.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "The note body." in text
+    assert "References and Notes" not in text

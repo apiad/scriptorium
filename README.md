@@ -152,7 +152,9 @@ All five `extend` a `base` theme; build your own by extending any of them. See
   CSS. The prefix must be one of `fig` `tbl` `sec` `eq` `lst` `thm` `chap`;
   anything else (`@smith-2020`, a handle) stays literal text.
 - **Footnotes** — `A claim.[^a]` with `[^a]: The note.` anywhere in the file.
-  Numbering is automatic; a note referenced twice gets two back-links.
+  Numbering is automatic; a note referenced twice gets two back-links. Set
+  `footnotes-label:` to give the section a heading — `Notes`,
+  `References and Notes`, whatever fits; unset means no heading.
 - **Citations** — `[@key]` and `[@a; @b]` render as `[1]` / `[1, 2]` against a
   `bibliography:` map in frontmatter (or in `scriptorium.yaml` for a project),
   and collect into a references section. Cited works only; add `nocite: [key]`

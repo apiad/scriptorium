@@ -28,6 +28,9 @@ vars:
   # heading, because "Glossary" is as wrong for a Spanish document as
   # "References" would be.
   glossary-label: ""
+  # And for the generated endnotes section. `book` overrides nothing — a book
+  # that wants "References and Notes" says so in its own scriptorium.yaml.
+  footnotes-label: ""
 
 # Where footnote definitions collect: document | chapter | page.
 # Frontmatter `footnotes:` overrides this per document.
