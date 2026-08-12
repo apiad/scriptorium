@@ -310,3 +310,70 @@ def test_project_level_bibliography_reaches_the_render(tmp_path):
     text = subprocess.run(["pdftotext", str(out), "-"],
                           capture_output=True, text=True).stdout
     assert "Parnas, D. L." in text and "[@parnas]" not in text
+
+
+def test_string_entries_render_exactly_as_before():
+    # The whole feature is an addition to a shipped format: a document that
+    # uses none of it must produce the identical pre-processor output. Asserted
+    # on the rewritten source, not on PDF bytes — a PDF carries timestamps and
+    # font subset ids, so a byte-compare there fails for unrelated reasons.
+    src = "A claim.[@parnas] Another.[@vogel] And again.[@parnas]\n"
+    out, entries, warnings = number_citations(src, BIB)
+
+    assert out == (
+        'A claim.<span class="cite-ref">'
+        '[<a id="citeref-1-1" href="#cite-1">1</a>]</span> '
+        'Another.<span class="cite-ref">'
+        '[<a id="citeref-2-1" href="#cite-2">2</a>]</span> '
+        'And again.<span class="cite-ref">'
+        '[<a id="citeref-1-2" href="#cite-1">1</a>]</span>\n'
+    )
+    assert [(e.key, e.number, e.refs) for e in entries] == [
+        ("parnas", 1, 2), ("vogel", 2, 1),   # parnas cited twice, vogel once
+    ]
+    assert warnings == []
+
+
+def test_narrative_name_reaches_the_pdf_and_no_sigil_syntax_leaks(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\n"
+           "bibliography:\n  tam:\n    author: Tam et al.\n"
+           "    text: \"Tam, Z. R. Let Me Speak Freely. 2024.\"\n"
+           "---\n\n# H\n\n[+@tam] found it, and [-@tam] refined it.\n")
+    out = tmp_path / "narr.pdf"
+    report = render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert text.count("Tam et al.") == 2      # once per narrative form
+    assert "Tam, Z. R." in text               # the entry itself
+    assert "[1]" in text                      # the + form still marks
+    assert "[+@" not in text and "[-@" not in text
+    assert "cite-author" not in text          # the span never leaks as text
+    assert report.warnings == []
+
+
+def test_project_level_mapping_bibliography_reaches_the_render(tmp_path):
+    # project.py:49 passes `bibliography` through verbatim, so mapping entries
+    # should already work. "No change needed" is a claim, so it gets a test.
+    from scriptorium.project import load
+
+    (tmp_path / "a.md").write_text("# One\n\n[+@tam] found it.\n")
+    (tmp_path / "scriptorium.yaml").write_text(
+        "theme: book\n"
+        "bibliography:\n  tam:\n    author: Tam et al.\n"
+        "    text: \"Tam, Z. R. Let Me Speak Freely. 2024.\"\n"
+        "files: [a.md]\n")
+    proj = load(tmp_path / "scriptorium.yaml")
+
+    assert proj.meta["bibliography"]["tam"]["author"] == "Tam et al."
+    assert "bibliography" not in proj.vars   # content, not appearance
+
+    out = tmp_path / "b.pdf"
+    render_pdf(proj.src, str(out), theme_name=proj.theme, execute=False,
+               vars=proj.vars, project_meta=proj.meta)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "Tam et al." in text and "Tam, Z. R." in text
