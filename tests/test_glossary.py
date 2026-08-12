@@ -41,3 +41,82 @@ def test_an_unreadable_path_warns_rather_than_raising(tmp_path):
 
     assert entries == {}
     assert len(warnings) == 1 and "missing.yaml" in warnings[0]
+
+
+# --- marker rewriting -----------------------------------------------------
+
+from scriptorium.glossary import mark_terms
+
+
+def _entries():
+    return load_entries(GLOSS, None)[0]
+
+
+def test_display_form_becomes_an_anchored_link():
+    entries = _entries()
+    out, warnings = mark_terms("The [*AI effect*]{~ai-effect} is real.\n", entries)
+
+    assert ('<a class="gloss-ref" id="glossref-ai-effect-1" '
+            'href="#gloss-ai-effect">*AI effect*</a>') in out
+    assert entries["ai-effect"].refs == 1 and warnings == []
+
+
+def test_bare_form_uses_the_entrys_own_term():
+    entries = _entries()
+    out, _ = mark_terms("As [~tesler-larry] put it.\n", entries)
+
+    assert '>Tesler, Larry</a>' in out
+    assert 'id="glossref-tesler-larry-1"' in out
+
+
+def test_repeated_mentions_get_distinct_call_site_anchors():
+    entries = _entries()
+    out, _ = mark_terms("[~ai-effect] and [~ai-effect] again.\n", entries)
+
+    assert 'id="glossref-ai-effect-1"' in out and 'id="glossref-ai-effect-2"' in out
+    assert entries["ai-effect"].refs == 2
+
+
+def test_nested_markers_keep_the_inner_link_and_balance_their_tags():
+    # An <a> inside an <a> is invalid: the parser closes the outer early and
+    # strands a </a> in the running text. The inner term keeps the link.
+    entries = _entries()
+    src = "See [*the [~tesler-larry] case*]{~ai-effect}.\n"
+    out, warnings = mark_terms(src, entries)
+
+    assert out.count("<a ") == 1
+    assert out.count("<a ") == out.count("</a>")
+    assert 'href="#gloss-tesler-larry"' in out           # inner is the link
+    assert '<span class="gloss-ref" id="glossref-ai-effect-1">' in out  # outer anchors only
+    assert entries["ai-effect"].refs == 1                # and still collects a page ref
+    assert warnings == []
+
+
+def test_two_display_forms_nest_the_same_way():
+    # The manuscript's actual shape, where both levels carry display text.
+    entries = _entries()
+    src = "See [*the [Tesler]{~tesler-larry} case*]{~ai-effect}.\n"
+    out, warnings = mark_terms(src, entries)
+
+    assert out.count("<a ") == 1 and out.count("</a>") == 1
+    assert 'href="#gloss-tesler-larry"' in out
+    assert '<span class="gloss-ref" id="glossref-ai-effect-1">' in out
+    assert "{~" not in out and warnings == []
+
+
+def test_unknown_key_warns_and_leaves_readable_text():
+    entries = _entries()
+    out, warnings = mark_terms("A [thing]{~nope} and [~alsonope].\n", entries)
+
+    assert "thing" in out and "alsonope" in out
+    assert "gloss-ref" not in out
+    assert len(warnings) == 2
+
+
+def test_a_marker_inside_a_code_fence_is_left_alone():
+    entries = _entries()
+    src = "Prose.\n\n```markdown\nSee [~ai-effect] here.\n```\n"
+    out, _ = mark_terms(src, entries)
+
+    assert "[~ai-effect]" in out
+    assert entries["ai-effect"].refs == 0
