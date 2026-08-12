@@ -92,11 +92,22 @@ a.ref-fig::after {
 
 /* --- table of contents (page numbers via target-counter) --- */
 .toc-h { font-family:system-ui,sans-serif; font-size:24pt; font-weight:800; color:var(--brand); margin:0 0 9mm 0; }
-.toc-entry { display:flex; align-items:baseline; gap:2mm; text-decoration:none; color:var(--ink); margin:2.5mm 0; }
+/* A real book's contents runs to a couple of hundred entries, so the per-entry
+   height is the whole cost: Mostly Harmless AI's 190 entries took 8 pages,
+   against 5 for the same book set by LaTeX. A list of one-line links does not
+   need reading leading.
+
+   Most of that was not this rule. `fill_toc` emits every entry as its own Unit,
+   and the galley wraps each Unit in `.unit`, whose 3.5mm bottom margin is the
+   paragraph rhythm — sensible between paragraphs, and nearly half the height of
+   a one-line link. The deck theme already zeroes it for its own contents; the
+   book theme, which is the one that renders long tables of contents, did not. */
+.unit:has(.toc-entry) { margin-bottom:0; }
+.toc-entry { display:flex; align-items:baseline; gap:2mm; text-decoration:none; color:var(--ink); line-height:1.3; margin:1mm 0; }
 .toc-entry::after { content: target-counter(attr(href url), page); font-variant-numeric:tabular-nums; color:var(--muted); }
 .toc-txt { flex:0 0 auto; }
-.toc-lead { flex:1 1 auto; border-bottom:1px dotted var(--rule); transform:translateY(-1.2mm); }
-.toc-l1 { font-weight:700; margin-top:4mm; }
+.toc-lead { flex:1 1 auto; border-bottom:1px dotted var(--rule); transform:translateY(-1mm); }
+.toc-l1 { font-weight:700; margin-top:3.5mm; }
 .toc-l2 { margin-left:9mm; font-size:10pt; color:var(--muted); }
 
 /* --- glossary: a chapter here, not a trailing section --- */
