@@ -7,6 +7,12 @@ BIB = {
     "vogel": "Vogel, E. F. *Deng Xiaoping…*. Belknap, 2011.",
 }
 
+NAMED = {
+    "tam": {"author": "Tam et al.", "text": "Tam, Z. R., … *Let Me Speak Freely?*"},
+    "fan": {"author": "Fan", "text": "Fan, H. *Capacity, Not Format*."},
+    "plain": "Somebody. *A work with no declared author*.",
+}
+
 
 def test_single_citation_becomes_a_bracketed_number():
     out, entries, warnings = number_citations("A claim.[@parnas]\n", BIB)
@@ -175,6 +181,36 @@ def test_normalise_rejects_a_value_that_is_neither_prose_nor_mapping():
     sources, warnings = _normalise({"odd": 42})
 
     assert "odd" not in sources and any("odd" in w for w in warnings)
+
+
+def test_narrative_citation_puts_the_name_before_the_mark():
+    out, entries, warnings = number_citations("[+@tam] found that X.\n", NAMED)
+
+    assert out.startswith('<span class="cite-author">Tam et al.</span> ')
+    assert '<a id="citeref-1-1" href="#cite-1">1</a>' in out
+    assert [e.key for e in entries] == ["tam"] and warnings == []
+
+
+def test_narrative_citation_numbers_like_a_plain_one():
+    out, entries, _ = number_citations("[+@tam] said it, and again[@tam].\n", NAMED)
+
+    assert len(entries) == 1 and entries[0].refs == 2
+    assert out.count(">1</a>") == 2
+
+
+def test_narrative_citation_on_an_entry_with_no_author_stays_literal_and_warns():
+    out, entries, warnings = number_citations("[+@plain] argued.\n", NAMED)
+
+    assert "[+@plain]" in out and "cite-author" not in out
+    assert entries == []
+    assert any("plain" in w and "author" in w for w in warnings)
+
+
+def test_narrative_sigil_inside_a_code_fence_is_left_alone():
+    src = "Prose.\n\n```markdown\nSee [+@tam] here.\n```\n"
+    out, entries, _ = number_citations(src, NAMED)
+
+    assert "[+@tam]" in out and entries == []
 
 
 from scriptorium.galley import render_pdf

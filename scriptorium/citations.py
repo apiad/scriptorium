@@ -14,11 +14,13 @@ from dataclasses import dataclass
 
 from .source import fence_spans, in_span, line_offsets, split_frontmatter
 
-# [@a] or [@a; @b] — brackets are required. A bare @key is deliberately not a
-# citation: v0.4.0 narrowed the cross-reference pattern precisely because a loose
-# @word rule was rewriting prose into empty anchors. A comma (a page locator)
-# fails the match, so the whole span stays literal.
-_CITE = re.compile(r"\[@[\w-]+(?:[ \t]*;[ \t]*@[\w-]+)*\]")
+# [@a], [@a; @b], and the narrative forms [+@a] / [-@a] — brackets are required.
+# A bare @key is deliberately not a citation: v0.4.0 narrowed the cross-reference
+# pattern precisely because a loose @word rule was rewriting prose into empty
+# anchors, and requiring brackets keeps citations and cross-references separable
+# at the parser. A comma (a page locator) fails the match, so the whole span
+# stays literal. Group 1 is the sigil, "" when absent.
+_CITE = re.compile(r"\[([+-]?)@[\w-]+(?:[ \t]*;[ \t]*@[\w-]+)*\]")
 _KEY = re.compile(r"@([\w-]+)")
 
 
@@ -66,39 +68,61 @@ def _normalise(bib: dict) -> tuple[dict[str, _Source], list[str]]:
     return sources, warnings
 
 
-def number_citations(src: str, bib: dict[str, str]) -> tuple[str, list[Entry], list[str]]:
+def number_citations(
+    src: str, bib: dict, nocite: tuple[str, ...] | list[str] = ()
+) -> tuple[str, list[Entry], list[str]]:
     """Rewrite [@key] spans to numbered links; return (src, entries, warnings).
 
     One pass suffices because a call-site id is always `citeref-N-K`, unlike the
     footnote scheme where the suffix appears only when a note is cited twice.
+    The `-` form emits no number, so it needs nothing patched afterwards either.
     """
+    sources, warnings = _normalise(bib)
     spans = fence_spans(src)
     entries: dict[str, Entry] = {}
-    warnings: list[str] = []
     out, last = [], 0
+
+    def warn(message: str) -> None:
+        if message not in warnings:
+            warnings.append(message)
 
     for m in _CITE.finditer(src):
         if in_span(m.start(), spans):
             continue
+        sigil = m.group(1)
         keys = _KEY.findall(m.group(0))
-        missing = [k for k in keys if k not in bib]
+
+        missing = [k for k in keys if k not in sources]
         if missing:
             for k in missing:
-                w = f"citation [@{k}] has no bibliography entry"
-                if w not in warnings:
-                    warnings.append(w)
+                warn(f"citation [@{k}] has no bibliography entry")
             continue  # the whole span stays literal — visible, never vanished
+
+        author = None
+        if sigil:
+            author = sources[keys[0]].author
+            if author is None:
+                warn(f"citation [{sigil}@{keys[0]}] is narrative but the entry "
+                     f"declares no author")
+                continue
+
+        out.append(src[last:m.start()])
+        last = m.end()
+
         links = []
         for k in keys:
             entry = entries.get(k)
             if entry is None:
-                entry = entries[k] = Entry(key=k, body=bib[k], number=len(entries) + 1)
+                entry = entries[k] = Entry(
+                    key=k, body=sources[k].text, number=len(entries) + 1,
+                    author=sources[k].author,
+                )
             entry.refs += 1
             links.append(f'<a id="citeref-{entry.number}-{entry.refs}" '
                          f'href="#cite-{entry.number}">{entry.number}</a>')
-        out.append(src[last:m.start()])
-        out.append(f'<span class="cite-ref">[{", ".join(links)}]</span>')
-        last = m.end()
+
+        prefix = f'<span class="cite-author">{author}</span> ' if sigil == "+" else ""
+        out.append(f'{prefix}<span class="cite-ref">[{", ".join(links)}]</span>')
 
     out.append(src[last:])
     return "".join(out), list(entries.values()), warnings
