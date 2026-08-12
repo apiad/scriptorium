@@ -46,7 +46,7 @@ def load(path: str | Path) -> Project:
     vars = spec.get("vars", {}) or {}
     # content keys, distinct from `vars` (which is the appearance contract and
     # the target of {{substitution}}): a bibliography is content, not styling.
-    meta = {k: spec[k] for k in ("bibliography", "nocite") if k in spec}
+    meta = {k: spec[k] for k in ("bibliography", "nocite", "glossary") if k in spec}
 
     bodies = []
     for i, rel in enumerate(spec.get("files", [])):

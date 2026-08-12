@@ -657,14 +657,16 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     from .parse import fill_toc
     from .footnotes import process_footnotes, resolve_footnote_mode
     from .citations import process_citations
+    from .glossary import process_glossary
 
     # Citations run after footnotes on purpose: a [@key] written inside a note
     # body has by then been moved to where the note actually renders, so it is
     # numbered by reading order rather than by where its definition happened to
-    # sit in the source.
+    # sit in the source. The glossary runs last for exactly the same reason.
     src, warnings = process_footnotes(src, resolve_footnote_mode(meta, theme.meta))
     src, cite_warnings = process_citations(src, meta)
-    warnings = warnings + cite_warnings
+    src, gloss_warnings = process_glossary(src, meta, Path(cwd) if cwd else None)
+    warnings = warnings + cite_warnings + gloss_warnings
     units = parse(src, theme, env, meta=meta)
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
 

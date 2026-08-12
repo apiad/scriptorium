@@ -180,3 +180,59 @@ def test_frontmatter_is_preserved():
     out, _ = process_glossary(src, {"glossary": GLOSS}, None)
 
     assert out.startswith("---\ntitle: T\n---\n")
+
+
+# --- end to end -----------------------------------------------------------
+
+import subprocess
+
+from scriptorium.galley import render_pdf
+
+
+def _text(pdf) -> str:
+    return subprocess.run(["pdftotext", str(pdf), "-"],
+                          capture_output=True, text=True).stdout
+
+
+def test_glossary_reaches_the_pdf(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\n"
+           "glossary:\n"
+           "  ai-effect:\n"
+           "    term: \"AI effect\"\n"
+           "    definition: \"A solved task stops counting.\"\n"
+           "---\n\n# H\n\nThe [~ai-effect] is real.\n\n::: glossary\n:::\n")
+    out = tmp_path / "g.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    text = _text(out)
+    assert "A solved task stops counting." in text
+    assert "{~" not in text and "[~" not in text      # no syntax leaks
+
+
+def test_a_term_glossed_inside_a_footnote_is_paged_where_the_note_renders(tmp_path):
+    # Glossary runs after footnotes for this reason: the marker has by then been
+    # moved to where the note actually prints.
+    src = ("---\ntheme: article\ntitle: T\n"
+           "glossary:\n"
+           "  ai-effect:\n    term: \"AI effect\"\n    definition: \"A pattern.\"\n"
+           "---\n\n# H\n\nA claim.[^a]\n\n[^a]: See the [~ai-effect].\n")
+    out = tmp_path / "fn.pdf"
+    report = render_pdf(src, str(out), execute=False)
+
+    assert report.warnings == []
+    assert "AI effect" in _text(out)
+
+
+def test_project_level_glossary_path_reaches_the_render(tmp_path):
+    (tmp_path / "g.yaml").write_text(
+        'ai-effect:\n  term: "AI effect"\n  definition: "A pattern."\n', encoding="utf-8")
+    (tmp_path / "ch.md").write_text("# H\n\nThe [~ai-effect].\n\n::: glossary\n:::\n",
+                                    encoding="utf-8")
+    (tmp_path / "scriptorium.yaml").write_text(
+        "theme: article\nglossary: g.yaml\nvars:\n  title: T\nfiles:\n  - ch.md\n",
+        encoding="utf-8")
+
+    from scriptorium.cli import main
+    assert main(["render", str(tmp_path / "scriptorium.yaml")]) == 0
+
+    assert "A pattern." in _text(tmp_path / "book.pdf")
