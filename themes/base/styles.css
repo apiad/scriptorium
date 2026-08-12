@@ -128,24 +128,32 @@ code { hyphens: none; overflow-wrap: break-word; }
 .footnote-ref { font-size: 0.72em; line-height: 0; vertical-align: super; }
 .footnote-ref a { color: var(--accent-dark); text-decoration: none; border-bottom: none; }
 .footnote-ref a:hover { text-decoration: underline; }
-.footnotes { margin-top: 6mm; padding-top: 3mm; border-top: 0.3mm solid var(--rule); }
-.footnotes ol { font-size: 9pt; line-height: 1.45; padding-left: 6mm; margin: 0; }
-.footnotes li { margin: 0 0 1.5mm 0; }
-.footnotes a { color: var(--accent-dark); border-bottom: none; }
-/* citation markers + the references section */
+/* citation markers */
 .cite-ref { white-space: nowrap; }
 .cite-ref a { color: var(--accent-dark); text-decoration: none; border-bottom: none; }
-.references { margin-top: 6mm; padding-top: 3mm; border-top: 0.3mm solid var(--rule); }
+/* A glossed term is ordinary words, not a bracketed number, so it carries an
+   underline the citation mark does not need. */
+.gloss-ref { color: var(--accent-dark); text-decoration: none;
+             border-bottom: 0.4pt dotted currentColor; }
+
+/* the apparatus sections: endnotes, references, glossary — one look, because a
+   reader meets them back to back at the end of a chapter or a book */
+.footnotes, .references, .glossary {
+  margin-top: 6mm; padding-top: 3mm; border-top: 0.3mm solid var(--rule);
+}
 /* The rule exists to separate an unlabelled block from the prose above it. A
    heading does that job, so the two together read as a doubled divider. */
-.references.labelled { border-top: none; padding-top: 0; }
+.footnotes.labelled, .references.labelled, .glossary.labelled {
+  border-top: none; padding-top: 0;
+}
 .apparatus-title { font-size: 12pt; margin: 0 0 2.5mm 0; }
-.references ol { font-size: 9pt; line-height: 1.45; padding-left: 6mm; margin: 0; }
-.references li { margin: 0 0 1.5mm 0; }
-.references a { color: var(--accent-dark); border-bottom: none; }
+.footnotes ol, .references ol, .glossary p { font-size: 9pt; line-height: 1.45; margin: 0; }
+.footnotes ol, .references ol { padding-left: 6mm; }
+.footnotes li, .references li, .glossary p { margin: 0 0 1.5mm 0; }
+.footnotes a, .references a, .glossary a { color: var(--accent-dark); border-bottom: none; }
 /* Back-links carry no text of their own: the page a call site landed on is
    known only to the paged renderer, so target-counter supplies it here. */
-.cite-back::after { content: target-counter(attr(href url), page);
+.cite-back::after, .gloss-back::after { content: target-counter(attr(href url), page);
                     font-variant-numeric: tabular-nums; }
 
 /* `footnotes: page` — WeasyPrint's GCPM footnote area, ruled off from the body */

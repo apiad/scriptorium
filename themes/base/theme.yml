@@ -24,6 +24,10 @@ vars:
   # business, not the engine's: set it to "References", "Bibliografía", or
   # whatever the venue wants, in theme.yml or in frontmatter.
   references-label: ""
+  # Heading for the generated glossary, on the same contract: empty means no
+  # heading, because "Glossary" is as wrong for a Spanish document as
+  # "References" would be.
+  glossary-label: ""
 
 # Where footnote definitions collect: document | chapter | page.
 # Frontmatter `footnotes:` overrides this per document.
@@ -34,3 +38,5 @@ components:
     keep_together: false   # an endnotes section is often taller than a page
   references:
     keep_together: false   # and so is a reference list
+  glossary:
+    keep_together: false   # and a five-hundred-entry glossary most of all

@@ -236,3 +236,43 @@ def test_project_level_glossary_path_reaches_the_render(tmp_path):
     assert main(["render", str(tmp_path / "scriptorium.yaml")]) == 0
 
     assert "A pattern." in _text(tmp_path / "book.pdf")
+
+
+# --- the apparatus family -------------------------------------------------
+
+def test_glossary_section_has_no_heading_without_the_label(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\n"
+           "glossary:\n  ai-effect:\n    term: \"AI effect\"\n    definition: \"A pattern.\"\n"
+           "---\n\n# H\n\nThe [~ai-effect].\n\n::: glossary\n:::\n")
+    out = tmp_path / "nolabel.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    text = _text(out)
+    assert "A pattern." in text
+    assert "Glossary" not in text and "GLOSSARY" not in text
+
+
+def test_glossary_label_becomes_the_section_heading(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\nglossary-label: Glosario\n"
+           "glossary:\n  ai-effect:\n    term: \"AI effect\"\n    definition: \"A pattern.\"\n"
+           "---\n\n# H\n\nThe [~ai-effect].\n\n::: glossary\n:::\n")
+    out = tmp_path / "label.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    # the label the author chose, not a baked-in string
+    assert "Glosario" in _text(out)
+
+
+def test_a_long_glossary_paginates_and_keeps_its_tail(tmp_path):
+    gloss = {f"k{i}": {"term": f"Term {i:03d}", "definition": "A definition. " * 12}
+             for i in range(120)}
+    src = ("---\ntheme: article\ntitle: T\nglossary:\n"
+           + "\n".join(f"  {k}:\n    term: \"{v['term']}\"\n"
+                       f"    definition: \"{v['definition']}\"" for k, v in gloss.items())
+           + "\n---\n\n# H\n\nBody.\n\n::: glossary\n:::\n")
+    out = tmp_path / "long.pdf"
+    report = render_pdf(src, str(out), execute=False)
+
+    assert report.n_pages > 2                      # it paginated
+    assert "Term 119" in _text(out)                # and nothing fell off the end
+    assert report.warnings == []
