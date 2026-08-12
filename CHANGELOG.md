@@ -11,6 +11,15 @@ All notable changes to this project are documented here. Format: Keep a Changelo
   already had theirs. Unset means no heading, so nothing changes for a document
   that does not ask.
 
+### Fixes
+
+- **`footnotes:` in a `scriptorium.yaml` is no longer ignored.** It was missing
+  from `project.py`'s content-key tuple, so a project asking for
+  `footnotes: document` silently got the theme's default instead — for `book`,
+  per-chapter endnotes. A wrong apparatus that renders cleanly is worse than a
+  crash. Where notes collect is structure, so the key sits beside `glossary:`
+  and `css:` rather than under `vars:`.
+
 ## [v0.8.0] - 2026-08-12
 
 The book apparatus: a glossary, part dividers, unnumbered front matter, a cover,

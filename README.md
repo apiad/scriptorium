@@ -101,6 +101,7 @@ A multi-file project is a `scriptorium.yaml`:
 theme: book
 css: book.css           # this project's own stylesheet, after the theme's
 glossary: glossary.yaml
+footnotes: document     # where the notes collect, overriding the theme
 vars:
   title: The Book
   author: A. Writer
@@ -209,7 +210,8 @@ All five `extend` a `base` theme; build your own by extending any of them. See
   heading out of the chapter count, `{.unlisted}` keeps it out of the contents.
 - **Layout** — `::: keep` (keep-together), `::: newpage`.
 
-Where the notes land is the `footnotes:` key — frontmatter wins over the theme:
+Where the notes land is the `footnotes:` key — frontmatter (or a project's
+`scriptorium.yaml`) wins over the theme:
 
 | Value | Behaviour |
 |---|---|

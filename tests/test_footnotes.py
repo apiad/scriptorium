@@ -233,3 +233,35 @@ def test_footnotes_section_is_unlabelled_by_default(tmp_path):
                           capture_output=True, text=True).stdout
     assert "The note body." in text
     assert "References and Notes" not in text
+
+
+# --- a project decides where its notes collect ------------------------------
+
+def test_project_footnotes_key_overrides_the_theme(tmp_path):
+    # `book` collects notes per chapter. A project that wants one continuous
+    # stream at the end says so in its scriptorium.yaml — and unless the key is
+    # carried through as a content key, it is silently ignored and the theme
+    # default wins, which yields a plausible book with the wrong apparatus.
+    (tmp_path / "ch.md").write_text(
+        "# One\n\nFirst.[^a]\n\n[^a]: Note A.\n", encoding="utf-8")
+    (tmp_path / "two.md").write_text(
+        "# Two\n\nSecond.[^b]\n\n[^b]: Note B.\n", encoding="utf-8")
+    (tmp_path / "scriptorium.yaml").write_text(
+        "theme: book\nfootnotes: document\nvars:\n  title: T\nfiles:\n"
+        "  - ch.md\n  - two.md\n", encoding="utf-8")
+
+    from scriptorium.project import load
+    proj = load(tmp_path / "scriptorium.yaml")
+    assert proj.meta.get("footnotes") == "document"
+
+    out = tmp_path / "book.pdf"
+    render_pdf(proj.src, str(out), theme_name=proj.theme, cwd=str(tmp_path),
+               execute=False, vars=proj.vars, project_meta=proj.meta)
+
+    import re
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    # One stream: note B is 2, not a second "1." under its own chapter.
+    assert "Note A." in text and "Note B." in text
+    assert re.search(r"\n\s*2\.\s*Note B\.", text), text[-600:]
