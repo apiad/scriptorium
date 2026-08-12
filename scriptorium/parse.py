@@ -222,7 +222,18 @@ def _split_md(text: str):
 
 
 def _unwrap_p(html: str) -> str:
-    return re.sub(r"^<p>(.*)</p>\s*$", r"\1", html.strip(), flags=re.S)
+    """Drop the <p> wrapper from a single-paragraph component body.
+
+    Guarded on there being exactly one paragraph. With re.S the greedy `.*`
+    spans a multi-paragraph body end to end, so an unguarded sub strips the
+    first opening tag and the last closing tag and leaves everything between
+    unbalanced — the first paragraph escapes its <p> and stops matching any
+    `p` rule the theme wrote for the component.
+    """
+    html = html.strip()
+    if html.count("<p>") != 1:
+        return html
+    return re.sub(r"^<p>(.*)</p>$", r"\1", html, flags=re.S)
 
 
 def _scalar(v) -> str:

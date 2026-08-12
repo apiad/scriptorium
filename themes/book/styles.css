@@ -91,6 +91,13 @@ a.ref-fig::after {
 .toc-l1 { font-weight:700; margin-top:4mm; }
 .toc-l2 { margin-left:9mm; font-size:10pt; color:var(--muted); }
 
+/* --- glossary: a chapter here, not a trailing section --- */
+/* In a book the glossary is its own chapter — `# Glossary {.unnumbered}` then
+   `::: glossary` — so the apparatus rule would double against the chapter
+   title. In article/note, where the section trails the text, the rule stays. */
+.glossary { border-top:none; padding-top:0; margin-top:0; }
+.glossary p { text-indent:0; }   /* body paragraphs are indented; entries are not */
+
 /* --- code, output, math (shared vocabulary) --- */
 .codeblock { position:relative; }
 .code-file { display:block; font-family:ui-monospace, monospace; font-size:7pt; color:var(--muted); margin:0 0 1mm 1mm; }

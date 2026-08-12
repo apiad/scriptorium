@@ -95,3 +95,17 @@ def test_toc_omits_an_unlisted_heading():
 
     assert any("Kept" in e for e in entries)
     assert not any("Hidden" in e for e in entries)
+
+
+def test_unwrap_p_leaves_a_multi_paragraph_body_alone():
+    # With re.S the greedy `.*` spans a multi-paragraph body end to end, so an
+    # unguarded sub strips the FIRST opening tag and the LAST closing tag and
+    # leaves everything between unbalanced — the first paragraph escapes its <p>
+    # and stops matching any `p` rule the theme wrote.
+    from scriptorium.parse import _unwrap_p
+
+    one = "<p>Only one.</p>"
+    two = "<p>First.</p>\n<p>Second.</p>"
+
+    assert _unwrap_p(one) == "Only one."
+    assert _unwrap_p(two) == two
