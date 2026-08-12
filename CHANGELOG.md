@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.6.0] - 2026-08-12
+
+Narrative citations: the author's name in the running text, declared rather
+than parsed.
+
 ### Features
 - **Narrative citations.** `[+@key]` renders the author's name before the
   numbered mark (`Tam et al. [1]`); `[-@key]` renders the name alone, with no
@@ -12,6 +17,30 @@ All notable changes to this project are documented here. Format: Keep a Changelo
   entry prose, and never derives one from the key. Prose-string entries and bare
   `[@key]` are unchanged. A sigil on an entry with no `author:`, or on a
   multi-key span, leaves the span literal and warns.
+- **Bibliography entries take a mapping.** A value may stay a prose string or
+  become `{author, text}`. `text:` is the prose that reaches the references
+  section; `author:` is the literal name the narrative forms emit, so "et al."
+  versus "and" versus a single surname is the author's decision rather than a
+  heuristic on the key.
+
+### Fixes
+- **A loose list is one block, so its numbering survives.** Prose is split on
+  blank lines to measure paragraphs independently, but a loose list is
+  blank-line separated by definition, so each item became its own `<ol>` and
+  "1. 2. 3." rendered as "1. 1. 1.", with continuation paragraphs detached from
+  their item.
+- **Inline code never hyphenates.** `FechaRetiro` broken across a narrow table
+  column came out as `FechaRe-tiro`; in a document whose subject is the exact
+  column names that is a wrong answer, not a blemish. Wrapping is still allowed
+  — the token splits without a character being invented.
+
+### Other
+- The claim that author-date was "impossible by construction" is retired from
+  the module docstring, `docs/design.md` §7.5, `tasks.md` and the README. What
+  is impossible is *extraction* from prose; *declaration* was never ruled out.
+  The open CSL item is narrowed to what still needs structured entries and a
+  style engine: author-date marks everywhere, alphabetical ordering, and
+  `2026a` / `2026b` disambiguation.
 
 ## [v0.5.0] - 2026-08-11
 
