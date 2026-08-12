@@ -408,7 +408,8 @@ therefore one page; later references get a plain superscript.
 
 `[@key]` and `[@a; @b]` resolve against a `bibliography:` map the author declares
 in frontmatter (or, for a project, as a top-level key in `scriptorium.yaml`).
-They render as a bracketed `[1]` / `[1, 2]` and collect into a generated
+They render as a bracketed `[1]` / `[1, 2]`; `[+@key]` renders `Tam et al. [1]`
+and `[-@key]` renders `Tam et al.` alone. All of them collect into a generated
 `<section class="references">` — cited works only, in order of first appearance,
 plus anything listed under `nocite:`. Implemented in `citations.py`, which runs
 right after `footnotes.py` so a citation inside a note body is numbered by where
@@ -420,11 +421,23 @@ bracketed and on the baseline — so a document may carry both without ambiguity
 
 **Entries are opaque Markdown prose, and that is the defining trade.** The engine
 numbers, orders and links them; it never inspects them for an author or a year.
-Author-date (`(Parnas, 1972)`) is therefore not deferred but *impossible by
-construction*: reaching it means a real bibliography parser (`.bib` / CSL-JSON)
-and a style engine, which is a separate feature tracked in `tasks.md`. The trade
-is deliberate — formatting entries is exactly what CSL exists to do, and doing it
-halfway produces output that reads as a worse IEEE.
+
+What that rules out is *extraction*, not *declaration*. An entry may be written
+as an `{author, text}` mapping, and the declared name is what the narrative forms
+`[+@key]` (name, then mark) and `[-@key]` (name alone) emit — the engine reads a
+field, never the prose beside it. Full author-date — `(Tam, 2024)` at every site,
+alphabetical ordering, `2026a` / `2026b` disambiguation — does still need a real
+bibliography parser (`.bib` / CSL-JSON) and a style engine, and remains a separate
+feature tracked in `tasks.md`. The trade is unchanged: entry *formatting* is
+exactly what CSL exists to do, and doing it halfway produces output that reads as
+a worse IEEE.
+
+There is deliberately no command that emits a year. In a numeric scheme the
+number does the identifying, so a year would duplicate what the entry already
+says while resolving nothing.
+
+The name is emitted as `<span class="cite-author">`, which is the theming hook;
+the base stylesheet gives it no rule, because body prose is what it should be.
 
 Bare `@key` is deliberately **not** a citation. §7.4's neighbouring fix narrowed
 `@type-id` to a known prefix set precisely because a loose `@word` rule was

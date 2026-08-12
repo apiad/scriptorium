@@ -151,8 +151,28 @@ All five `extend` a `base` theme; build your own by extending any of them. See
 - **Citations** — `[@key]` and `[@a; @b]` render as `[1]` / `[1, 2]` against a
   `bibliography:` map in frontmatter (or in `scriptorium.yaml` for a project),
   and collect into a references section. Cited works only; add `nocite: [key]`
-  for anything you want listed without citing. Entries are Markdown prose, so
-  numeric styles only — author-date needs CSL, which is not built.
+  for anything you want listed without citing. Entries are Markdown prose.
+- **Narrative citations** — to put the author's name in the running text, write
+  the entry as a mapping and use a sigil: `[+@key]` renders `Tam et al. [1]`
+  (`+` adds the name) and `[-@key]` renders `Tam et al.` alone (`−` removes the
+  mark). The name is declared, never guessed from the key:
+
+  ```yaml
+  bibliography:
+    tam-2024:
+      author: Tam et al.
+      text: 'Tam, Z. R., … *Let Me Speak Freely?* [arXiv:2408.02442](https://arxiv.org/abs/2408.02442).'
+  ```
+
+  Two things to know when authoring. A name ending in `et al.` already carries a
+  period, so ending a sentence on `[-@key]` yields `Tam et al..` — drop your own
+  full stop, because the engine cannot tell sentence punctuation from an
+  abbreviation. And `[-@key]` does not number, so it does not affect the order
+  of the references list: a work first *named* and later *cited* takes its number
+  from the citation.
+
+  Full author-date — `(Tam, 2024)` everywhere, alphabetical ordering — still
+  needs CSL, which is not built.
 - **Layout** — `::: keep` (keep-together), `::: newpage`.
 
 Where the notes land is the `footnotes:` key — frontmatter wins over the theme:

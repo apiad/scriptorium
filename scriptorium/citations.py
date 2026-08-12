@@ -5,8 +5,14 @@ parse() renders block by block, so a plugin would never see a citation and its
 entry in one render call.
 
 Entries are opaque Markdown prose. The engine numbers, orders and links them; it
-never inspects them for an author or a year, which is why this is numeric-only
-and author-date belongs to a future CSL feature.
+never inspects them for an author or a year.
+
+That rules out extraction, not declaration. An entry may instead be an
+`{author, text}` mapping, and the declared name is what the narrative forms
+`[+@key]` (name, then mark) and `[-@key]` (name alone) emit — a field the engine
+reads, never a parse of the prose beside it. Full author-date, alphabetical
+ordering and `2026a` / `2026b` disambiguation still need structured entries and
+a CSL style engine; that remains a separate feature.
 """
 
 import re

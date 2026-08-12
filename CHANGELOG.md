@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Features
+- **Narrative citations.** `[+@key]` renders the author's name before the
+  numbered mark (`Tam et al. [1]`); `[-@key]` renders the name alone, with no
+  mark and no references entry. Both read a declared `author:` from an
+  `{author, text}` bibliography entry — the engine never parses a name out of
+  entry prose, and never derives one from the key. Prose-string entries and bare
+  `[@key]` are unchanged. A sigil on an entry with no `author:`, or on a
+  multi-key span, leaves the span literal and warns.
+
 ## [v0.5.0] - 2026-08-11
 
 Citations: `[@key]` against an author-declared bibliography, collected into
