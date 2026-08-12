@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.8.0] - 2026-08-12
+
 The book apparatus: a glossary, part dividers, unnumbered front matter, a cover,
 and a stylesheet a project can call its own. Everything *Mostly Harmless AI*
 needed to leave Quarto — it renders in 50 s over 307 pages with no warnings.
