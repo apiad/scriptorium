@@ -139,6 +139,43 @@ def _split_nodes(src: str):
     return nodes
 
 
+_LIST_ITEM = re.compile(r"^\s{0,3}(?:\d+[.)]|[-*+])\s")
+_INDENTED = re.compile(r"^(?: {2,}|\t)\S")
+
+
+def _regroup_lists(blocks: list[str]) -> list[str]:
+    """Re-join blank-line-separated blocks that belong to one list.
+
+    Prose is split on blank lines so each paragraph measures independently, but
+    a *loose* list is blank-line separated by definition. Splitting it hands
+    markdown-it one item per render call, and each becomes its own `<ol>`
+    starting at 1 — so `1. 2. 3.` renders as `1. 1. 1.`, and a continuation
+    paragraph detaches from the item it belongs to.
+
+    A run continues while blocks are either list items or indented
+    continuations. The joined run is one unit, which is exactly how a *tight*
+    list already behaves, so this introduces no new pagination case.
+    """
+    out: list[str] = []
+    run: list[str] = []
+
+    def close():
+        if run:
+            out.append("\n\n".join(run))
+            run.clear()
+
+    for b in blocks:
+        if _LIST_ITEM.match(b):
+            run.append(b)
+        elif run and _INDENTED.match(b):
+            run.append(b)
+        else:
+            close()
+            out.append(b)
+    close()
+    return out
+
+
 def _split_md(text: str):
     """Split an md region into ('prose', text) and ('code', info, body), keeping
     fenced code blocks whole (they may contain blank lines)."""
@@ -150,7 +187,7 @@ def _split_md(text: str):
         # so a multi-line <!-- --> is never cut into unbalanced halves. Code
         # fences are already separated out, so their contents are untouched.
         text = re.sub(r"<!--.*?-->", "", "\n".join(buf), flags=re.S)
-        for b in re.split(r"\n\s*\n", text):
+        for b in _regroup_lists(re.split(r"\n\s*\n", text)):
             if b.strip():
                 items.append(("prose", b))
         buf.clear()
