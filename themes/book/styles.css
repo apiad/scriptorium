@@ -6,7 +6,7 @@
 body {
   font-family: var(--body-font), Georgia, "DejaVu Serif", serif;
   font-size:11pt; line-height:1.55; color:var(--ink);
-  counter-reset: chapter;
+  counter-reset: chapter part;
 }
 p { margin:0 0 0 0; text-indent:5mm; text-align:justify; hyphens:auto; }
 p:first-of-type, h1 + p, h2 + p, h3 + p { text-indent:0; }  /* no indent after a heading */
@@ -23,6 +23,19 @@ h1::before {
   display:block; font-family:var(--body-font), serif; font-size:64pt; font-weight:300;
   line-height:1; color:var(--accent); margin-bottom:2mm;
 }
+/* Front matter and part dividers are headings, not chapters: neither takes a
+   chapter number, so the first real chapter is 1 rather than 4. */
+h1.unnumbered { counter-increment: none; }
+h1.unnumbered::before { content: none; }
+
+h1.part { counter-increment: part; }
+h1.part::before {
+  content: "Part " counter(part, upper-roman);
+  display:block; font-family:var(--heading-font), system-ui, sans-serif;
+  font-size:14pt; font-weight:600; letter-spacing:0.12em; text-transform:uppercase;
+  line-height:1; color:var(--accent); margin-bottom:4mm;
+}
+
 h2 { counter-increment: section; font-size:15pt; font-weight:700; margin:7mm 0 3mm 0; }
 h3 { font-size:12.5pt; font-weight:700; margin:5mm 0 2mm 0; }
 

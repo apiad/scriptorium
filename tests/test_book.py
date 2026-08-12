@@ -42,3 +42,31 @@ def test_project_concatenates_and_substitutes_vars(tmp_path):
     assert "# Hello" in p.src  # var substituted
     assert "\\newpage" in p.src  # files separated by a page break
     assert "# second" in p.src
+
+
+# --- parts and unnumbered front matter ------------------------------------
+
+def test_front_matter_and_parts_do_not_consume_chapter_numbers(tmp_path):
+    import subprocess
+
+    from scriptorium.galley import render_pdf
+
+    src = ("---\ntheme: book\ntitle: T\n---\n\n"
+           "# Preface {.unnumbered}\n\nBody.\n\n"
+           "# Foundations {.part}\n\nBody.\n\n"
+           "# Classical AI\n\nBody.\n")
+    out = tmp_path / "b.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    # Compare whitespace- and case-insensitively: pdftotext sees the styled
+    # glyphs, so letter-spacing splits "PART" into "PA R T" and text-transform
+    # upper-cases it. Both are theme styling, not the thing under test — what is
+    # under test is which counter each heading increments.
+    compact = "".join(text.split()).upper()
+    # The first real chapter is 1, not 3: neither the preface nor the part
+    # increments the chapter counter.
+    assert "1CLASSICALAI" in compact
+    assert "PARTIFOUNDATIONS" in compact
+    assert "1PREFACE" not in compact and "2PREFACE" not in compact
