@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.7.0] - 2026-08-12
+
+A readable references apparatus: a heading you name, back-links that say which
+page, and tables that stop mangling their own labels.
+
 ### Features
 - **`references-label`.** The generated references section can carry a heading.
   The var is empty by default and empty means no heading, so nothing changes for
