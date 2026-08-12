@@ -58,3 +58,10 @@ Actionable items for scriptorium. One line each; link the spec when there is one
       open a math span when the character after `$` is a digit followed by a
       digit/comma/period. Found while rendering
       `vault/+/agent_drafts/2026-08-12-frontier-ai-value-report.md` (2026-08-12).
+      **Confirmed corrupting a real book the same day.** *Mostly Harmless AI*
+      writes `GPT-3 175B at $2M in 2020, GPT-4 at $40M in 2023` in a note; the
+      page rendered `GPT-3 175B at ⟨math⟩ 40M in 2023` — the GPT-3 figure and
+      the GPT-4 label swallowed. Escaped in that manuscript; the engine is still
+      wrong. Note the failure shape, because it raises the priority: it deletes
+      prose **silently**, with no warning and a page that looks fine, so only a
+      source-to-page comparison catches it.
