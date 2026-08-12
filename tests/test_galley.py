@@ -152,3 +152,46 @@ def test_refs_only_match_known_prefixes():
     # the regression that motivated this: prose was silently deleted
     out = _rewrite_refs("See @sec-intro and mail me @piad-morffis-2024.")
     assert "mail me @piad-morffis-2024." in out
+
+
+# --- a project's own stylesheet -------------------------------------------
+
+def test_project_css_changes_the_rendered_geometry(tmp_path):
+    # A book needs its own stylesheet without authoring a theme: load_theme
+    # resolves only from scriptorium/themes, so `css:` is the only route in.
+    # Asserting the PDF merely exists would pass with the feature ripped out, so
+    # this asserts a rule that visibly changes the output: a much larger body
+    # font has to spill the same prose onto more pages.
+    body = "# H\n\n" + ("Prose that fills the page. " * 60 + "\n\n") * 3
+    (tmp_path / "ch.md").write_text(body, encoding="utf-8")
+    (tmp_path / "big.css").write_text("body { font-size: 34pt; }\n", encoding="utf-8")
+
+    plain = "---\ntheme: article\ntitle: T\n---\n\n" + body
+    styled = "---\ntheme: article\ntitle: T\ncss: big.css\n---\n\n" + body
+
+    before = render_pdf(plain, str(tmp_path / "a.pdf"), cwd=str(tmp_path), execute=False)
+    after = render_pdf(styled, str(tmp_path / "b.pdf"), cwd=str(tmp_path), execute=False)
+
+    assert after.n_pages > before.n_pages
+    assert after.warnings == []
+
+
+def test_project_file_accepts_css(tmp_path):
+    (tmp_path / "book.css").write_text("body { color: #b91c1c; }\n", encoding="utf-8")
+    (tmp_path / "ch.md").write_text("# H\n\nBody.\n", encoding="utf-8")
+    (tmp_path / "scriptorium.yaml").write_text(
+        "theme: article\ncss: book.css\nvars:\n  title: T\nfiles:\n  - ch.md\n",
+        encoding="utf-8")
+
+    from scriptorium.cli import main
+    assert main(["render", str(tmp_path / "scriptorium.yaml")]) == 0
+    assert (tmp_path / "book.pdf").exists()
+
+
+def test_missing_css_file_warns_rather_than_raising(tmp_path):
+    src = "---\ntheme: article\ntitle: T\ncss: nope.css\n---\n\n# H\n\nBody.\n"
+    out = tmp_path / "c.pdf"
+    report = render_pdf(src, str(out), cwd=str(tmp_path), execute=False)
+
+    assert out.exists()
+    assert any("nope.css" in w for w in report.warnings)

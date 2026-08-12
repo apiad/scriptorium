@@ -636,6 +636,21 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     if overrides:
         theme.css += f":root{{{overrides}}}"
 
+    # A project's own stylesheet. load_theme resolves only from scriptorium's
+    # themes directory, so without this a book with any custom styling has to
+    # author a theme inside this repo. Appended after the theme's own rules, so
+    # it wins on equal specificity.
+    css_warnings: list[str] = []
+    css_spec = meta.get("css")
+    for rel in [css_spec] if isinstance(css_spec, str) else list(css_spec or []):
+        path = Path(rel)
+        if cwd and not path.is_absolute():
+            path = Path(cwd) / path
+        try:
+            theme.css += "\n" + path.read_text(encoding="utf-8")
+        except OSError as exc:
+            css_warnings.append(f"css file {rel!r} could not be read: {exc}")
+
     # freeze cache serves both executed code and rendered math
     freeze = Freeze(Path(cwd) / ".scriptorium" / "freeze.json") if cwd else None
     from . import mathrender
@@ -666,7 +681,7 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     src, warnings = process_footnotes(src, resolve_footnote_mode(meta, theme.meta))
     src, cite_warnings = process_citations(src, meta)
     src, gloss_warnings = process_glossary(src, meta, Path(cwd) if cwd else None)
-    warnings = warnings + cite_warnings + gloss_warnings
+    warnings = css_warnings + warnings + cite_warnings + gloss_warnings
     units = parse(src, theme, env, meta=meta)
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
 
