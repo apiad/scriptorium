@@ -72,3 +72,26 @@ def test_split_md_does_not_merge_a_list_across_a_code_fence():
     # The fence separates the two runs; numbering restarting there is correct.
     items = _split_md("1. one\n\n```\ncode\n```\n\n2. two\n")
     assert [i[0] for i in items] == ["prose", "code", "prose"]
+
+
+# --- heading labels are text ----------------------------------------------
+
+def test_heading_label_carries_no_markup():
+    # The glossary pre-processor rewrites a marker inside a heading into an
+    # anchor before parse() sees it; the TOC must not print that markup.
+    from scriptorium.parse import _heading_unit
+
+    unit = _heading_unit('# The rise of <a class="gloss-ref" href="#x">machine learning</a>')
+
+    assert unit.heading == "The rise of machine learning"
+
+
+def test_toc_omits_an_unlisted_heading():
+    from scriptorium.parse import fill_toc, parse
+
+    src = "::: toc\n:::\n\n# Kept\n\nBody.\n\n# Hidden {.unlisted}\n\nBody.\n"
+    units = fill_toc(parse(src))
+    entries = [u.html for u in units if u.name == "toc-entry"]
+
+    assert any("Kept" in e for e in entries)
+    assert not any("Hidden" in e for e in entries)

@@ -24,6 +24,7 @@ class Unit:
     heading: str | None = None  # heading text if this unit is a heading
     heading_level: int = 0  # 1..6
     heading_id: str | None = None  # id assigned to the heading (for TOC + refs)
+    heading_classes: tuple[str, ...] = ()  # {.class} attrs, e.g. part / unlisted
     splittable: bool = False  # may be broken across pages at line boundaries
     code_src: str = ""  # raw code (for re-splitting a listing)
     code_lang: str = ""

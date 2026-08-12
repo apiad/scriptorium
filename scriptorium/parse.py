@@ -59,6 +59,9 @@ _HEADING = re.compile(r"^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$")
 _HEAD_ATTR = re.compile(r"^(\s{0,3}#{1,6}\s+.*?)\s*\{([^}]*)\}\s*$")
 
 
+_TAGS = re.compile(r"<[^>]+>")
+
+
 def _slug(text: str) -> str:
     s = re.sub(r"[^\w\s-]", "", text.lower()).strip()
     return re.sub(r"[\s_]+", "-", s) or "sec"
@@ -75,6 +78,12 @@ def _heading_unit(block: str) -> Unit:
         classes = re.findall(r"\.([\w-]+)", m.group(2))
         hid = idm.group(1) if idm else None
     label = _HEADING.match(src).group(1) if _HEADING.match(src) else None
+    if label:
+        # The label feeds the TOC and every other text consumer, so it has to be
+        # text. Inline HTML reaches a heading legitimately — the glossary
+        # pre-processor puts an anchor there — and escaping it into the TOC
+        # prints the markup instead of the words.
+        label = _TAGS.sub("", label)
     if hid is None and label:
         hid = _slug(label)
     attr = (f' id="{hid}"' if hid else "") + (f' class="{" ".join(classes)}"' if classes else "")
@@ -82,7 +91,8 @@ def _heading_unit(block: str) -> Unit:
     if attr:
         html = re.sub(r"^<(h[1-6])(\s|>)", rf"<\1{attr}\2", html, count=1)
     return Unit(html=html, keep_together=False, name="prose",
-                heading=label, heading_level=level, heading_id=hid)
+                heading=label, heading_level=level, heading_id=hid,
+                heading_classes=tuple(classes))
 
 
 def _parse_info(info: str):
@@ -302,7 +312,9 @@ def fill_toc(units: list[Unit], depth: int = 2) -> list[Unit]:
     paginates). Page numbers are added by theme CSS via target-counter."""
     if not any(u.name == "toc" for u in units):
         return units
-    heads = [u for u in units if u.heading_id and 1 <= u.heading_level <= depth]
+    heads = [u for u in units
+             if u.heading_id and 1 <= u.heading_level <= depth
+             and "unlisted" not in u.heading_classes]
     out: list[Unit] = []
     for u in units:
         if u.name != "toc":
