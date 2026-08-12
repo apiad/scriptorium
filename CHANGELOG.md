@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Fixes
+- **Back-links carry the page they point at.** A reference cited four times used
+  to end in four identical `↩` marks, which told the reader nothing about where
+  the citations were. The apparatus is now one arrow followed by the page number
+  of each call site (`↩ 4, 7, 12`), resolved by CSS `target-counter` — the same
+  mechanism the `book` theme already uses for cross-references and its TOC.
+
 ## [v0.6.0] - 2026-08-12
 
 Narrative citations: the author's name in the running text, declared rather

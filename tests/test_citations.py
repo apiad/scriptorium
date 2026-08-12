@@ -87,7 +87,7 @@ def test_document_gets_one_references_component_at_the_end():
     assert out.count("::: references") == 1
     assert out.index("::: references") > out.index("A claim.")
     assert '<span id="cite-1"></span>' in out
-    assert "Parnas, D. L." in out and "[↩](#citeref-1-1)" in out
+    assert "Parnas, D. L." in out and '<a class="cite-back" href="#citeref-1-1">' in out
     assert warnings == []
 
 
@@ -115,7 +115,27 @@ def test_nocite_key_with_no_entry_warns():
 def test_repeated_citation_gets_a_back_link_each():
     out, _ = process_citations("A[@parnas] again[@parnas]\n", META)
 
-    assert "[↩](#citeref-1-1)" in out and "[↩](#citeref-1-2)" in out
+    assert 'href="#citeref-1-1"' in out and 'href="#citeref-1-2"' in out
+
+
+def test_back_links_are_one_arrow_and_a_list_of_page_anchors():
+    # The page numbers themselves come from CSS target-counter at render time,
+    # so the anchors are deliberately empty here. One arrow, not one per site:
+    # three identical arrows told the reader nothing.
+    out, _ = process_citations("A[@parnas] again[@parnas] thrice[@parnas]\n", META)
+
+    assert out.count("↩") == 1
+    assert out.count('class="cite-back"') == 3
+    assert '<a class="cite-back" href="#citeref-1-1"></a>, ' \
+           '<a class="cite-back" href="#citeref-1-2"></a>' in out
+
+
+def test_an_uncited_nocite_entry_has_no_back_link_apparatus():
+    meta = {"bibliography": BIB, "nocite": ["vogel"]}
+    out, _ = process_citations("Only one.[@parnas]\n", meta)
+
+    vogel_line = [ln for ln in out.split("\n") if "Vogel" in ln][0]
+    assert "↩" not in vogel_line and "cite-back" not in vogel_line
 
 
 def test_entry_body_keeps_its_markdown():
@@ -377,3 +397,21 @@ def test_project_level_mapping_bibliography_reaches_the_render(tmp_path):
     text = subprocess.run(["pdftotext", str(out), "-"],
                           capture_output=True, text=True).stdout
     assert "Tam et al." in text and "Tam, Z. R." in text
+
+
+def test_back_links_resolve_to_the_real_page_number(tmp_path):
+    # Asserting on the HTML would pass even if target-counter were silently
+    # dropped, so this checks the PDF. Two pages, with the only citation on the
+    # second, so a resolved number cannot be confused with a constant "1".
+    src = ("---\ntheme: article\ntitle: T\n"
+           "bibliography:\n  parnas: \"Parnas, D. L. On the Criteria. CACM, 1972.\"\n"
+           "---\n\n# H\n\nOpening page.\n\n::: newpage\n:::\n\n"
+           "A claim on the second page.[@parnas]\n")
+    out = tmp_path / "back.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "↩ 2" in text, f"back-link page not resolved; got: {text[-200:]!r}"
+    assert text.count("↩") == 1

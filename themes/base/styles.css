@@ -127,6 +127,10 @@ code { hyphens: none; overflow-wrap: break-word; }
 .references ol { font-size: 9pt; line-height: 1.45; padding-left: 6mm; margin: 0; }
 .references li { margin: 0 0 1.5mm 0; }
 .references a { color: var(--accent-dark); border-bottom: none; }
+/* Back-links carry no text of their own: the page a call site landed on is
+   known only to the paged renderer, so target-counter supplies it here. */
+.cite-back::after { content: target-counter(attr(href url), page);
+                    font-variant-numeric: tabular-nums; }
 
 /* `footnotes: page` — WeasyPrint's GCPM footnote area, ruled off from the body */
 .footnote-inline { float: footnote; font-size: 9pt; }

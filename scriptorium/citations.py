@@ -186,8 +186,17 @@ def _component(entries: list[Entry]) -> str:
     """Entries as a `::: references` component; bodies stay Markdown."""
     items = []
     for entry in entries:
-        back = " ".join(f"[↩](#citeref-{entry.number}-{k})"
-                        for k in range(1, entry.refs + 1))
+        # One arrow, then a page number per call site. The anchors are empty on
+        # purpose: only the paged renderer knows what page a call site landed
+        # on, so CSS target-counter fills them in. Emitting an arrow per site
+        # instead gave a row of identical marks that told the reader nothing.
+        back = ""
+        if entry.refs:
+            links = ", ".join(
+                f'<a class="cite-back" href="#citeref-{entry.number}-{k}"></a>'
+                for k in range(1, entry.refs + 1)
+            )
+            back = f"↩ {links}"
         items.append(f'{entry.number}. <span id="cite-{entry.number}"></span>'
                      f"{entry.body} {back}".rstrip())
     return "::: references\n" + "\n".join(items) + "\n:::\n"
