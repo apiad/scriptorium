@@ -28,3 +28,12 @@ Actionable items for scriptorium. One line each; link the spec when there is one
       no target) still renders as an empty anchor. Narrowing `_REF` in v0.4.0
       fixed the silent-deletion case for unknown prefixes; making a known-prefix
       miss warn is the remaining half.
+- [ ] **Bare `$` in prose is parsed as inline math.** `dollarmath_plugin` is
+      configured with `allow_space=True`, so any two dollar amounts on the same
+      line (`costs $2.34 ... and $0.03`) become a math span and render as a black
+      bar. Money-heavy documents currently need every `$` escaped as `\$`, which
+      is a footgun a market report or invoice will hit on line one. Options:
+      require no space after the opening `$` (drop `allow_space`), or refuse to
+      open a math span when the character after `$` is a digit followed by a
+      digit/comma/period. Found while rendering
+      `vault/+/agent_drafts/2026-08-12-frontier-ai-value-report.md` (2026-08-12).
