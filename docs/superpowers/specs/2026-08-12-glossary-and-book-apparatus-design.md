@@ -1,6 +1,6 @@
 # A glossary, and the last of the book apparatus
 
-*Status: approved, not yet implemented. 2026-08-12.*
+*Status: approved, not yet implemented. 2026-08-12. Verified against v0.7.0.*
 
 *Mostly Harmless AI* — 128,000 words, 24 chapters — is moving off Quarto, and
 scriptorium is the destination. Quarto is not staying behind for HTML and EPUB:
@@ -195,8 +195,9 @@ Contents
 The rise of <a class="gloss-ref" href="#x">machine learning</a>
 ```
 
-Verified against the engine on 2026-08-12. The manuscript has 8 markers on
-heading lines, so this would have shipped in a real book's table of contents.
+Verified against the engine on 2026-08-12, and re-verified against v0.7.0. The
+manuscript has 8 markers on heading lines, so this would have shipped in a real
+book's table of contents.
 
 The fix belongs in `_heading_unit`, where the label is built, not in `fill_toc`
 — every consumer of `Unit.heading` wants text, and stripping tags at the source
@@ -217,7 +218,13 @@ joins it rather than starting a second one:
 - A `<name>-label:` var, empty by default *because the label's language is the
   document's business*. When set, the component emits
   `<h2 class="apparatus-title">` and adds `.labelled`, which drops the top rule
-  so a heading and a rule do not read as a doubled divider.
+  so a heading and a rule do not read as a doubled divider. Precisely: this
+  arrived with `references-label` in v0.7.0 and only `references` has one today,
+  so the glossary is the second member, not the third.
+- That same commit widened the template engine's `_HOLE` and `_SECTION` patterns
+  to accept hyphens, because theme vars are kebab-case and until then no var
+  could reach a template at all. `{{#glossary-label}}` depends on it; against
+  v0.6.0 this design would not have worked.
 - A `keep_together: false` hint — these sections outrun a page, and a 54-page
   glossary emphatically does.
 - A hairline `--rule` above, `margin-top: 6mm; padding-top: 3mm`, 9pt / 1.45,
