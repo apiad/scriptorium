@@ -305,3 +305,16 @@ def test_the_glossary_links_resolve_in_both_directions(tmp_path):
     assert "gloss-ai-effect" in _link_dests(out, 0)        # body -> entry
     assert "glossref-ai-effect-1" in _link_dests(out, 1)   # entry -> body
     assert "↩ 1" in _text(out)          # and the back-link resolved to a real page
+
+
+def test_a_marker_inside_an_inline_code_span_is_left_alone():
+    # The manuscript glosses a term inside `kubectl apply --dry-run=server`.
+    # Rewriting it injected raw <a class="gloss-ref"> markup into a code
+    # literal, which then printed verbatim on the page.
+    entries = _entries()
+    src = "Terraform's `plan` and `[~ai-effect]` both preview.\n"
+    out, _ = mark_terms(src, entries)
+
+    assert "`[~ai-effect]`" in out
+    assert "gloss-ref" not in out
+    assert entries["ai-effect"].refs == 0

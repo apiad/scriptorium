@@ -90,3 +90,22 @@ def test_cover_master_renders_a_full_page(tmp_path):
 
     assert report.n_pages == 2      # the cover is its own page
     assert report.warnings == []
+
+
+def test_a_part_divider_starts_its_own_page(tmp_path):
+    # A part landing at the foot of the previous chapter's endnotes is not a
+    # divider. Parts I and II of the manuscript only looked right by luck.
+    from scriptorium.galley import render_pdf
+
+    src = ("---\ntheme: book\ntitle: T\n---\n\n"
+           "# One\n\n" + ("Filler prose. " * 40 + "\n\n") * 2
+           + "# Dangers {.part}\n\nPart blurb.\n")
+    out = tmp_path / "part.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    per_page = [subprocess.run(["pdftotext", "-f", str(n), "-l", str(n),
+                                str(out), "-"], capture_output=True,
+                               text=True).stdout for n in (1, 2)]
+    assert "Dangers" not in per_page[0]      # not crammed under chapter one
+    assert "Dangers" in per_page[1]

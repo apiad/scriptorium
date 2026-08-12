@@ -14,7 +14,8 @@ from pathlib import Path
 
 import yaml
 
-from .source import fence_spans, in_span, line_offsets, split_frontmatter
+from .source import (code_spans, fence_spans, in_span, line_offsets,
+                     split_frontmatter)
 
 # `[display]{~key}` and the bare `[~key]`. Excluding `[` as well as `]` from the
 # display class is what makes the first pattern match the INNERMOST span of a
@@ -92,9 +93,11 @@ def mark_terms(src: str, entries: dict[str, Entry]) -> tuple[str, list[str]]:
                 f'href="#gloss-{key}">{display}</a>')
 
     def sweep(text: str, pattern, render) -> tuple[str, int]:
-        # fence_spans is recomputed per sweep on purpose: a rewrite moves every
-        # offset after it, so spans from an earlier pass no longer line up.
-        spans = fence_spans(text)
+        # Recomputed per sweep on purpose: a rewrite moves every offset after
+        # it, so spans from an earlier pass no longer line up. Inline code
+        # counts as well as fenced blocks — the manuscript glosses a term inside
+        # a `kubectl …` span, and rewriting that put raw <a> markup on the page.
+        spans = fence_spans(text) + code_spans(text)
         out, last, hits = [], 0, 0
         for m in pattern.finditer(text):
             if in_span(m.start(), spans):

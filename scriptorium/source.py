@@ -26,6 +26,32 @@ def fence_spans(src: str) -> list[tuple[int, int]]:
     return spans
 
 
+BACKTICKS = re.compile(r"`+")
+
+
+def code_spans(src: str) -> list[tuple[int, int]]:
+    """Character ranges covered by inline code spans.
+
+    A marker inside `code` is code, not a marker: rewriting one injects HTML
+    into a literal the reader is meant to see verbatim. fence_spans covers
+    fenced blocks only, so a pre-processor needs both.
+
+    Backtick runs pair by equal length, which is CommonMark's rule.
+    """
+    runs = list(BACKTICKS.finditer(src))
+    spans, i = [], 0
+    while i < len(runs):
+        opener = runs[i]
+        for j in range(i + 1, len(runs)):
+            if len(runs[j].group(0)) == len(opener.group(0)):
+                spans.append((opener.start(), runs[j].end()))
+                i = j + 1
+                break
+        else:
+            break
+    return spans
+
+
 def in_span(pos: int, spans: list[tuple[int, int]]) -> bool:
     return any(a <= pos < b for a, b in spans)
 
