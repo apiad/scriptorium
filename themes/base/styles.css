@@ -73,6 +73,10 @@ table { border-collapse:collapse; width:100%; font-size:9pt; }
 thead th { text-align:left; font-size:7.5pt; letter-spacing:0.12em; text-transform:uppercase;
   font-weight:700; color:var(--muted); border-bottom:1.5px solid var(--ink); padding:2.5mm 3mm; }
 tbody td { padding:2.5mm 3mm; border-bottom:1px solid var(--rule); vertical-align:top; }
+/* A row moves whole or not at all. Without this the tallest cell drags the
+   split through the row: a label stayed on one page while its own cells
+   continued on the next, which reads as two half-rows rather than one. */
+tbody tr { break-inside:avoid; }
 tbody td strong { color:var(--ink); }
 
 /* math (quickjax SVG) */

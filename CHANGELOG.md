@@ -15,6 +15,8 @@ All notable changes to this project are documented here. Format: Keep a Changelo
   `CodeAct (Py-thon)`. Both are labels rather than prose, so the same rule that
   already protects headings and inline code now covers them; wrapping at spaces
   is still allowed.
+- **A table row moves whole.** The tallest cell used to drag a page break
+  through its own row, leaving a label on one page and its cells on the next.
 
 ## [v0.6.0] - 2026-08-12
 
