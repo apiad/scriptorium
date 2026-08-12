@@ -25,8 +25,10 @@ import yaml
 
 THEMES_DIR = Path(__file__).resolve().parent.parent / "themes"
 
-_HOLE = re.compile(r"\{\{\s*([\w.]+)\s*\}\}")
-_SECTION = re.compile(r"\{\{#(\w+)\}\}(.*?)\{\{/\1\}\}", re.S)
+# Hyphens are allowed in a key because theme vars are kebab-case by convention
+# (accent-dark, body-font); without this no var could ever reach a template.
+_HOLE = re.compile(r"\{\{\s*([\w.-]+)\s*\}\}")
+_SECTION = re.compile(r"\{\{#([\w-]+)\}\}(.*?)\{\{/\1\}\}", re.S)
 _URL = re.compile(r"url\(\s*(['\"]?)([^)'\"]+)\1\s*\)")
 
 

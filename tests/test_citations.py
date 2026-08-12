@@ -415,3 +415,45 @@ def test_back_links_resolve_to_the_real_page_number(tmp_path):
                           capture_output=True, text=True).stdout
     assert "↩ 2" in text, f"back-link page not resolved; got: {text[-200:]!r}"
     assert text.count("↩") == 1
+
+
+# --- the references label -------------------------------------------------
+
+from scriptorium.theme import render_template
+
+
+def test_template_resolves_a_hyphenated_hole_and_section():
+    # Theme vars are kebab-case by convention (accent-dark, body-font), so the
+    # template engine has to accept a hyphen or no var can reach a template.
+    tpl = "{{#references-label}}<h2>{{references-label}}</h2>{{/references-label}}!"
+
+    assert render_template(tpl, {"references-label": "References"}) == "<h2>References</h2>!"
+    assert render_template(tpl, {}) == "!"
+
+
+def test_references_section_has_no_heading_without_the_label(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\n"
+           "bibliography:\n  parnas: \"Parnas, D. L. On the Criteria. CACM, 1972.\"\n"
+           "---\n\n# H\n\nA claim.[@parnas]\n")
+    out = tmp_path / "nolabel.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "Parnas, D. L." in text
+    assert "References" not in text and "REFERENCES" not in text
+
+
+def test_references_label_becomes_the_section_heading(tmp_path):
+    src = ("---\ntheme: article\ntitle: T\nreferences-label: Bibliografía\n"
+           "bibliography:\n  parnas: \"Parnas, D. L. On the Criteria. CACM, 1972.\"\n"
+           "---\n\n# H\n\nA claim.[@parnas]\n")
+    out = tmp_path / "label.pdf"
+    render_pdf(src, str(out), execute=False)
+
+    import subprocess
+    text = subprocess.run(["pdftotext", str(out), "-"],
+                          capture_output=True, text=True).stdout
+    assert "Bibliografía" in text          # the label the author chose, not a baked-in string
+    assert "Parnas, D. L." in text

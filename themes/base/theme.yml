@@ -19,6 +19,11 @@ vars:
   body-font: "Inter"
   heading-font: "Inter"
   mono-font: "JetBrains Mono"
+  # Heading for the generated references section. Empty means no heading at
+  # all, which is the default because the label's language is the document's
+  # business, not the engine's: set it to "References", "Bibliografía", or
+  # whatever the venue wants, in theme.yml or in frontmatter.
+  references-label: ""
 
 # Where footnote definitions collect: document | chapter | page.
 # Frontmatter `footnotes:` overrides this per document.

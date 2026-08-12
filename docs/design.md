@@ -415,6 +415,14 @@ plus anything listed under `nocite:`. Implemented in `citations.py`, which runs
 right after `footnotes.py` so a citation inside a note body is numbered by where
 the note renders rather than where its definition sat.
 
+The generated section carries a heading only when the `references-label` theme
+var is set — empty by default, and empty means no heading at all. The engine has
+no i18n, and the label's language is the document's business rather than the
+engine's, so baking in `"References"` would be wrong for every Spanish document
+scriptorium renders. Set it in `theme.yml` or in frontmatter. When the label is
+present the section drops its top rule: the rule exists to separate an
+unlabelled block from the prose above it, and a heading already does that.
+
 Notes and references are **separate apparatuses**: distinct sections, distinct
 counters, and distinct marks — footnotes are bare superscripts, citations are
 bracketed and on the baseline — so a document may carry both without ambiguity.

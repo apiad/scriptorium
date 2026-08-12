@@ -151,7 +151,11 @@ All five `extend` a `base` theme; build your own by extending any of them. See
 - **Citations** — `[@key]` and `[@a; @b]` render as `[1]` / `[1, 2]` against a
   `bibliography:` map in frontmatter (or in `scriptorium.yaml` for a project),
   and collect into a references section. Cited works only; add `nocite: [key]`
-  for anything you want listed without citing. Entries are Markdown prose.
+  for anything you want listed without citing. Entries are Markdown prose. Set
+  `references-label:` (a theme var, or a frontmatter key) to give the section a
+  heading — `References`, `Bibliografía`, whatever fits; unset means no heading.
+  Place `::: references` yourself to control where it lands, e.g. before an
+  appendix.
 - **Narrative citations** — to put the author's name in the running text, write
   the entry as a mapping and use a sigil: `[+@key]` renders `Tam et al. [1]`
   (`+` adds the name) and `[-@key]` renders `Tam et al.` alone (`−` removes the

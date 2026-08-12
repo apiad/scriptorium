@@ -4,7 +4,20 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Features
+- **`references-label`.** The generated references section can carry a heading.
+  The var is empty by default and empty means no heading, so nothing changes for
+  an existing document; set it in `theme.yml` or frontmatter to `References`,
+  `Bibliografía`, or whatever the venue wants. No string is baked into the
+  engine, because the label's language belongs to the document.
+- **Template keys may contain hyphens.** `{{accent-dark}}` and
+  `{{#references-label}}…{{/references-label}}` resolve now. Theme vars have
+  always been kebab-case, so until this no var could reach a template at all.
+
 ### Fixes
+- **A labelled references section drops its top rule.** The rule separates an
+  unlabelled block from the prose above it; with a heading the two read as a
+  doubled divider.
 - **Back-links carry the page they point at.** A reference cited four times used
   to end in four identical `↩` marks, which told the reader nothing about where
   the citations were. The apparatus is now one arrow followed by the page number
