@@ -246,6 +246,14 @@ def test_author_only_on_an_entry_with_no_author_stays_literal_and_warns():
     assert any("plain" in w and "author" in w for w in warnings)
 
 
+def test_a_sigil_on_a_multi_key_span_stays_literal_and_warns():
+    out, entries, warnings = number_citations("[+@tam; @fan] agree.\n", NAMED)
+
+    assert "[+@tam; @fan]" in out          # not half-rewritten
+    assert entries == [] and "cite-author" not in out
+    assert any("one key" in w for w in warnings)
+
+
 from scriptorium.galley import render_pdf
 
 

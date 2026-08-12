@@ -99,6 +99,13 @@ def number_citations(
                 warn(f"citation [@{k}] has no bibliography entry")
             continue  # the whole span stays literal — visible, never vanished
 
+        if sigil and len(keys) > 1:
+            # "Tam et al. and Fan [1, 2]" needs a conjunction, and which
+            # conjunction is a language-and-style decision the engine has no
+            # business making. Authoring error, not a concatenation.
+            warn(f"narrative citation [{sigil}@…] takes one key, not {len(keys)}")
+            continue
+
         author = None
         if sigil:
             author = sources[keys[0]].author
