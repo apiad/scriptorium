@@ -1,6 +1,6 @@
 # HTML Ebook Format — Design Spec
 
-**Status:** approved · **Date:** 2026-08-14 · **Author:** Alex + Claude
+**Status:** revised · **Date:** 2026-08-14 · **Author:** Alex + Claude
 
 ---
 
@@ -13,7 +13,8 @@ toggle, TOC, font size control. The experience is a digital book, not a
 scrolling web page.
 
 **Non-goals:** offline/PWA (downstream app responsibility), full-text search
-(future), EPUB (separate format, separate spec).
+(future), EPUB (separate format, separate spec), full-bleed master pages (V1
+fallback only — see §12).
 
 ---
 
@@ -32,24 +33,41 @@ paragraph splitting, no JS pagination logic.
 
 ### 3.1 Pipeline
 
-Identical to PDF up to `emit()`:
+The HTML path shares setup with the PDF path but diverges in two places before
+the emit step:
+
+1. **Footnote mode** — always `"document"` (endnotes), regardless of frontmatter.
+   Per-page float footnotes use WeasyPrint-specific CSS with no column equivalent.
+   `render_html()` passes the mode explicitly; no frontmatter setting overrides it.
+2. **No `fill_toc()`** — the PDF path calls `fill_toc()` to insert an inline TOC
+   unit into the stream. The HTML ebook builds its own sidebar TOC from the unit
+   scan in `emit_ebook()`. `fill_toc()` is not called on the HTML path.
 
 ```
-project.load() → preprocessors (footnotes, citations, glossary)
-→ parse.parse() → execute.execute() → math render
+project.load() → process_footnotes(src, "document") → process_citations()
+→ process_glossary() → parse.parse() → [execute.execute()] → math render
 → html.emit_ebook(units, theme, meta, options) → str
 → [optionally] html.embed_assets(html, base_path) → str
 → write output file
 ```
 
-New module: **`scriptorium/html.py`** — no changes to the existing parse/execute/galley
-pipeline. `galley.render_pdf()` is untouched.
+New top-level entry point: **`html.render_html()`** — mirrors `galley.render_pdf()`
+in signature and setup. New module: **`scriptorium/html.py`** — does not modify
+galley, parse, execute, theme, or any preprocessor.
 
 ### 3.2 New entry point
 
 ```python
 # html.py
-def emit_ebook(units: list[Unit], theme: Theme, meta: dict, options: EbookOptions) -> str:
+def render_html(src: str, out_path: str, base_url: str | None = None,
+                theme_name: str | None = None, cwd: str | None = None,
+                execute: bool = True, vars: dict | None = None,
+                code_root: str | None = None,
+                project_meta: dict | None = None) -> None:
+    """Top-level entry point — mirrors render_pdf() for the HTML path."""
+
+def emit_ebook(units: list[Unit], theme: Theme, meta: dict,
+               options: EbookOptions) -> str:
     """Render unit stream as a self-contained HTML ebook reader."""
 
 def embed_assets(html: str, base_path: str) -> str:
@@ -62,18 +80,53 @@ def embed_assets(html: str, base_path: str) -> str:
 
 ### 3.3 CSS strategy
 
-`emit_ebook` calls `_emit_ebook_css(theme, meta)` which reuses `_emit_css()` but
-post-processes the result:
+`emit_ebook` calls `_emit_ebook_css(theme, meta)`, which imports `_emit_css`
+from `galley` (explicit cross-module dependency on a private function; acceptable
+for V1, refactor candidate if a third consumer appears).
 
-1. **Strip** all `@page { … }` rules (including `@page master-*`)
-2. **Strip** `@bottom-*` and `@top-*` margin box rules (running heads)
-3. **Strip** fixed `.page { width: Nmm; height: Nmm }` geometry
-4. **Translate** `break-before: page` → `break-before: column` (column context)
-5. **Append** ebook layout CSS (see §4)
+The raw `_emit_css()` output is post-processed:
 
-Theme typography (fonts, colors, component styles, callouts, tables, code) passes
-through unchanged — the HTML output looks like the PDF, just flowing into the
-viewport instead of a fixed page size.
+1. **Strip** all `@page { … }` rules — `@page`, `@page:left`, `@page:right`,
+   `@page master-*` (the `@bottom-*` / `@top-*` margin boxes are inside these
+   and go with them)
+2. **Strip** `.page { … }` and `.page:first-child { … }` blocks — fixed-geometry
+   master wrappers have no column equivalent (see §12 for master handling)
+3. **Strip** `.slide { … }` and `.slide:last-child { … }` — deck-only rules
+4. **Strip** `string-set:` declarations — WeasyPrint-specific
+5. **Translate** `break-before:page` → `break-before:column` in all surviving
+   rules (`.pagebreak`, `.unit.break-before`)
+6. **Append** ebook layout CSS (§4)
+
+Theme typography (fonts, colors, component styles, callouts, tables, code)
+passes through unchanged.
+
+**Dark mode CSS.** `_emit_ebook_css` appends a minimal dark token block after
+the theme CSS. If the theme directory contains a `dark.css` alongside
+`styles.css`, that file's contents are used instead of the minimal fallback:
+
+```css
+[data-theme="dark"] {
+  --bg: #1a1a1a; --ink: #e5e5e5; --rule: #333; --muted: #888;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1a1a1a; --ink: #e5e5e5; --rule: #333; --muted: #888;
+    color-scheme: dark;
+  }
+}
+```
+
+**Font-size control.** `_emit_ebook_css` appends:
+
+```css
+:root { --body-size: 1rem; }
+body  { font-size: var(--body-size); }
+```
+
+This injects the variable into the cascade so JS font-size control works even
+if the theme does not use `--body-size`. Themes that set an absolute `font-size`
+on `body` or `p` will override this — known V1 limitation.
 
 ---
 
@@ -128,32 +181,21 @@ html, body { margin: 0; overflow: hidden; height: 100%; }
 }
 
 /* Fragmentation (same as PDF, browser honours in columns) */
-.unit          { break-inside: avoid; }
+.unit              { break-inside: avoid; }
 .unit.break-before { break-before: column; }
-.unit.keep     { break-inside: avoid; }
-.pagebreak     { break-before: column; display: block; height: 0; }
-figure         { break-inside: avoid; }
-h1, h2, h3    { break-after: avoid; }
+.unit.keep         { break-inside: avoid; }
+.pagebreak         { break-before: column; display: block; height: 0; }
+figure             { break-inside: avoid; }
+h1, h2, h3        { break-after: avoid; }
 
 /* Mobile: single column */
 @media (max-width: 768px), (orientation: portrait and max-width: 1024px) {
   .ebook-content { column-count: 1; padding: 2rem 1.25rem; }
 }
-
-/* Dark mode (data-theme attribute, toggled by JS) */
-[data-theme="dark"] { color-scheme: dark; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { color-scheme: dark; }
-}
 ```
 
-Dark/light colors come from the existing theme CSS variable contract
-(`--bg`, `--ink`, `--rule`, etc.) extended with a dark variant via
-`[data-theme="dark"]` overrides appended after the theme CSS.
-
-Font size is a CSS custom property `--body-size` on `:root`; theme CSS uses it
-as `font-size: var(--body-size, 1rem)` (or the renderer injects a wrapper rule
-at emit time).
+Dark-mode and `--body-size` CSS are generated by `_emit_ebook_css` (§3.3) and
+appended after this block; they are not part of the static layout string.
 
 ---
 
@@ -166,7 +208,7 @@ at emit time).
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{title}}</title>
-  <style>/* theme CSS (filtered) + ebook layout CSS */</style>
+  <style>/* theme CSS (filtered) + ebook layout CSS + dark + body-size */</style>
 </head>
 <body>
 
@@ -186,7 +228,6 @@ at emit time).
 
 <div class="reader-viewport" id="reader-viewport">
   <div class="ebook-content" id="ebook-content">
-    <!-- same unit HTML as emit() produces -->
     {{units}}
   </div>
 </div>
@@ -196,9 +237,9 @@ at emit time).
 </html>
 ```
 
-`{{toc}}` is generated by the renderer: scan units for headings at h1/h2 level,
-collect their text and IDs. Heading IDs are added by `parse.py` (or injected
-at emit time if not already present).
+`{{toc}}` is built by scanning units for h1/h2 headings and reading `heading_id`
+and `heading` directly from the `Unit` fields — `parse.py` always sets `heading_id`
+for heading units. No ID injection at emit time.
 
 ---
 
@@ -214,8 +255,9 @@ at emit time if not already present).
   click in left/right 30% of viewport
 
 **TOC jump**
-- Temporarily remove transform, read `el.getBoundingClientRect()` relative to
-  content origin, restore transform, compute page index, call `goToPage()`
+- `Math.floor(el.offsetLeft / viewport.clientWidth)` gives the page index.
+  `offsetLeft` in a multi-column strip measures the element's horizontal distance
+  from the content div's left edge — no transform removal, no reflow, no flash.
 - TOC drawer: toggle `.open` class on `.reader-toc`
 
 **Theme toggle**
@@ -238,19 +280,19 @@ minified size target: < 3 KB.
 
 ## 7. TOC generation
 
-In `emit_ebook()`, before emitting units, scan for heading units:
+`heading_id` is always set by `parse.py` for heading units; no ID injection or
+slug generation needed at emit time.
 
 ```python
-toc = []
-for u in units:
-    if u.heading and u.heading_level in (1, 2):
-        slug = slugify(u.heading_text)
-        ensure_id(u, slug)  # inject id= into u.html if missing
-        toc.append({"id": slug, "level": u.heading_level, "text": u.heading_text})
+toc = [
+    {"id": u.heading_id, "level": u.heading_level, "text": u.heading}
+    for u in units
+    if u.heading_id and u.heading_level in (1, 2)
+    and "unlisted" not in u.heading_classes
+]
 ```
 
-The TOC is injected into the reader shell as an `<ul>` with `h2` entries
-indented under their `h1` parent.
+Rendered as `<ul>` with `h2` entries indented under their `h1` parent.
 
 ---
 
@@ -262,11 +304,13 @@ indented under their `h1` parent.
 2. Find `url('...')` in `<style>` blocks (fonts, background images)
 3. For each: read file, detect MIME type, base64-encode, replace with
    `data:<mime>;base64,<data>`
-4. Large files (> 5 MB) emit a warning and are left as relative paths with a
-   comment — they won't work in truly single-file mode but won't corrupt the
-   document either
+4. Large files (> 5 MB) emit a warning and are left as relative paths —
+   they won't work in single-file mode but won't corrupt the document
 
-Default: embed on. Flag `--no-embed` skips step 1-3 and writes output to a
+Math SVGs from `mathrender.py` are already emitted as inline base64
+`<img src="data:image/svg+xml;base64,...">` — no special case needed.
+
+Default: embed on. `--no-embed` skips steps 1–3 and writes output to a
 directory (`<stem>/index.html` + `assets/`) instead of a single file.
 
 ---
@@ -279,24 +323,25 @@ Extend `scriptorium render` with a `--format` flag:
 scriptorium render [file.md | scriptorium.yaml] [--format pdf|html] [-o OUTPUT]
 ```
 
-- `--format pdf` (default): existing behaviour
-- `--format html`: invoke `html.emit_ebook()`; default output `<stem>.html`
+- `--format pdf` (default): existing behaviour, calls `galley.render_pdf()`
+- `--format html`: calls `html.render_html()`; default output `<stem>.html`
 - `--no-embed`: paired with `--format html`; output directory + linked assets
-
-Per `docs/design.md §14`, the positional form `scriptorium render html` is
-also acceptable — implementation may support both.
 
 ---
 
 ## 10. What is NOT changed
 
 - `galley.py`, `galley.render_pdf()`, `emit()`, `emit_deck()` — untouched
-- `parse.py`, `execute.py`, `theme.py`, all preprocessors — untouched
+- `parse.py`, `execute.py`, `theme.py` — untouched
 - All existing themes — no changes required; the HTML renderer filters their CSS
 
-The only requirement on themes is that they expose `--bg`, `--ink`, `--rule`
-CSS variables (already in the base theme contract) so the reader chrome can
-use them.
+**Preprocessors:** `process_citations` and `process_glossary` run unchanged.
+`process_footnotes` is called with forced `"document"` mode. `fill_toc()` is
+not called on the HTML path.
+
+**Required CSS variable contract** (already satisfied by every theme that extends
+`base`): `--bg`, `--ink`, `--rule`, `--muted`, `--heading-font`. These five are
+the only variables the reader chrome and the generated dark-mode block reference.
 
 ---
 
@@ -304,24 +349,38 @@ use them.
 
 | Path | Change |
 |---|---|
-| `scriptorium/html.py` | NEW — `emit_ebook()`, `embed_assets()`, `_emit_ebook_css()`, `_build_toc()` |
-| `scriptorium/__main__.py` (or `cli.py`) | add `--format`, `--no-embed` flags |
+| `scriptorium/html.py` | NEW — `render_html()`, `emit_ebook()`, `embed_assets()`, `_emit_ebook_css()` |
+| `scriptorium/cli.py` | add `--format`, `--no-embed` flags; wire `render_html()` |
 | `docs/superpowers/specs/2026-08-14-html-ebook-design.md` | this document |
 
 No new theme directories. No new dependencies (vanilla JS, data URIs, no Vite/Svelte).
 
 ---
 
-## 12. Open questions (deferred to implementation)
+## 12. Resolved decisions
 
-- Should masters (cover, section opener) render in HTML mode? Likely: yes, as
-  `<div class="page master-cover">` with the master's HTML, forced column break
-  before/after. Worth verifying that CSS columns handles full-bleed masters
-  acceptably.
-- Math: quickjax SVGs inline fine as `<img src="data:image/svg+xml;base64,...">`.
-  Confirm that `embed_assets()` catches these or that they're already inlined
-  by the math renderer.
-- Running heads (`@bottom-*` / `@top-*`): stripped. Could add a fixed position
-  chapter title display in the toolbar instead. Defer.
-- Page number display: "12 / 84" (column index) vs "Ch 2" vs both. Start with
-  raw column index; chapter context is a future enhancement.
+**Masters (full-page covers, section openers).** `emit_ebook` emits `full_page`
+units as `<div class="unit break-before full-page">` — the pre-rendered content
+is preserved and a column break is forced before the unit, but no fixed geometry
+is applied. Visual fidelity of full-bleed masters is not preserved; title text
+and section headings render in-flow. Full-bleed ebook master support is a future
+enhancement requiring a separate CSS contract.
+
+**Math.** `mathrender.py` emits SVGs as `<img src="data:image/svg+xml;base64,...">`.
+Already self-contained; `embed_assets` handles them via the `<img>` regex. No
+special case.
+
+**Running heads.** Stripped. Toolbar shows the book title statically. Dynamic
+chapter-title tracking in the toolbar is a future enhancement.
+
+**Page number display.** Raw column index: "12 / 84". Chapter context is future.
+
+**Footnotes.** `render_html()` calls `process_footnotes(src, "document")` — the
+mode is hardcoded for the HTML path. No frontmatter key can re-enable per-page
+float mode for HTML output. Endnotes render at document end as regular flow
+content, which is correct for column mode.
+
+**Glossary page back-links.** The glossary preprocessor generates `(p. N)`
+back-references. In column mode these column indices are cosmetically meaningless
+but syntactically harmless — they render as-is in V1. Suppressing them for the
+HTML path is a future enhancement.
