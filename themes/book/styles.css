@@ -64,6 +64,7 @@ a.ref-fig::after {
 .tp-title { font-family:system-ui,sans-serif; font-size:38pt; font-weight:800; color:var(--brand); line-height:1.1; }
 .tp-sub { font-size:14pt; color:var(--muted); margin-top:6mm; max-width:130mm; }
 .tp-author { margin-top:16mm; font-size:12pt; color:var(--ink); letter-spacing:0.04em; }
+.tp-institution { margin-top:3mm; font-size:10pt; color:var(--muted); }
 
 /* The cover is the one page with no margin: the artwork is the page. */
 .page.coverpage { padding:0; overflow:hidden; }
