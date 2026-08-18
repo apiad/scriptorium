@@ -48,7 +48,8 @@ def load(path: str | Path) -> Project:
     # the target of {{substitution}}): a bibliography is content, not styling,
     # and where the notes collect is structure, not styling either.
     meta = {k: spec[k]
-            for k in ("bibliography", "nocite", "glossary", "css", "footnotes")
+            for k in ("bibliography", "nocite", "glossary", "css", "footnotes",
+                      "timeline", "timeline-group")
             if k in spec}
 
     bodies = []

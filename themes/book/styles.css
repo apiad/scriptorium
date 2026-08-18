@@ -118,6 +118,9 @@ a.ref-fig::after {
 .glossary { border-top:none; padding-top:0; margin-top:0; }
 .glossary p { text-indent:0; }   /* body paragraphs are indented; entries are not */
 
+/* timeline in a book: same treatment as glossary — its own chapter */
+.timeline { border-top: none; padding-top: 0; margin-top: 0; }
+
 /* --- code, output, math (shared vocabulary) --- */
 .codeblock { position:relative; }
 .code-file { display:block; font-family:ui-monospace, monospace; font-size:7pt; color:var(--muted); margin:0 0 1mm 1mm; }

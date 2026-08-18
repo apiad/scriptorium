@@ -43,3 +43,5 @@ components:
     keep_together: false   # and so is a reference list
   glossary:
     keep_together: false   # and a five-hundred-entry glossary most of all
+  timeline:
+    keep_together: false

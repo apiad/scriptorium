@@ -673,6 +673,7 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     from .footnotes import process_footnotes, resolve_footnote_mode
     from .citations import process_citations
     from .glossary import process_glossary
+    from .timeline import process_timeline
 
     # Citations run after footnotes on purpose: a [@key] written inside a note
     # body has by then been moved to where the note actually renders, so it is
@@ -681,7 +682,8 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     src, warnings = process_footnotes(src, resolve_footnote_mode(meta, theme.meta))
     src, cite_warnings = process_citations(src, meta)
     src, gloss_warnings = process_glossary(src, meta, Path(cwd) if cwd else None)
-    warnings = css_warnings + warnings + cite_warnings + gloss_warnings
+    src, tl_warnings = process_timeline(src, meta, Path(cwd) if cwd else None)
+    warnings = css_warnings + warnings + cite_warnings + gloss_warnings + tl_warnings
     units = parse(src, theme, env, meta=meta)
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
 
