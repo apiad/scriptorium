@@ -349,9 +349,10 @@ def test_group_by_century_inserts_headers():
 
 
 def test_display_date_override_rendered():
-    src = '[>"~2400 years ago": Euclid] mentioned.\n\n::: timeline\n:::\n'
+    src = '[>-300 "~2400 years ago": Euclid] mentioned.\n\n::: timeline\n:::\n'
     out, _ = process_timeline(src, {}, None)
-    assert "~2400 years ago" in out
+    tl_start = out.index("::: timeline")
+    assert "~2400 years ago" in out[tl_start:]
 
 
 def test_back_links_emitted():

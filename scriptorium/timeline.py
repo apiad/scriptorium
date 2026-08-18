@@ -5,7 +5,7 @@ process_timeline() is the entry point; it runs after process_glossary().
 """
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
@@ -26,7 +26,7 @@ def _ordinal(n: int) -> str:
     return _ORDINALS.get(n, f"{n}th")
 
 
-@dataclass(order=True)
+@dataclass
 class DateTuple:
     year: int          # signed: -300 = 300 BCE
     month: int = 0     # 0 = unspecified
