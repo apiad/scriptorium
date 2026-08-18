@@ -71,10 +71,13 @@ def format_date(dt: "DateTuple", override: str | None = None) -> str:
             else f"{month_name} {dt.day}, {abs_year}")
 
 
-_GROUP_ALIASES = {"century": 100, "decade": 10, "millennium": 1000}
+_GROUP_ALIASES = {"century": 100, "decade": 10, "millennium": 1000, "auto": "auto"}
+_AUTO_CASCADE = [100, 10, 1, "month", "day"]
+_DEFAULT_AUTO_MAX = 20
 
 
-def _resolve_group(g) -> "int | None":
+def _resolve_group(g) -> "int | str | None":
+    """Return a group-width int, 'auto', or None (flat/unknown)."""
     if g is None:
         return None
     if isinstance(g, str):
@@ -99,6 +102,8 @@ def _group_key(dt: "DateTuple", n: int) -> "tuple[int, int]":
 
 def _group_label(bce_flag: int, bucket: int, n: int) -> str:
     if bce_flag == 0:  # CE
+        if n == 1:
+            return str(bucket)
         if n == 100:
             return f"{_ordinal(bucket + 1)} Century"
         if n == 1000:
@@ -108,6 +113,9 @@ def _group_label(bce_flag: int, bucket: int, n: int) -> str:
         start = bucket * n
         return f"{start}–{start + n - 1}"
     else:  # BCE
+        if n == 1:
+            # bucket = (-year - 1); abs_year = bucket + 1
+            return f"{bucket + 1} BCE"
         if n == 100:
             return f"{_ordinal(bucket + 1)} Century BCE"
         if n == 1000:
@@ -117,6 +125,62 @@ def _group_label(bce_flag: int, bucket: int, n: int) -> str:
         end_bce = (bucket + 1) * n
         start_bce = bucket * n + 1
         return f"{end_bce}–{start_bce} BCE"
+
+
+def _auto_bucket_key(dt: "DateTuple", level) -> tuple:
+    bce_flag = 1 if dt.year < 0 else 0
+    abs_year = abs(dt.year)
+    if isinstance(level, int):
+        return _group_key(dt, level)
+    if level == "month":
+        return (bce_flag, abs_year, dt.month)
+    # "day"
+    return (bce_flag, abs_year, dt.month, dt.day)
+
+
+def _auto_bucket_label(key: tuple, level) -> str:
+    bce_flag = key[0]
+    if isinstance(level, int):
+        return _group_label(bce_flag, key[1], level)
+    abs_year = key[1]
+    month = key[2]
+    year = -abs_year if bce_flag else abs_year
+    if level == "month":
+        return format_date(DateTuple(year=year, month=month))
+    # "day"
+    day = key[3]
+    return format_date(DateTuple(year=year, month=month, day=day))
+
+
+def _adaptive_groups(
+    events: "list[Entry]", max_per_group: int
+) -> "list[tuple[str | None, list[Entry]]]":
+    """Partition events into (label, events) pairs with adaptive granularity.
+
+    Starts at century level; for any bucket exceeding max_per_group it
+    recurses into the next finer level (decade → year → month → day).
+    """
+    def at_level(evts: "list[Entry]", level_idx: int) -> "list[tuple]":
+        if level_idx >= len(_AUTO_CASCADE):
+            return [(None, evts)]
+        level = _AUTO_CASCADE[level_idx]
+        buckets: dict = {}
+        for e in evts:
+            if e.date is None:
+                continue
+            bk = _auto_bucket_key(e.date, level)
+            if bk not in buckets:
+                buckets[bk] = []
+            buckets[bk].append(e)
+        result = []
+        for bk, grp in buckets.items():
+            if len(grp) <= max_per_group or level_idx == len(_AUTO_CASCADE) - 1:
+                result.append((_auto_bucket_label(bk, level), grp))
+            else:
+                result.extend(at_level(grp, level_idx + 1))
+        return result
+
+    return at_level(events, 0)
 
 
 # ---------------------------------------------------------------------------
@@ -355,45 +419,57 @@ def _placeholder(src: str) -> "tuple[int, int] | None":
     return found
 
 
-def _component(events: list[Entry], group_n: "int | None") -> str:
+def _render_entry(entry: "Entry") -> str:
+    date_str = format_date(entry.date, entry.date_display)
+    back = ""
+    if entry.refs:
+        links = ", ".join(
+            f'<a class="tl-back" href="#tlref-{entry.key}-{k}"></a>'
+            for k in range(1, entry.refs + 1)
+        )
+        back = f" \u21a9 {links}"
+    desc = f"\n\n{entry.description}" if entry.description else ""
+    cat = f' data-category="{entry.category}"' if entry.category else ""
+    return (
+        f'<span class="tl-entry" id="tl-{entry.key}"{cat}></span>'
+        f"**{date_str}** \u2014 {entry.label}{back}{desc}"
+    )
+
+
+def _component(events: "list[Entry]", group_n: "int | str | None",
+               max_per_group: int = _DEFAULT_AUTO_MAX) -> str:
     """Events as a `:::timeline` component, sorted chronologically."""
     if not events:
         return ""
 
-    # Sort oldest-first: most negative year first
     sorted_events = sorted(
         events,
         key=lambda e: (e.date.year, e.date.month, e.date.day) if e.date else (float("inf"), 0, 0),
     )
 
     items = []
-    current_group_key = None
 
-    for entry in sorted_events:
-        if entry.date is None:
-            continue  # entries without dates are skipped in the section
-
-        if group_n is not None:
+    if group_n == "auto":
+        for label, grp in _adaptive_groups(sorted_events, max_per_group):
+            if label is not None:
+                items.append(f'<h3 class="tl-group">{label}</h3>')
+            for entry in grp:
+                if entry.date is not None:
+                    items.append(_render_entry(entry))
+    elif group_n is not None:
+        current_group_key = None
+        for entry in sorted_events:
+            if entry.date is None:
+                continue
             gk = _group_key(entry.date, group_n)
             if gk != current_group_key:
                 current_group_key = gk
-                header = _group_label(gk[0], gk[1], group_n)
-                items.append(f'<h3 class="tl-group">{header}</h3>')
-
-        date_str = format_date(entry.date, entry.date_display)
-        back = ""
-        if entry.refs:
-            links = ", ".join(
-                f'<a class="tl-back" href="#tlref-{entry.key}-{k}"></a>'
-                for k in range(1, entry.refs + 1)
-            )
-            back = f" \u21a9 {links}"
-        desc = f"\n\n{entry.description}" if entry.description else ""
-        cat = f' data-category="{entry.category}"' if entry.category else ""
-        items.append(
-            f'<span class="tl-entry" id="tl-{entry.key}"{cat}></span>'
-            f"**{date_str}** \u2014 {entry.label}{back}{desc}"
-        )
+                items.append(f'<h3 class="tl-group">{_group_label(gk[0], gk[1], group_n)}</h3>')
+            items.append(_render_entry(entry))
+    else:
+        for entry in sorted_events:
+            if entry.date is not None:
+                items.append(_render_entry(entry))
 
     return "::: timeline\n" + "\n\n".join(items) + "\n:::\n"
 
@@ -438,13 +514,15 @@ def process_timeline(
     if group_raw is not None and group_n is None:
         warnings.append(f"timeline-group {group_raw!r} is not valid; using flat order")
 
+    group_max = int(meta.get("timeline-group-max", _DEFAULT_AUTO_MAX))
+
     marked, events, mark_warnings = mark_events(body, yaml_entries)
     warnings = warnings + mark_warnings
 
     if not events:
         return head + marked, warnings
 
-    block = _component(events, group_n)
+    block = _component(events, group_n, max_per_group=group_max)
 
     # Place the block at the placeholder location; append after prose if absent.
     at = _placeholder(marked)

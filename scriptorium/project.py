@@ -49,7 +49,7 @@ def load(path: str | Path) -> Project:
     # and where the notes collect is structure, not styling either.
     meta = {k: spec[k]
             for k in ("bibliography", "nocite", "glossary", "css", "footnotes",
-                      "timeline", "timeline-group")
+                      "timeline", "timeline-group", "timeline-group-max")
             if k in spec}
 
     bodies = []
