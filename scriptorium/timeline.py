@@ -173,3 +173,155 @@ def load_entries(spec, base_dir: Path | None) -> tuple[dict[str, Entry], list[st
             category=value.get("category", ""),
         )
     return entries, warnings
+
+
+# ---------------------------------------------------------------------------
+# Marker rewriting
+# ---------------------------------------------------------------------------
+
+# Full form: [display text]{>CONTENT}  — content ends at first }
+_TL_DISPLAY = re.compile(r"\[([^\[\]]*)\]\{>([^}]*)\}", re.DOTALL)
+# Bare form: [>CONTENT]  — content ends at first ]
+_TL_BARE = re.compile(r"\[>([^\]]*)\]")
+
+# Parses the CONTENT string after >.
+# Group 1: date string  Group 2: display-date override  Group 3: key  Group 4: label
+_CONTENT_RE = re.compile(
+    r"""
+    (?P<date>\d+\ BCE|[−\-]?\d+(?:-\d{2}(?:-\d{2})?)?)    # required date (BCE form first)
+    (?:\ "(?P<date_display>[^"]*)")?                       # optional "display"
+    (?:\ (?P<key>[\w][\w-]*))?                             # optional key
+    \ *:\ *(?P<label>.+)                                   # colon + label
+    """,
+    re.VERBOSE | re.DOTALL,
+)
+_KEY_ONLY_RE = re.compile(r"^[\w][\w-]*$")
+
+
+def _slug(date_str: str, label: str) -> str:
+    return re.sub(r"[^\w]", "-", f"{date_str}-{label}".lower())[:60].strip("-")
+
+
+def _parse_content(s: str) -> "tuple[str | None, str | None, str | None, str | None] | None":
+    """Return (date_str, date_display, key, label) for date form, or
+    (None, None, key, None) for key-only, or None for malformed."""
+    s = s.strip()
+    m = _CONTENT_RE.match(s)
+    if m:
+        return m.group("date"), m.group("date_display"), m.group("key"), m.group("label").strip()
+    if _KEY_ONLY_RE.match(s):
+        return None, None, s, None  # key-only
+    return None  # malformed
+
+
+def mark_events(
+    src: str, yaml_entries: dict[str, "Entry"]
+) -> "tuple[str, list[Entry], list[str]]":
+    """Rewrite timeline markers to anchored spans; return (src, events, warnings)."""
+    warnings: list[str] = []
+    collected: dict[str, Entry] = {}  # key → Entry; order preserved (Python 3.7+)
+
+    def warn(msg: str) -> None:
+        if msg not in warnings:
+            warnings.append(msg)
+
+    def make_or_get_entry(
+        date_str: "str | None",
+        date_display: "str | None",
+        key: "str | None",
+        label: "str | None",
+    ) -> "Entry | None":
+        # Key-only: requires YAML entry with date + label
+        if date_str is None and key is not None:
+            if key not in yaml_entries:
+                warn(f"timeline key {key!r} is key-only but has no YAML entry")
+                return None
+            e = yaml_entries[key]
+            if e.date is None:
+                warn(f"timeline YAML entry {key!r} has no `date:` (required for key-only marker)")
+                return None
+            return collected.setdefault(
+                key,
+                Entry(
+                    key=key,
+                    date=e.date,
+                    date_display=e.date_display or date_display,
+                    label=e.label,
+                    description=e.description,
+                    category=e.category,
+                ),
+            )
+
+        # Date + label form
+        dt = parse_date(date_str or "")
+        if dt is None:
+            warn(f"timeline marker has unrecognised date {date_str!r}")
+            return None
+
+        # Synthesize key from date+label if not explicit
+        entry_key = key or _slug(date_str, label or "")
+
+        if entry_key not in collected:
+            yaml_e = yaml_entries.get(entry_key) if key else None
+            collected[entry_key] = Entry(
+                key=entry_key,
+                date=dt,
+                date_display=date_display,
+                label=label or (yaml_e.label if yaml_e else ""),
+                description=yaml_e.description if yaml_e else "",
+                category=yaml_e.category if yaml_e else "",
+            )
+        # else: same event seen again — existing entry will have refs incremented
+
+        if key and key not in yaml_entries:
+            warn(f"timeline key {key!r} has no YAML entry (event registered from inline data)")
+
+        return collected[entry_key]
+
+    def anchor(display: str, entry: "Entry") -> str:
+        entry.refs += 1
+        return (
+            f'<a class="tl-ref" id="tlref-{entry.key}-{entry.refs}" '
+            f'href="#tl-{entry.key}">{display}</a>'
+        )
+
+    def process_match(content: str, display: str, literal: str) -> str:
+        """Attempt to rewrite one marker. Returns anchor HTML on success, or
+        `literal` (the full original matched text) when the marker is invalid."""
+        parsed = _parse_content(content)
+        if parsed is None:
+            warn(f"timeline marker {content!r} is malformed")
+            return literal
+        date_str, date_display, key, label = parsed
+        e = make_or_get_entry(date_str, date_display, key, label)
+        if e is None:
+            return literal  # warning already issued; leave full original text
+        return anchor(display, e)
+
+    def sweep(text: str, pattern: re.Pattern, get_display_content_literal) -> str:
+        spans = fence_spans(text) + code_spans(text)
+        out, last = [], 0
+        for m in pattern.finditer(text):
+            if in_span(m.start(), spans):
+                continue
+            out.append(text[last : m.start()])
+            last = m.end()
+            display, content, literal = get_display_content_literal(m)
+            out.append(process_match(content, display, literal))
+        out.append(text[last:])
+        return "".join(out)
+
+    # Full form first: [display]{>content} — literal is the full matched text
+    src = sweep(src, _TL_DISPLAY, lambda m: (m.group(1), m.group(2), m.group(0)))
+    # Bare form: [>content] — display is label after ":", literal is full match
+    src = sweep(
+        src,
+        _TL_BARE,
+        lambda m: (
+            m.group(1).split(":", 1)[1].strip() if ":" in m.group(1) else m.group(1),
+            m.group(1),
+            m.group(0),
+        ),
+    )
+
+    return src, list(collected.values()), warnings

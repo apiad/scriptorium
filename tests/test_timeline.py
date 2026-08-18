@@ -188,3 +188,98 @@ def test_load_entries_no_date_is_ok():
     assert "ev" in entries
     assert entries["ev"].date is None
     assert warnings == []
+
+
+# --- mark_events ---
+
+from scriptorium.timeline import mark_events
+
+_YAML = {
+    "turing-paper": Entry(
+        key="turing-paper",
+        date=DateTuple(year=1936),
+        date_display=None,
+        label="Turing publishes On Computable Numbers",
+        description="",
+        category="Theory",
+    ),
+}
+
+
+def test_bare_form_registered_and_anchor_emitted():
+    src = "In [>1936: Turing invents computation] this happened.\n"
+    out, events, warnings = mark_events(src, {})
+    assert warnings == []
+    assert len(events) == 1
+    e = events[0]
+    assert e.date == DateTuple(year=1936)
+    assert e.label == "Turing invents computation"
+    assert e.refs == 1
+    assert 'class="tl-ref"' in out
+    assert "Turing invents computation" in out
+
+
+def test_full_form_display_text_in_prose():
+    src = "[his landmark paper]{>1936: Turing invents computation} was key.\n"
+    out, events, warnings = mark_events(src, {})
+    assert "his landmark paper" in out
+    assert events[0].label == "Turing invents computation"
+
+
+def test_yaml_key_merges_category():
+    src = "[a paper]{>1936 turing-paper: Turing invents}\n"
+    out, events, warnings = mark_events(src, _YAML)
+    assert warnings == []
+    assert events[0].category == "Theory"
+
+
+def test_key_only_no_yaml_warns_and_leaves_literal():
+    src = "[a paper]{>missing-key}\n"
+    out, events, warnings = mark_events(src, {})
+    assert any("missing-key" in w for w in warnings)
+    assert events == []
+    assert "[a paper]" in out
+
+
+def test_malformed_date_warns_and_leaves_literal():
+    src = "[>banana: Some event]\n"
+    out, events, warnings = mark_events(src, {})
+    assert any("banana" in w for w in warnings)
+    assert events == []
+
+
+def test_same_event_twice_increments_refs():
+    src = "[>1936: Turing invents] and [>1936: Turing invents] again.\n"
+    out, events, warnings = mark_events(src, {})
+    # Same synthetic key → same Entry, refs=2
+    assert len(events) == 1
+    assert events[0].refs == 2
+    assert 'id="tlref-' in out
+
+
+def test_marker_inside_code_fence_skipped():
+    src = "```\n[>1936: Turing invents]\n```\n"
+    out, events, _ = mark_events(src, {})
+    assert events == []
+    assert out == src
+
+
+def test_marker_inside_inline_code_skipped():
+    src = "Use `[>1936: Turing]` to mark events.\n"
+    out, events, _ = mark_events(src, {})
+    assert events == []
+
+
+def test_display_date_override_stored_on_entry():
+    src = '[>-300 "~2400 years ago": Euclid systematizes geometry]\n'
+    out, events, warnings = mark_events(src, {})
+    assert warnings == []
+    assert events[0].date == DateTuple(year=-300)
+    assert events[0].date_display == "~2400 years ago"
+
+
+def test_bce_date_parsed_correctly():
+    src = "[>300 BCE: Euclid systematizes geometry]\n"
+    _, events, warnings = mark_events(src, {})
+    assert warnings == []
+    assert events[0].date == DateTuple(year=-300)
