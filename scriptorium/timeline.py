@@ -117,3 +117,59 @@ def _group_label(bce_flag: int, bucket: int, n: int) -> str:
         end_bce = (bucket + 1) * n
         start_bce = bucket * n + 1
         return f"{end_bce}–{start_bce} BCE"
+
+
+# ---------------------------------------------------------------------------
+# Data model
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Entry:
+    key: str
+    date: DateTuple | None
+    date_display: str | None
+    label: str
+    description: str
+    category: str
+    refs: int = 0
+
+
+def load_entries(spec, base_dir: Path | None) -> tuple[dict[str, Entry], list[str]]:
+    """`timeline:` is either a path to a YAML file or an inline dict."""
+    if isinstance(spec, str):
+        path = Path(spec)
+        if base_dir is not None and not path.is_absolute():
+            path = base_dir / path
+        try:
+            spec = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        except OSError as exc:
+            return {}, [f"timeline file {spec!r} could not be read: {exc}"]
+
+    if not isinstance(spec, dict):
+        return {}, ["`timeline:` is neither a mapping nor a path to one"]
+
+    entries: dict[str, Entry] = {}
+    warnings: list[str] = []
+    for key, value in spec.items():
+        if not isinstance(value, dict):
+            warnings.append(f"timeline entry {key!r} is not a mapping")
+            continue
+        if not value.get("label"):
+            warnings.append(f"timeline entry {key!r} has no `label:`")
+            continue
+        date_val = value.get("date")
+        date: DateTuple | None = None
+        if date_val is not None:
+            date = parse_date(str(date_val))
+            if date is None:
+                warnings.append(f"timeline entry {key!r} has unrecognised `date:` {date_val!r}")
+                continue
+        entries[key] = Entry(
+            key=key,
+            date=date,
+            date_display=value.get("date-display"),
+            label=value["label"],
+            description=value.get("description", ""),
+            category=value.get("category", ""),
+        )
+    return entries, warnings

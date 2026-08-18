@@ -117,3 +117,74 @@ def test_group_label_ce_custom_n():
 
 def test_group_label_bce_custom_n():
     assert _group_label(1, 0, 50) == "50–1 BCE"
+
+
+# --- Entry + load_entries ---
+
+from scriptorium.timeline import Entry, load_entries
+
+YAML_ENTRIES = {
+    "turing-paper": {
+        "date": "1936-07-28",
+        "label": "Turing publishes On Computable Numbers",
+        "description": "A landmark paper.",
+        "category": "Theory",
+    },
+    "shannon-paper": {
+        "date": "1948",
+        "label": "Shannon founds information theory",
+        "date-display": "Postwar summer",
+    },
+}
+
+
+def test_load_entries_from_dict():
+    entries, warnings = load_entries(YAML_ENTRIES, None)
+    assert set(entries) == {"turing-paper", "shannon-paper"}
+    assert warnings == []
+    e = entries["turing-paper"]
+    assert e.date == DateTuple(year=1936, month=7, day=28)
+    assert e.label == "Turing publishes On Computable Numbers"
+    assert e.description == "A landmark paper."
+    assert e.category == "Theory"
+    assert e.refs == 0
+
+
+def test_load_entries_date_display():
+    entries, _ = load_entries(YAML_ENTRIES, None)
+    assert entries["shannon-paper"].date_display == "Postwar summer"
+
+
+def test_load_entries_from_yaml_file(tmp_path):
+    (tmp_path / "t.yaml").write_text(
+        'turing-paper:\n  date: "1936"\n  label: "Turing"\n', encoding="utf-8"
+    )
+    entries, warnings = load_entries("t.yaml", tmp_path)
+    assert "turing-paper" in entries
+    assert warnings == []
+
+
+def test_load_entries_missing_label_warns_and_drops():
+    entries, warnings = load_entries({"bad": {"date": "1936"}}, None)
+    assert entries == {}
+    assert any("bad" in w and "label" in w for w in warnings)
+
+
+def test_load_entries_invalid_date_warns_and_drops():
+    entries, warnings = load_entries({"bad": {"date": "not-a-date", "label": "X"}}, None)
+    assert entries == {}
+    assert any("bad" in w and "date" in w for w in warnings)
+
+
+def test_load_entries_missing_file_warns():
+    entries, warnings = load_entries("missing.yaml", None)
+    assert entries == {}
+    assert len(warnings) == 1 and "missing.yaml" in warnings[0]
+
+
+def test_load_entries_no_date_is_ok():
+    # date is optional in YAML; required only for key-only markers
+    entries, warnings = load_entries({"ev": {"label": "Some event"}}, None)
+    assert "ev" in entries
+    assert entries["ev"].date is None
+    assert warnings == []
