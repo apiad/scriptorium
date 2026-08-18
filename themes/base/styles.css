@@ -156,6 +156,17 @@ code { hyphens: none; overflow-wrap: break-word; }
 .cite-back::after, .gloss-back::after { content: target-counter(attr(href url), page);
                     font-variant-numeric: tabular-nums; }
 
+/* --- timeline --- */
+.timeline { margin-top: 6mm; padding-top: 3mm; border-top: 0.3mm solid var(--rule); }
+.timeline.labelled { border-top: none; padding-top: 0; }
+.tl-group { font-size: 10pt; font-variant: small-caps; letter-spacing: 0.04em;
+            color: var(--accent-dark); margin: 4mm 0 1.5mm 0; border-bottom: 0.2mm solid var(--rule); }
+.timeline p { font-size: 9pt; line-height: 1.45; margin: 0 0 1.5mm 0; text-indent: 0; }
+.timeline a { color: var(--accent-dark); border-bottom: none; }
+/* Back-links: page numbers filled by target-counter (same as glossary) */
+.tl-back::after { content: target-counter(attr(href url), page);
+                  font-variant-numeric: tabular-nums; }
+
 /* `footnotes: page` — WeasyPrint's GCPM footnote area, ruled off from the body */
 .footnote-inline { float: footnote; font-size: 9pt; }
 @page { @footnote { border-top: 0.3mm solid #e5e7eb; margin-top: 4mm; padding-top: 2mm; } }
