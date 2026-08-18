@@ -376,3 +376,55 @@ def test_yaml_enrichment_via_meta(tmp_path):
     out, warnings = process_timeline(src, {"timeline": "tl.yaml"}, tmp_path)
     assert warnings == []
     assert "Turing publishes" in out
+
+
+# --- Integration smoke test ---
+
+import textwrap
+
+
+def test_renders_without_error(tmp_path):
+    """Smoke: a one-file project with timeline markers renders to PDF."""
+    from scriptorium.project import load as load_project
+    from scriptorium.galley import render_pdf
+
+    md = tmp_path / "book.md"
+    md.write_text(textwrap.dedent("""\
+        # Chapter One
+
+        In [>1936: Turing defines computability] things changed.
+
+        Later [>1948: Shannon founds information theory] happened.
+
+        # Timeline {.unnumbered}
+
+        ::: timeline
+        :::
+    """), encoding="utf-8")
+
+    proj_path = tmp_path / "book.yaml"
+    proj_path.write_text(textwrap.dedent("""\
+        theme: book
+        timeline-group: century
+        vars:
+          title: Test Book
+          author: Test
+        files:
+          - book.md
+    """), encoding="utf-8")
+
+    proj = load_project(proj_path)
+    out_pdf = tmp_path / "book.pdf"
+    cwd = str(proj_path.resolve().parent)
+    report = render_pdf(
+        proj.src, str(out_pdf),
+        base_url=cwd + "/",
+        theme_name=proj.theme,
+        cwd=cwd,
+        execute=False,
+        vars=proj.vars,
+        code_root=proj.code_root,
+        project_meta=proj.meta,
+    )
+    assert out_pdf.exists()
+    assert report.n_pages > 0
