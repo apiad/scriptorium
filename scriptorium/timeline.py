@@ -412,10 +412,8 @@ def process_timeline(
     or a `:::timeline` placeholder exists in the source. If none, returns early
     so markers in documents that have not opted into a timeline are left as-is.
 
-    The generated section is placed at the beginning of the body (after the
-    frontmatter), before the prose content. When a `:::timeline` placeholder
-    is present it is removed from the prose; without one the prose follows
-    directly after the section.
+    The generated section is placed AT the placeholder location. When no
+    placeholder is present the section is appended after the prose.
 
     Raises `ValueError` when the placeholder block is structurally invalid
     (two blocks, or an unclosed block).
@@ -448,12 +446,8 @@ def process_timeline(
 
     block = _component(events, group_n)
 
-    # Strip the placeholder from the prose (it is replaced by `block` which
-    # is placed before the prose so the section precedes the narrative text).
+    # Place the block at the placeholder location; append after prose if absent.
     at = _placeholder(marked)
     if at:
-        prose = marked[: at[0]] + marked[at[1] :]
-    else:
-        prose = marked
-
-    return head + block + prose.lstrip("\n"), warnings
+        return head + marked[: at[0]] + block + marked[at[1] :], warnings
+    return head + marked.rstrip() + "\n\n" + block, warnings

@@ -321,8 +321,9 @@ def test_events_sorted_oldest_first():
         "::: timeline\n:::\n"
     )
     out, _ = process_timeline(src, {}, None)
-    turing_pos = out.index("Turing")
-    shannon_pos = out.index("Shannon")
+    tl_start = out.index("::: timeline")
+    turing_pos = out.index("Turing", tl_start)
+    shannon_pos = out.index("Shannon", tl_start)
     assert turing_pos < shannon_pos   # 1936 before 1948
 
 
@@ -332,7 +333,8 @@ def test_bce_event_sorts_before_ce():
         "::: timeline\n:::\n"
     )
     out, _ = process_timeline(src, {}, None)
-    assert out.index("Euclid") < out.index("Turing")
+    tl_start = out.index("::: timeline")
+    assert out.index("Euclid", tl_start) < out.index("Turing", tl_start)
 
 
 def test_group_by_century_inserts_headers():
