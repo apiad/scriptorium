@@ -283,3 +283,94 @@ def test_bce_date_parsed_correctly():
     _, events, warnings = mark_events(src, {})
     assert warnings == []
     assert events[0].date == DateTuple(year=-300)
+
+
+# --- _component and process_timeline ---
+
+from scriptorium.timeline import process_timeline
+
+
+def _make_src(body: str) -> str:
+    return body
+
+
+def test_no_config_and_no_placeholder_is_noop():
+    # No timeline: key, no timeline-group:, no :::timeline placeholder →
+    # markers must be left as literal text (feature not opted in).
+    src = "Some [>1936: Turing invents computation] prose.\n"
+    out, warnings = process_timeline(src, {}, None)
+    assert warnings == []
+    assert out == src   # marker untouched
+
+
+def test_timeline_section_appended_when_placeholder_present():
+    src = (
+        "Some [>1936: Turing invents computation] prose.\n\n"
+        "::: timeline\n:::\n"
+    )
+    out, warnings = process_timeline(src, {}, None)
+    assert warnings == []
+    assert "Turing invents computation" in out
+    assert "1936" in out
+    assert "::: timeline" in out
+
+
+def test_events_sorted_oldest_first():
+    src = (
+        "[>1948: Shannon] and [>1936: Turing] appeared.\n\n"
+        "::: timeline\n:::\n"
+    )
+    out, _ = process_timeline(src, {}, None)
+    turing_pos = out.index("Turing")
+    shannon_pos = out.index("Shannon")
+    assert turing_pos < shannon_pos   # 1936 before 1948
+
+
+def test_bce_event_sorts_before_ce():
+    src = (
+        "[>1936: Turing] and [>300 BCE: Euclid] mentioned.\n\n"
+        "::: timeline\n:::\n"
+    )
+    out, _ = process_timeline(src, {}, None)
+    assert out.index("Euclid") < out.index("Turing")
+
+
+def test_group_by_century_inserts_headers():
+    src = (
+        "[>1854: Boole] [>1936: Turing] [>300 BCE: Euclid] text.\n\n"
+        "::: timeline\n:::\n"
+    )
+    out, _ = process_timeline(src, {"timeline-group": "century"}, None)
+    assert "3rd Century BCE" in out
+    assert "19th Century" in out
+    assert "20th Century" in out
+
+
+def test_display_date_override_rendered():
+    src = '[>"~2400 years ago": Euclid] mentioned.\n\n::: timeline\n:::\n'
+    out, _ = process_timeline(src, {}, None)
+    assert "~2400 years ago" in out
+
+
+def test_back_links_emitted():
+    src = "[>1936: Turing] prose.\n\n::: timeline\n:::\n"
+    out, _ = process_timeline(src, {}, None)
+    assert 'class="tl-back"' in out
+
+
+def test_two_timeline_blocks_raise():
+    src = "::: timeline\n:::\n\n::: timeline\n:::\n"
+    import pytest
+    with pytest.raises(ValueError, match="two"):
+        process_timeline(src, {}, None)
+
+
+def test_yaml_enrichment_via_meta(tmp_path):
+    (tmp_path / "tl.yaml").write_text(
+        'turing-paper:\n  date: "1936"\n  label: "Turing publishes"\n  category: "Theory"\n',
+        encoding="utf-8",
+    )
+    src = "[a paper]{>1936 turing-paper: Turing publishes}\n\n::: timeline\n:::\n"
+    out, warnings = process_timeline(src, {"timeline": "tl.yaml"}, tmp_path)
+    assert warnings == []
+    assert "Turing publishes" in out

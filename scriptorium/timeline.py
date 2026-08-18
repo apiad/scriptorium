@@ -325,3 +325,135 @@ def mark_events(
     )
 
     return src, list(collected.values()), warnings
+
+
+# ---------------------------------------------------------------------------
+# Section generation
+# ---------------------------------------------------------------------------
+
+_TL_OPEN = re.compile(r"^:{3,}[ \t]*timeline[ \t]*$")
+_TL_CLOSE = re.compile(r"^:{3,}[ \t]*$")
+
+
+def _placeholder(src: str) -> "tuple[int, int] | None":
+    """Character range of an author-written `:::timeline` block, if any."""
+    spans = fence_spans(src)
+    lines = src.split("\n")
+    offsets = line_offsets(lines)
+    found = None
+    for i, line in enumerate(lines):
+        if not _TL_OPEN.match(line) or in_span(offsets[i], spans):
+            continue
+        for j in range(i + 1, len(lines)):
+            if _TL_CLOSE.match(lines[j]):
+                if found is not None:
+                    raise ValueError("two `:::timeline` blocks; there can be only one")
+                found = (offsets[i], offsets[j] + len(lines[j]) + 1)
+                break
+        else:
+            raise ValueError("`:::timeline` block is never closed")
+    return found
+
+
+def _component(events: list[Entry], group_n: "int | None") -> str:
+    """Events as a `:::timeline` component, sorted chronologically."""
+    if not events:
+        return ""
+
+    # Sort oldest-first: most negative year first
+    sorted_events = sorted(
+        events,
+        key=lambda e: (e.date.year, e.date.month, e.date.day) if e.date else (float("inf"), 0, 0),
+    )
+
+    items = []
+    current_group_key = None
+
+    for entry in sorted_events:
+        if entry.date is None:
+            continue  # entries without dates are skipped in the section
+
+        if group_n is not None:
+            gk = _group_key(entry.date, group_n)
+            if gk != current_group_key:
+                current_group_key = gk
+                header = _group_label(gk[0], gk[1], group_n)
+                items.append(f'<h3 class="tl-group">{header}</h3>')
+
+        date_str = format_date(entry.date, entry.date_display)
+        back = ""
+        if entry.refs:
+            links = ", ".join(
+                f'<a class="tl-back" href="#tlref-{entry.key}-{k}"></a>'
+                for k in range(1, entry.refs + 1)
+            )
+            back = f" \u21a9 {links}"
+        desc = f"\n\n{entry.description}" if entry.description else ""
+        cat = f' data-category="{entry.category}"' if entry.category else ""
+        items.append(
+            f'<span class="tl-entry" id="tl-{entry.key}"{cat}></span>'
+            f"**{date_str}** \u2014 {entry.label}{back}{desc}"
+        )
+
+    return "::: timeline\n" + "\n\n".join(items) + "\n:::\n"
+
+
+# ---------------------------------------------------------------------------
+# Entry point
+# ---------------------------------------------------------------------------
+
+
+def process_timeline(
+    src: str, meta: dict, base_dir: "Path | None"
+) -> tuple[str, list[str]]:
+    """Rewrite timeline markers and inject the timeline section.
+
+    Activates when any of: `timeline:` in meta, `timeline-group:` in meta,
+    or a `:::timeline` placeholder exists in the source. If none, returns early
+    so markers in documents that have not opted into a timeline are left as-is.
+
+    The generated section is placed at the beginning of the body (after the
+    frontmatter), before the prose content. When a `:::timeline` placeholder
+    is present it is removed from the prose; without one the prose follows
+    directly after the section.
+
+    Raises `ValueError` when the placeholder block is structurally invalid
+    (two blocks, or an unclosed block).
+    """
+    spec = meta.get("timeline")
+    group_raw = meta.get("timeline-group")
+    warnings: list[str] = []
+
+    head, body = split_frontmatter(src)
+
+    # Activation check — raises ValueError for structural errors so the caller
+    # can surface them; returns early with no-op when the feature is not opted in.
+    has_placeholder = _placeholder(body) is not None  # raises ValueError if malformed
+
+    if not spec and not group_raw and not has_placeholder:
+        return src, []
+
+    yaml_entries, load_warnings = load_entries(spec, base_dir) if spec else ({}, [])
+    warnings += load_warnings
+
+    group_n = _resolve_group(group_raw)
+    if group_raw is not None and group_n is None:
+        warnings.append(f"timeline-group {group_raw!r} is not valid; using flat order")
+
+    marked, events, mark_warnings = mark_events(body, yaml_entries)
+    warnings = warnings + mark_warnings
+
+    if not events:
+        return head + marked, warnings
+
+    block = _component(events, group_n)
+
+    # Strip the placeholder from the prose (it is replaced by `block` which
+    # is placed before the prose so the section precedes the narrative text).
+    at = _placeholder(marked)
+    if at:
+        prose = marked[: at[0]] + marked[at[1] :]
+    else:
+        prose = marked
+
+    return head + block + prose.lstrip("\n"), warnings
