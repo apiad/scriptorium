@@ -61,8 +61,11 @@ a.ref-fig::after {
 /* --- page shells (geometry from galley) --- */
 .page { background:#fff; }  /* padding from base (--page-margin) */
 .page.titlepage { display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; }
-.tp-title { font-family:system-ui,sans-serif; font-size:38pt; font-weight:800; color:var(--brand); line-height:1.1; }
-.tp-sub { font-size:14pt; color:var(--muted); margin-top:6mm; max-width:130mm; }
+/* Never hyphenate a title. The base sheet turns hyphens on for the body and
+   off again for h1-h6, but these are divs, so they were inheriting `auto` and
+   breaking mid-word at 38pt — "The Science of Computa-/tion". */
+.tp-title { font-family:system-ui,sans-serif; font-size:38pt; font-weight:800; color:var(--brand); line-height:1.1; hyphens:none; }
+.tp-sub { font-size:14pt; color:var(--muted); margin-top:6mm; max-width:130mm; hyphens:none; }
 .tp-author { margin-top:16mm; font-size:12pt; color:var(--ink); letter-spacing:0.04em; }
 .tp-institution { margin-top:3mm; font-size:10pt; color:var(--muted); }
 
