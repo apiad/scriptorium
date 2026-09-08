@@ -6,6 +6,14 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Features
 
+- **`unmarked:` timeline entries.** A `timeline.yaml` entry can now set
+  `unmarked: true` to join the chronology with no marker in the prose. A
+  timeline correlates a book's own events against the history that conditioned
+  them, and that history has no natural place in the text — nobody writes "the
+  Mongols sacked Baghdad" mid-argument just to register it, so before this such
+  an event could not appear at all. Opt-in: rendering every declared entry would
+  silently resurrect keys that a marker mistypes.
+
 - **`footnotes-label`.** The generated endnotes section can carry a heading, the
   last of the three apparatus components to get one — `references` and `glossary`
   already had theirs. Unset means no heading, so nothing changes for a document

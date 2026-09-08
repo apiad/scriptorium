@@ -429,3 +429,58 @@ def test_renders_without_error(tmp_path):
     )
     assert out_pdf.exists()
     assert report.n_pages > 0
+
+
+# --- unmarked entries: context events with no prose reference ---
+
+def test_unmarked_entry_renders_without_a_marker():
+    """An `unmarked: true` YAML entry joins the timeline with no prose marker.
+
+    A back-of-book chronology correlates the book's own events with the world
+    history that conditioned them. World events have no natural place in prose,
+    so without this they can never appear at all.
+    """
+    from scriptorium.timeline import process_timeline
+    src = "# Doc\n\nProse with [a paper]{>1936: Turing publishes}.\n\n::: timeline\n:::\n"
+    meta = {"timeline": {
+        "sack-of-baghdad": {"date": 1258, "label": "The Mongols sack Baghdad",
+                            "category": "World", "unmarked": True},
+    }}
+    out, warnings = process_timeline(src, meta, None)
+    assert "The Mongols sack Baghdad" in out
+    assert "Turing publishes" in out
+    assert warnings == []
+
+
+def test_unreferenced_entry_without_the_flag_stays_out():
+    """The flag is opt-in: a plain unreferenced entry must NOT leak in.
+
+    Rendering every YAML entry would silently resurrect typo'd keys and make the
+    'key has no YAML entry' warning useless.
+    """
+    from scriptorium.timeline import process_timeline
+    src = "# Doc\n\nProse with [a paper]{>1936: Turing publishes}.\n\n::: timeline\n:::\n"
+    meta = {"timeline": {
+        "never-mentioned": {"date": 1258, "label": "The Mongols sack Baghdad"},
+    }}
+    out, _ = process_timeline(src, meta, None)
+    assert "The Mongols sack Baghdad" not in out
+
+
+def test_unmarked_entry_sorts_with_the_rest():
+    from scriptorium.timeline import process_timeline
+    src = "# Doc\n\n[a paper]{>1936: Turing publishes}\n\n::: timeline\n:::\n"
+    meta = {"timeline": {
+        "baghdad": {"date": 1258, "label": "Baghdad sacked", "unmarked": True},
+    }}
+    out, _ = process_timeline(src, meta, None)
+    assert out.index("Baghdad sacked") < out.index("Turing publishes")
+
+
+def test_unmarked_entry_needs_a_date():
+    from scriptorium.timeline import process_timeline
+    src = "# Doc\n\n[a paper]{>1936: Turing publishes}\n\n::: timeline\n:::\n"
+    meta = {"timeline": {"undated": {"label": "No date here", "unmarked": True}}}
+    out, warnings = process_timeline(src, meta, None)
+    assert "No date here" not in out
+    assert any("undated" in w and "date" in w for w in warnings)

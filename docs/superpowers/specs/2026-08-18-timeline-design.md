@@ -1,6 +1,6 @@
 # Timeline: a chronological index across chapters
 
-*Status: approved, not yet implemented. 2026-08-18. Verified against v0.8.0.*
+*Status: implemented. 2026-08-18; `unmarked:` added 2026-09-08.*
 
 *The Science of Computation* tells dozens of historical stories across four parts
 and nineteen chapters: Euclid in 300 BCE, Aristotle before him, Turing in 1936,
@@ -113,9 +113,31 @@ turing-paper:
     what computation means, proves the halting problem undecidable, and makes
     every real computer that will ever exist theoretically possible.
   category: "Theory"        # optional; used for visual distinction in theme CSS
+  unmarked: false           # optional; render with no prose marker (see below)
 ```
 
-Fields `date` and `label` are required only when the marker is key-only. When
+Fields `date` and `label` are required only when the marker is key-only.
+
+### `unmarked:` — context events with no prose reference
+
+An entry with `unmarked: true` joins the timeline without any marker anywhere in
+the prose. `date` and `label` are then both required, and an entry that sets the
+flag without a `date:` is dropped with a warning.
+
+This exists because a chronology's job is to *correlate*, and the events it
+correlates against usually have no home in the text. A book about philosophy
+wants the Mongol sack of Baghdad on its timeline beside the translation movement
+it ended, but nobody writes "the Mongols sacked Baghdad" mid-argument purely to
+register it. Without the flag such an event can never appear at all.
+
+The flag is opt-in on purpose. Rendering *every* declared entry would silently
+resurrect a key that a marker mistypes, and would make the existing
+`timeline key 'x' has no YAML entry` warning useless.
+
+An unmarked entry renders with no back-link, since there is nothing to link back
+to; `_render_entry` already omits the back-link when `refs == 0`. An entry may
+carry the flag *and* be referenced by a marker — it appears once, with its
+back-links, exactly as if the flag were absent. When
 the marker carries its own date and label, the YAML entry adds `description` and
 `category`; inline values take precedence over YAML values for date and label.
 

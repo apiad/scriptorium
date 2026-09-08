@@ -196,6 +196,7 @@ class Entry:
     description: str
     category: str
     refs: int = 0
+    unmarked: bool = False
 
 
 def load_entries(spec, base_dir: Path | None) -> tuple[dict[str, Entry], list[str]]:
@@ -235,6 +236,7 @@ def load_entries(spec, base_dir: Path | None) -> tuple[dict[str, Entry], list[st
             label=value["label"],
             description=value.get("description", ""),
             category=value.get("category", ""),
+            unmarked=bool(value.get("unmarked", False)),
         )
     return entries, warnings
 
@@ -518,6 +520,23 @@ def process_timeline(
 
     marked, events, mark_warnings = mark_events(body, yaml_entries)
     warnings = warnings + mark_warnings
+
+    # `unmarked: true` entries join the timeline with no prose marker. A
+    # back-of-book chronology correlates the book's own events with the world
+    # history that conditioned them, and a world event has no natural place in
+    # prose — nobody writes "the Mongols sacked Baghdad" mid-argument just to
+    # register it. Opt-in rather than "render every entry": that would silently
+    # resurrect typo'd keys and make the key-has-no-YAML-entry warning useless.
+    seen = {e.key for e in events}
+    for key, entry in yaml_entries.items():
+        if not entry.unmarked or key in seen:
+            continue
+        if entry.date is None:
+            warnings.append(
+                f"timeline entry {key!r} is `unmarked: true` but has no `date:`"
+            )
+            continue
+        events.append(entry)
 
     if not events:
         return head + marked, warnings
