@@ -484,3 +484,29 @@ def test_unmarked_entry_needs_a_date():
     out, warnings = process_timeline(src, meta, None)
     assert "No date here" not in out
     assert any("undated" in w and "date" in w for w in warnings)
+
+
+# --- ordinals: centuries and millennia past the third ---
+
+def test_ordinal_covers_every_suffix_class():
+    """The lookup only knew 1, 2 and 3, so '21th Century' rendered in a real book.
+
+    English ordinals key off the last digit, except the teens, which are all
+    'th'. A book reaching the 21st century is not exotic.
+    """
+    from scriptorium.timeline import _ordinal
+    cases = {
+        1: "1st", 2: "2nd", 3: "3rd", 4: "4th",
+        11: "11th", 12: "12th", 13: "13th",
+        21: "21st", 22: "22nd", 23: "23rd", 24: "24th",
+        101: "101st", 111: "111th", 112: "112th", 113: "113th",
+    }
+    for n, want in cases.items():
+        assert _ordinal(n) == want, f"_ordinal({n}) == {_ordinal(n)!r}, want {want!r}"
+
+
+def test_group_label_names_the_21st_century():
+    """End to end through the bucket key, which is an index and not a year."""
+    from scriptorium.timeline import _group_label, _group_key, DateTuple
+    bce, bucket = _group_key(DateTuple(year=2022), 100)
+    assert _group_label(bce, bucket, 100) == "21st Century"

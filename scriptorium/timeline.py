@@ -19,11 +19,15 @@ from .source import code_spans, fence_spans, in_span, line_offsets, split_frontm
 _MONTHS = ["", "January", "February", "March", "April", "May", "June",
            "July", "August", "September", "October", "November", "December"]
 
-_ORDINALS = {1: "1st", 2: "2nd", 3: "3rd"}
+_ORDINAL_SUFFIX = {1: "st", 2: "nd", 3: "rd"}
 
 
 def _ordinal(n: int) -> str:
-    return _ORDINALS.get(n, f"{n}th")
+    # The teens are all "th" — 11th, 112th — and every other number keys off
+    # its last digit. A lookup of {1, 2, 3} alone renders "21th Century".
+    if n % 100 in (11, 12, 13):
+        return f"{n}th"
+    return f"{n}{_ORDINAL_SUFFIX.get(n % 10, 'th')}"
 
 
 @dataclass

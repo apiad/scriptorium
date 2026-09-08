@@ -21,6 +21,12 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Fixes
 
+- **Timeline ordinals past the third.** The century and millennium group labels
+  used a lookup that knew only 1, 2 and 3, so a book reaching the present
+  rendered "21th Century". Now derived from the last digit, with the teens
+  handled — 11th, 21st, 22nd, 23rd, 112th. Found by reading a rendered
+  chronology, which no test or lint rule would have caught.
+
 - **The `book` theme's table of contents is half as tall.** 190 entries took 8
   pages against LaTeX's 5, mostly because `fill_toc` emits each entry as its own
   Unit and `.unit` carries the paragraph rhythm — 3.5mm under a one-line link.
