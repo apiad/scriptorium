@@ -1,6 +1,6 @@
 # Independent cells, `continue` chains, and readable errors
 
-*Status: approved design, not implemented. 2026-09-16.*
+*Status: implemented. 2026-09-16.*
 
 Executed code blocks share one accumulated session per file today. That model has
 three defects, all reproduced on 2026-09-16 with a three-block document
@@ -80,8 +80,9 @@ For each executed block of language `L`:
 4. If the block succeeds, its source is appended to the chain it ran on, and that
    becomes `chain[L]`. A block not marked `continue` therefore starts a new chain
    of one.
-5. If the block fails, `chain[L]` is left as it was before the block. A later
-   `continue` block resumes from the state before the failure.
+5. If the block fails, `chain[L]` becomes the chain the block ran on: unchanged
+   for a `continue` block, empty for an unmarked one. A later `continue` block
+   resumes from the state the failed block started from.
 6. `L` is added to `ran` either way.
 
 `ExecEnv.reset_session()` keeps its name and its two call sites in `parse.py`

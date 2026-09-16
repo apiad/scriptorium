@@ -40,8 +40,9 @@ PDF" yields real, controlled pages.
   `accent`, fonts, and other vars — rebrand a document without touching CSS. The
   default lineup spans **note → article → report → book → deck**.
 - **Execute code in place.** Run fenced blocks in a subshell and splice stdout
-  back as raw Markdown (or monospace, Quarto-style). Shared-kernel session state,
-  a freeze cache, and cross-file imports — no Jupyter, no kernels.
+  back as raw Markdown (or monospace, Quarto-style). Blocks run independently;
+  `continue` chains a block onto the ones before it. A freeze cache and cross-file
+  imports — no Jupyter, no kernels.
 - **Tangle.** `export=` code blocks extract into real source files
   (illiterate-compatible), with per-block provenance labels (file + line range).
 - **Math without Node.** Inline `$…$` and display `$$…$$` render to SVG via
@@ -147,7 +148,9 @@ All five `extend` a `base` theme; build your own by extending any of them. See
 - **Components** — `::: finding amber {title="Risk"}` renders a theme component;
   `::: {.two-col}` is a plain styled div. Themes ship their own vocabulary.
 - **Code** — `python {run}` executes; `{export=path}` tangles; `{run export=path}`
-  does both; `{python}` is Quarto-compatible.
+  does both; `{python}` is Quarto-compatible. Blocks run independently; mark a
+  block `continue` (`{python continue}`, `python {run continue}`) to run it on top
+  of the blocks before it, and a failing block shows its traceback in red.
 - **Math** — `$inline$` and `$$display$$`.
 - **Cross-references** — `@type-id` resolves to "Figure 3.2 (p. 41)" via theme
   CSS. The prefix must be one of `fig` `tbl` `sec` `eq` `lst` `thm` `chap`;

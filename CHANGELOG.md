@@ -4,6 +4,16 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Breaking
+
+- **Executed blocks are independent; `continue` chains them.** Blocks no longer
+  share one accumulated session per file. A block that needs names from an earlier
+  one carries `continue` (`{python continue}`, `python {run continue}`). The shared
+  session let one failing block re-raise in every later block of the file and
+  leak their earlier output; a failing block now never joins a chain. Python
+  tracebacks number lines from the block's first line and show the source line,
+  and failing blocks render in red (`--error` in the base theme).
+
 ### Features
 
 - **`unmarked:` timeline entries.** A `timeline.yaml` entry can now set

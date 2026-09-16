@@ -40,7 +40,7 @@ and compiles the block as `<cell>`. `parse._code_units` renders failures as
 **Interfaces:**
 - Produces: `Fence.cont: bool`, default `False`.
 
-- [ ] **Step 1: Write the failing test** (append to `tests/test_exec.py`)
+- [x] **Step 1: Write the failing test** (append to `tests/test_exec.py`)
 
 ```python
 def test_parse_fence_continue_flag():
@@ -49,12 +49,12 @@ def test_parse_fence_continue_flag():
     assert parse_fence("{python}").cont is False
 ```
 
-- [ ] **Step 2: Run it and see it fail**
+- [x] **Step 2: Run it and see it fail**
 
 Run: `uv run pytest tests/test_exec.py::test_parse_fence_continue_flag -q`
 Expected: FAIL, `AttributeError: 'Fence' object has no attribute 'cont'`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `Fence`, after `output_mode`:
 
@@ -69,12 +69,12 @@ In `parse_fence`, after the `run` flag check:
         f.cont = True
 ```
 
-- [ ] **Step 4: Run it and see it pass**
+- [x] **Step 4: Run it and see it pass**
 
 Run: `uv run pytest tests/test_exec.py::test_parse_fence_continue_flag -q`
 Expected: PASS.
 
-- [ ] **Step 5: Commit** — `feat(fence): parse the continue flag`, staging
+- [x] **Step 5: Commit** — `feat(fence): parse the continue flag`, staging
   `scriptorium/fence.py tests/test_exec.py`.
 
 ---
@@ -95,7 +95,7 @@ Expected: PASS.
   `ExecEnv.warnings: list[str]`; `ExecEnv.chain: dict[str, list[str]]`;
   `ExecEnv.ran: set[str]`; `ExecEnv.reset_session()` clears `chain` and `ran`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Replace `test_session_state_shared_across_blocks` and
 `test_session_resets_on_newpage` with the following, and add the rest:
@@ -190,13 +190,13 @@ def test_freeze_legacy_string_entry_reads_as_success(tmp_path):
 Update `test_freeze_cache_avoids_rerun` only if it breaks: it compares two
 `run` results with `==`, which a dataclass supports.
 
-- [ ] **Step 2: Run them and see them fail**
+- [x] **Step 2: Run them and see them fail**
 
 Run: `uv run pytest tests/test_exec.py -q`
 Expected: the new tests fail (`ImportError: cannot import name 'RunResult'` stops
 collection first).
 
-- [ ] **Step 3: Rewrite `scriptorium/execute.py`**
+- [x] **Step 3: Rewrite `scriptorium/execute.py`**
 
 ```python
 """Run a code block in a subshell and capture its output.
@@ -347,7 +347,7 @@ failing block, this plan sets the chain to the empty chain it ran on, so a later
 `continue` never resumes a chain the failed block had already broken. Update the
 spec's step 5 wording in the docs task.
 
-- [ ] **Step 4: Adapt `_code_units` in `scriptorium/parse.py`**
+- [x] **Step 4: Adapt `_code_units` in `scriptorium/parse.py`**
 
 Replace the `if f.run and env is not None:` block with:
 
@@ -367,7 +367,7 @@ Replace the `if f.run and env is not None:` block with:
                 units.extend(parse(res.stdout, theme, env))
 ```
 
-- [ ] **Step 5: Surface the warnings in `render_pdf`** (`scriptorium/galley.py`),
+- [x] **Step 5: Surface the warnings in `render_pdf`** (`scriptorium/galley.py`),
   right after `units = parse(src, theme, env, meta=meta)`:
 
 ```python
@@ -375,15 +375,15 @@ Replace the `if f.run and env is not None:` block with:
         warnings = warnings + env.warnings
 ```
 
-- [ ] **Step 6: Update the `freeze.py` docstring** first line to
+- [x] **Step 6: Update the `freeze.py` docstring** first line to
   `"""Freeze cache: content-hash of (interpreter + program) -> captured run result.`
 
-- [ ] **Step 7: Run the exec tests, then the whole suite**
+- [x] **Step 7: Run the exec tests, then the whole suite**
 
 Run: `uv run pytest tests/test_exec.py -q`, then `uv run pytest -q`.
 Expected: all pass.
 
-- [ ] **Step 8: Mutation check**
+- [x] **Step 8: Mutation check**
 
 1. In `run`, change `chain if result.failed else chain + [source]` to
    `chain + [source]`. Run `uv run pytest tests/test_exec.py -q`; expect
@@ -393,7 +393,7 @@ Expected: all pass.
 3. Clear `.pyc` caches (`find . -name __pycache__ -exec rm -rf {} +`) before each
    run, since a same-second same-size edit can serve a stale bytecode file.
 
-- [ ] **Step 9: Commit** — `feat(exec)!: independent blocks, continue chains, cell-relative tracebacks`,
+- [x] **Step 9: Commit** — `feat(exec)!: independent blocks, continue chains, cell-relative tracebacks`,
   staging `scriptorium/execute.py scriptorium/parse.py scriptorium/galley.py scriptorium/freeze.py tests/test_exec.py`.
 
 ---
@@ -407,7 +407,7 @@ Expected: all pass.
 **Interfaces:**
 - Consumes: `<pre class="output error">` with `<span class="stderr">` from Task 2.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_failure_renders_error_block(tmp_path):
@@ -436,9 +436,9 @@ def test_base_theme_styles_errors():
 Both parse tests already pass after Task 2 (the HTML landed there); they pin the
 behaviour. The CSS test fails.
 
-- [ ] **Step 2: Run** `uv run pytest tests/test_exec.py -q` and see the theme test fail.
+- [x] **Step 2: Run** `uv run pytest tests/test_exec.py -q` and see the theme test fail.
 
-- [ ] **Step 3: Implement the CSS** in `themes/base/styles.css`.
+- [x] **Step 3: Implement the CSS** in `themes/base/styles.css`.
 
 In `:root`, change `--accent:#2563eb; --accent-dark:#1e40af;` to
 `--accent:#2563eb; --accent-dark:#1e40af; --error:#b42318;`.
@@ -450,15 +450,15 @@ pre.output.error { border-left-color:var(--error); }
 pre.output.error .stderr { color:var(--error); }
 ```
 
-- [ ] **Step 4: Run** `uv run pytest -q`. Expected: all pass.
+- [x] **Step 4: Run** `uv run pytest -q`. Expected: all pass.
 
-- [ ] **Step 5: Visual check.** Render the three-block reproduction from the spec
+- [x] **Step 5: Visual check.** Render the three-block reproduction from the spec
   with the `note`, `book` and `report` themes into `/tmp`, rasterise with
   `pdftoppm -r 70 -png`, and look at the images: red border and red traceback,
   stdout in the normal colour, third block prints `2` once its middle neighbour
   is marked `continue`.
 
-- [ ] **Step 6: Commit** — `feat(themes): render failing blocks in red`, staging
+- [x] **Step 6: Commit** — `feat(themes): render failing blocks in red`, staging
   `themes/base/styles.css tests/test_exec.py`.
 
 ---
@@ -468,22 +468,22 @@ pre.output.error .stderr { color:var(--error); }
 **Files (in `/home/apiad/Workspace/repos/books-codex`):**
 - Modify: the 18 chapters listed in the spec, adding `continue` flags.
 
-- [ ] **Step 1: Dump with the new engine, before marking anything**
+- [x] **Step 1: Dump with the new engine, before marking anything**
 
 Run from `repos/scriptorium`:
 `uv run --inexact python /home/apiad/Workspace/.playground/scriptorium-cells/dump.py ../books-codex/scriptorium.yaml /home/apiad/Workspace/.playground/scriptorium-cells/unmarked.json`
 
 Every cell whose `failed` is true in `unmarked.json` needs a chain.
 
-- [ ] **Step 2: Mark the chains.** For each failing cell, find the block that
+- [x] **Step 2: Mark the chains.** For each failing cell, find the block that
   defines the missing name (earlier in the same chapter) and add `continue` to
   every executed block after it, up to and including the failing cell. Use the
   Quarto form `{python continue}` for `{python}` blocks and add the flag inside the
   braces for native `{run}` blocks.
 
-- [ ] **Step 3: Dump again** into `migrated.json` with the same command.
+- [x] **Step 3: Dump again** into `migrated.json` with the same command.
 
-- [ ] **Step 4: Compare**
+- [x] **Step 4: Compare**
 
 ```python
 import json
@@ -495,10 +495,10 @@ print(diff)
 
 Expected: `[]`. Any index listed is inspected and fixed before moving on.
 
-- [ ] **Step 5: Render the book** with `scriptorium render scriptorium.yaml` and
+- [x] **Step 5: Render the book** with `scriptorium render scriptorium.yaml` and
   confirm no traceback appears: `pdftotext book.pdf - | grep -c Traceback` prints `0`.
 
-- [ ] **Step 6: Commit in `repos/books-codex`** —
+- [x] **Step 6: Commit in `repos/books-codex`** —
   `chore(exec): mark continue chains for scriptorium independent cells`, staging
   the modified chapter files and `book.pdf` by name.
 
@@ -513,7 +513,7 @@ Expected: `[]`. Any index listed is inspected and fixed before moving on.
 - Modify: `docs/superpowers/specs/2026-09-16-independent-cells-design.md` (status line, step 5 wording)
 - Modify: `/home/apiad/Workspace/repos/programming/conferences/2026/01-python-basico/notas.md`
 
-- [ ] **Step 1: `design.md` §5.2.** Replace the "Locked" paragraph with:
+- [x] **Step 1: `design.md` §5.2.** Replace the "Locked" paragraph with:
 
 ```markdown
 **Locked:** blocks are independent by default. Shared state is explicit and local:
@@ -527,11 +527,11 @@ and in §5.3 change the Errors bullet to say failures render as a red
 `output error` block with a cell-relative traceback, with `allow_error=False`
 failing the build.
 
-- [ ] **Step 2: `README.md`.** Extend the code bullet with one sentence:
+- [x] **Step 2: `README.md`.** Extend the code bullet with one sentence:
   "Blocks run independently; mark a block `continue` to run it on top of the
   blocks before it, and a failing block shows its traceback in red."
 
-- [ ] **Step 3: `CHANGELOG.md`.** Under `## [Unreleased]`, add a `### Breaking`
+- [x] **Step 3: `CHANGELOG.md`.** Under `## [Unreleased]`, add a `### Breaking`
   section above `### Features`:
 
 ```markdown
@@ -546,15 +546,15 @@ failing the build.
   and failing blocks render in red (`--error` in the base theme).
 ```
 
-- [ ] **Step 4: Spec status** → `*Status: implemented. 2026-09-16.*`, and step 5
+- [x] **Step 4: Spec status** → `*Status: implemented. 2026-09-16.*`, and step 5
   of the chain semantics → "If the block fails, `chain[L]` becomes the chain the
   block ran on: unchanged for a `continue` block, empty for an unmarked one."
 
-- [ ] **Step 5: Run** `uv run pytest -q` (docs-only, but it gates the commit), then
+- [x] **Step 5: Run** `uv run pytest -q` (docs-only, but it gates the commit), then
   commit — `docs: independent cells and continue chains`, staging the four doc
   files by name.
 
-- [ ] **Step 6: Lecture notes.** In `notas.md`, replace the static text blocks for
+- [x] **Step 6: Lecture notes.** In `notas.md`, replace the static text blocks for
   `print(radio)`, `int("3.5")`, `int("hola")` and `"5" + 3` with executed
   `{python}` blocks holding just that code, and drop the `$ python radio.py` /
   `>>>` framing the static blocks carried. Leave the `input` examples and the

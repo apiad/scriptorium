@@ -286,8 +286,11 @@ t = FenwickTree(8); print(t.prefix(5))
 deterministic. The cost (re-running assembled setup repeats imports/compute) is
 absorbed by the freeze cache.
 
-**Locked:** assembly-only state model. No cumulative "session" mode — sessions
-reintroduce hidden order-dependence.
+**Locked:** blocks are independent by default. Shared state is explicit and local:
+a block marked `continue` runs on top of the chain of successful blocks before it,
+and a chain never crosses a file boundary or includes a failing block. Noweb
+assembly remains the way to share code without replaying it. (Revised 2026-09-16;
+see `docs/superpowers/specs/2026-09-16-independent-cells-design.md`.)
 
 ### 5.3 Mechanics
 
@@ -298,9 +301,10 @@ reintroduce hidden order-dependence.
   `freeze: auto` semantics, no kernel).
 - **Working directory:** the document's directory (natural relative asset
   read/write); configurable per project.
-- **Errors:** nonzero exit / stderr → build fails loud by default;
-  `{run allow-error}` captures stderr into the doc instead (teaching "here's the
-  exception").
+- **Errors:** a nonzero exit renders as a red `output error` block holding any
+  stdout and the traceback. Python tracebacks number lines from the block's first
+  line (the block compiles as `<cell>`). `ExecEnv(allow_error=False)` fails the
+  build instead.
 - **Timeout:** per block, default 30 s, overridable.
 - **Display control:** `echo=false` hides source and keeps output; `output=false`
   runs but suppresses the splice (side-effect-only, e.g. a block that only writes
