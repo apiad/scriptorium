@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.10.0] - 2026-09-16
+
 ### Breaking
 
 - **Executed blocks are independent; `continue` chains them.** Blocks no longer
@@ -24,10 +26,9 @@ All notable changes to this project are documented here. Format: Keep a Changelo
   an event could not appear at all. Opt-in: rendering every declared entry would
   silently resurrect keys that a marker mistypes.
 
-- **`footnotes-label`.** The generated endnotes section can carry a heading, the
-  last of the three apparatus components to get one — `references` and `glossary`
-  already had theirs. Unset means no heading, so nothing changes for a document
-  that does not ask.
+- **Timeline auto-grouping.** The chronology groups its entries automatically,
+  cascading from century down to day. `timeline-group` and `timeline-group-max`
+  in the project file control it.
 
 ### Fixes
 
@@ -36,6 +37,25 @@ All notable changes to this project are documented here. Format: Keep a Changelo
   rendered "21th Century". Now derived from the last digit, with the teens
   handled — 11th, 21st, 22nd, 23rd, 112th. Found by reading a rendered
   chronology, which no test or lint rule would have caught.
+
+- **Four front-matter defects in the `book` theme.** No blank cover page when a
+  book has no `cover-image`, no mid-word hyphenation in the title page, a separator
+  between title and subtitle on the copyright line, and no doubled period after an
+  author name that ends in one.
+
+## [v0.9.0] - 2026-08-18
+
+### Features
+
+- **Timeline.** `[>YEAR: Label]` markers and a `:::timeline` section build a
+  back-of-book chronological index, with optional `timeline.yaml` enrichment.
+
+- **`footnotes-label`.** The generated endnotes section can carry a heading, the
+  last of the three apparatus components to get one — `references` and `glossary`
+  already had theirs. Unset means no heading, so nothing changes for a document
+  that does not ask.
+
+### Fixes
 
 - **The `book` theme's table of contents is half as tall.** 190 entries took 8
   pages against LaTeX's 5, mostly because `fill_toc` emits each entry as its own
