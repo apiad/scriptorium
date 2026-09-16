@@ -93,3 +93,9 @@ def test_session_resets_on_newpage(tmp_path):
     units = parse('```{python}\nx = 1\n```\n\n\\newpage\n\n```{python}\nprint(x)\n```', env=env)
     out = "".join(u.html for u in units if u.name == "output")
     assert "NameError" in out  # x is gone after the chapter boundary
+
+
+def test_parse_fence_continue_flag():
+    assert parse_fence("{python continue}").cont is True
+    assert parse_fence("python {run continue}").cont is True
+    assert parse_fence("{python}").cont is False

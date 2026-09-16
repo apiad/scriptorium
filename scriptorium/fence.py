@@ -33,6 +33,7 @@ class Fence:
     name: str | None = None  # noweb fragment name
     echo: bool = True  # show the source?
     output_mode: str = "asis"  # "asis" | "code"
+    cont: bool = False  # `continue`: run on top of the previous block's chain
 
     @property
     def tangles(self) -> bool:
@@ -65,6 +66,8 @@ def parse_fence(info: str) -> Fence:
     flags, kv = _attrs(attr_text)
     if "run" in flags:
         f.run = True
+    if "continue" in flags:
+        f.cont = True
     f.export = kv.get("export")
     if "export" in flags and f.export is None:
         f.export_headless = True
