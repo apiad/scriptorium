@@ -289,12 +289,18 @@ def _code_units(info, body, theme, env, cursor, stem) -> list[Unit]:
         units.append(Unit(html=f'<div class="codeblock">{label}{block}</div>', name="code",
                           splittable=True, code_src=body, code_lang=f.lang, code_label=label))
     if f.run and env is not None:
-        out = env.run(body, f.lang)
-        if out.strip():
+        res = env.run(body, f.lang, cont=f.cont)
+        if res.failed:
+            stdout = res.stdout if not res.stdout or res.stdout.endswith("\n") else res.stdout + "\n"
+            units.append(Unit(
+                html=(f'<pre class="output error">{escape(stdout)}'
+                      f'<span class="stderr">{escape(res.stderr)}</span></pre>'),
+                name="output"))
+        elif res.stdout.strip():
             if f.output_mode == "code":
-                units.append(Unit(html=f'<pre class="output">{escape(out)}</pre>', name="output"))
+                units.append(Unit(html=f'<pre class="output">{escape(res.stdout)}</pre>', name="output"))
             else:  # asis: stdout is raw markdown, re-parsed
-                units.extend(parse(out, theme, env))
+                units.extend(parse(res.stdout, theme, env))
     return units
 
 

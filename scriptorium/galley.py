@@ -685,6 +685,8 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     src, tl_warnings = process_timeline(src, meta, Path(cwd) if cwd else None)
     warnings = css_warnings + warnings + cite_warnings + gloss_warnings + tl_warnings
     units = parse(src, theme, env, meta=meta)
+    if env is not None:
+        warnings = warnings + env.warnings
     units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
 
     if str(theme.meta.get("mode", "")) == "deck":  # slides: keep measure+pack pipeline

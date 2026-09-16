@@ -1,4 +1,4 @@
-"""Freeze cache: content-hash of (interpreter + source) -> captured stdout.
+"""Freeze cache: content-hash of (interpreter + program) -> captured run result.
 
 Unchanged code blocks never re-run. VS3 uses a JSON file next to the document;
 the design (§5.3) calls for beaver — swap the backend here when hardening,

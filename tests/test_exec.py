@@ -1,11 +1,16 @@
 """VS3 acceptance: fence directives, tangle, and subshell execution + splice."""
 
-from scriptorium.execute import ExecEnv
+from scriptorium.execute import ExecEnv, RunResult
+from scriptorium.freeze import Freeze
 from scriptorium.fence import parse_fence
 from scriptorium.parse import parse
 from scriptorium.tangle import collect
 from scriptorium.tangle import test as tangle_test
 from scriptorium.tangle import write as tangle_write
+
+
+def _outputs(units):
+    return [u.html for u in units if u.name == "output"]
 
 
 def test_parse_fence_forms():
@@ -80,19 +85,82 @@ def test_export_provenance_line_ranges():
     assert "m.py · L3–3" in labels[1]   # second block continues at line 3
 
 
-def test_session_state_shared_across_blocks(tmp_path):
+def test_blocks_are_independent_by_default(tmp_path):
     env = ExecEnv(cwd=str(tmp_path))
-    units = parse('```{python}\ndef greet(): return "hi"\n```\n\n'
-                  '```{python}\nprint(greet())\n```', env=env)
-    out = "".join(u.html for u in units if u.name == "output")
-    assert "hi" in out and out.count("hi") == 1  # shared state, no duplicated output
+    units = parse('```{python}\nx = 1\n```\n\n```{python}\nprint(x)\n```', env=env)
+    assert "NameError" in "".join(_outputs(units))
 
 
-def test_session_resets_on_newpage(tmp_path):
+def test_continue_chains_blocks(tmp_path):
     env = ExecEnv(cwd=str(tmp_path))
-    units = parse('```{python}\nx = 1\n```\n\n\\newpage\n\n```{python}\nprint(x)\n```', env=env)
-    out = "".join(u.html for u in units if u.name == "output")
-    assert "NameError" in out  # x is gone after the chapter boundary
+    units = parse('```{python}\na = 1\nprint("first")\n```\n\n'
+                  '```{python continue}\nb = a + 1\n```\n\n'
+                  '```{python continue}\nprint(a + b)\n```', env=env)
+    outs = _outputs(units)
+    assert len(outs) == 2
+    assert "3" in outs[1] and "first" not in outs[1]
+
+
+def test_continue_after_failure_resumes_prior_state(tmp_path):
+    env = ExecEnv(cwd=str(tmp_path))
+    units = parse('```{python}\nx = 1\nprint("one")\n```\n\n'
+                  '```{python continue}\nx = 99\nint("3.5")\n```\n\n'
+                  '```{python continue}\nprint(x + 1)\n```', env=env)
+    outs = _outputs(units)
+    assert len(outs) == 3
+    assert "ValueError" in outs[1]
+    assert "2" in outs[2] and "Traceback" not in outs[2] and "one" not in outs[2]
+
+
+def test_continue_without_predecessor_warns(tmp_path):
+    env = ExecEnv(cwd=str(tmp_path))
+    units = parse('```{python continue}\nprint(41 + 1)\n```', env=env)
+    assert "42" in "".join(_outputs(units))
+    assert len(env.warnings) == 1 and "print(41 + 1)" in env.warnings[0]
+
+
+def test_continue_does_not_cross_newpage(tmp_path):
+    env = ExecEnv(cwd=str(tmp_path))
+    units = parse('```{python}\nx = 1\n```\n\n\\newpage\n\n'
+                  '```{python continue}\nprint(x)\n```', env=env)
+    assert "NameError" in "".join(_outputs(units))
+    assert len(env.warnings) == 1
+
+
+def test_python_traceback_is_cell_relative(tmp_path):
+    r = ExecEnv(cwd=str(tmp_path)).run('x = 1\nint("3.5")', "python")
+    assert r.failed
+    assert 'File "<cell>", line 2' in r.stderr
+    assert 'int("3.5")' in r.stderr and "^" in r.stderr
+    assert "<stdin>" not in r.stderr and "_scriptorium_driver" not in r.stderr
+
+
+def test_syntax_error_reports_cell_line(tmp_path):
+    r = ExecEnv(cwd=str(tmp_path)).run("x = 1\ny = (2,\n", "python")
+    assert r.failed and "SyntaxError" in r.stderr
+    assert 'File "<cell>", line 2' in r.stderr
+
+
+def test_sys_exit_zero_is_success(tmp_path):
+    env = ExecEnv(cwd=str(tmp_path))
+    ok = env.run('import sys\nprint("a")\nsys.exit(0)', "python")
+    assert ok == RunResult("a\n", "", False)
+    assert env.run("import sys\nsys.exit(3)", "python").failed
+
+
+def test_freeze_roundtrips_failure(tmp_path):
+    src = 'raise ValueError("boom")'
+    r1 = ExecEnv(cwd=str(tmp_path), freeze=Freeze(tmp_path / "f.json")).run(src, "python")
+    r2 = ExecEnv(cwd=str(tmp_path), freeze=Freeze(tmp_path / "f.json")).run(src, "python")
+    assert r1.failed and "boom" in r1.stderr
+    assert r2 == r1
+
+
+def test_freeze_legacy_string_entry_reads_as_success(tmp_path):
+    fz = Freeze(tmp_path / "f.json")
+    fz.get = lambda key: "legacy\n"
+    r = ExecEnv(cwd=str(tmp_path), freeze=fz).run("print(1)", "python")
+    assert r == RunResult("legacy\n", "", False)
 
 
 def test_parse_fence_continue_flag():
