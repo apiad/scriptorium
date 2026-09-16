@@ -167,3 +167,26 @@ def test_parse_fence_continue_flag():
     assert parse_fence("{python continue}").cont is True
     assert parse_fence("python {run continue}").cont is True
     assert parse_fence("{python}").cont is False
+
+
+def test_failure_renders_error_block(tmp_path):
+    env = ExecEnv(cwd=str(tmp_path))
+    units = parse('```{python}\nprint("before")\nint("x")\n```', env=env)
+    [html] = _outputs(units)
+    assert 'class="output error"' in html and 'class="stderr"' in html
+    assert html.index("before") < html.index("stderr")
+
+
+def test_asis_failure_is_not_parsed_as_markdown(tmp_path):
+    env = ExecEnv(cwd=str(tmp_path))
+    units = parse('```python {run}\nprint("# heading")\nraise ValueError("x")\n```', env=env)
+    assert any('class="output error"' in h for h in _outputs(units))
+    assert not any("<h1" in u.html for u in units)
+
+
+def test_base_theme_styles_errors():
+    from scriptorium.theme import load_theme
+
+    css = load_theme("note").css
+    assert "--error:#b42318" in css.replace(" ", "")
+    assert "pre.output.error" in css
