@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Fixes
+
+- **A `stat-strip` of four stats no longer wraps.** The strip defaulted to three
+  columns, so a fourth stat dropped onto a second row carrying a dangling
+  divider (the rule that removes the last divider assumes a single row). It now
+  takes one column per stat, whatever the count; `two` / `three` / `four` still
+  force a wrapping grid when that is what you want.
+
 ### Features
 
 - **`syalia` theme.** SYALIA's brand identity over `report`: the ink-navy ramp

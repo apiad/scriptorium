@@ -155,9 +155,15 @@ pre { background:var(--slate-50); border:1px solid var(--slate-200); border-radi
 .tier p { font-size:9pt; color:var(--slate-700); line-height:1.5; margin:0; }
 
 /* ---- stat strip ---- */
-.stat-strip { display:grid; grid-template-columns:repeat(3,1fr); padding:5mm 0;
+/* one column per stat, however many there are: a strip is a single row (the
+   last-child rule that drops the final divider assumes it), so a fixed
+   3-column default silently wrapped a 4th stat onto a second row with a
+   dangling divider. The modifiers still force a wrapping grid when asked. */
+.stat-strip { display:grid; grid-auto-flow:column; grid-auto-columns:1fr; padding:5mm 0;
   background:linear-gradient(180deg,var(--slate-50),#fff); border-radius:8px; border:1px solid var(--slate-200); }
-.stat-strip.four{grid-template-columns:repeat(4,1fr)} .stat-strip.two{grid-template-columns:repeat(2,1fr)}
+.stat-strip.four{grid-auto-flow:row; grid-template-columns:repeat(4,1fr)}
+.stat-strip.three{grid-auto-flow:row; grid-template-columns:repeat(3,1fr)}
+.stat-strip.two{grid-auto-flow:row; grid-template-columns:repeat(2,1fr)}
 .stat-strip > div { text-align:center; padding:0 4mm; border-right:1px solid var(--slate-200); }
 .stat-strip > div:last-child { border-right:0; }
 .stat-strip .big { font-size:22pt; font-weight:800; color:var(--accent-dark); line-height:1; letter-spacing:-0.02em; }
