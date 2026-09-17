@@ -1,0 +1,78 @@
+/* syalia theme: SYALIA brand (ink navy + syalia blue + amber) over report.
+   Palette and type from syalia.com (assets/shared.css) and syalia-ui.css.
+   Space Grotesk is vendored here; Inter and the mono come from base, so the
+   theme renders with no network. */
+
+@font-face {
+  font-family: 'Space Grotesk'; font-style: normal; font-weight: 300 700;
+  src: url('assets/fonts/SpaceGrotesk-Variable.woff2') format('woff2');
+}
+
+:root {
+  --ink-50:#f6f7fb; --ink-100:#e9ecf5; --ink-200:#cfd5e6; --ink-300:#a3aece;
+  --ink-400:#6e7ba0; --ink-500:#475070; --ink-600:#2e3450; --ink-700:#1c2138;
+  --ink-800:#11152a; --ink-900:#0a0d1f; --ink-950:#05071a;
+  --syalia-300:#86b3da; --syalia-400:#5b8fc4; --syalia-500:#3e72ad; --syalia-700:#3d6584;
+  --accent-400:#fbbf24;
+
+  /* the report vocabulary is written against --slate-*; remapping the ramp onto
+     the ink ramp tints every component navy without touching a component rule */
+  --slate-900:var(--ink-800); --slate-850:var(--ink-900); --slate-800:var(--ink-700);
+  --slate-700:var(--ink-600); --slate-600:var(--ink-500); --slate-500:var(--ink-400);
+  --slate-400:var(--ink-300); --slate-300:var(--ink-200); --slate-200:var(--ink-100);
+  --slate-100:#f1f3f9; --slate-50:var(--ink-50);
+  --paper:var(--ink-50);
+
+  /* the site's hero mesh: two syalia-blue blobs and an amber one over deep ink */
+  --grad-dark:
+    radial-gradient(circle at 12% 8%, rgba(82,129,163,0.55) 0%, transparent 45%),
+    radial-gradient(circle at 92% 18%, rgba(62,114,173,0.45) 0%, transparent 42%),
+    radial-gradient(circle at 42% 104%, rgba(245,158,11,0.30) 0%, transparent 46%),
+    linear-gradient(160deg, var(--ink-950) 0%, var(--ink-900) 55%, #070b1d 100%);
+}
+
+@page { background:var(--ink-50); }
+
+/* ---- headings ---- */
+h1, h2, h3, h4 { font-family:'Space Grotesk', 'Inter', sans-serif; letter-spacing:-0.02em; }
+h1 {
+  break-before:page; font-size:27pt; font-weight:700; line-height:1.08;
+  color:var(--ink-800); margin:0 0 7mm 0; padding-bottom:4mm;
+  border-bottom:0.6mm solid var(--syalia-500);
+}
+/* a document without a cover must not open on a blank page */
+body > .unit:first-child h1 { break-before:auto; }
+h2 { font-size:17pt; font-weight:600; color:var(--syalia-700); margin:8mm 0 3mm 0; }
+h3 { font-size:12pt; font-weight:600; color:var(--ink-800); }
+
+.eyebrow { color:var(--accent-400); }
+li::marker { color:var(--syalia-500); }
+blockquote { border-left-color:var(--syalia-500); }
+
+/* ---- tables ---- */
+thead th { color:var(--syalia-700); border-bottom:0.5mm solid var(--syalia-500); }
+tbody tr:nth-child(even) td { background:rgba(134,179,218,0.12); }
+
+/* ---- COVER ---- */
+.cover { padding:22mm 22mm 20mm 22mm; }
+.cover .sy-top { display:flex; align-items:center; gap:4mm; }
+.cover .sy-mark { width:12mm; height:12mm; border-radius:3mm; display:flex;
+  align-items:center; justify-content:center; font-family:'Space Grotesk', sans-serif;
+  font-size:16pt; font-weight:700; color:#fff;
+  background:linear-gradient(135deg, var(--syalia-400) 0%, var(--syalia-700) 100%); }
+.cover .sy-brand { font-family:'Space Grotesk', sans-serif; font-size:18pt;
+  font-weight:600; letter-spacing:0.06em; color:#fff; }
+.cover .sy-body { margin-top:auto; margin-bottom:20mm; }
+.cover .sy-kicker { font-size:8.5pt; font-weight:600; letter-spacing:0.26em;
+  text-transform:uppercase; color:var(--accent-400); margin-bottom:5mm; }
+.cover .sy-rule { width:34mm; height:0.9mm; margin:0 0 8mm 0;
+  background:linear-gradient(90deg, var(--syalia-300) 0%, var(--accent-400) 100%); }
+.cover .wordmark { font-family:'Space Grotesk', sans-serif; font-size:44pt;
+  font-weight:700; letter-spacing:-0.03em; color:#fff; line-height:1.03; }
+.cover .tag { color:var(--ink-200); font-size:12.5pt; max-width:150mm; margin-top:7mm; hyphens:none; }
+.cover .tag strong { color:var(--syalia-300); }
+.cover .meta { border-top:1px solid rgba(134,179,218,0.28); color:var(--ink-300); }
+.cover .meta strong { color:var(--accent-400); }
+
+/* ---- BACK COVER ---- */
+.back-cover .addr { color:var(--syalia-300); }

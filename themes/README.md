@@ -14,6 +14,7 @@ list of dead ends.
 | `article` | essays, whitepapers, blog→PDF | serif body, sans display, generous margins, accent section rules |
 | `report` | business/marketing/pitch | data-forward: covers, section openers, KPI tiles, finding cards, timelines |
 | `book` | polished long-form books | classic serif, quiet large chapter numerals, running heads, auto-TOC |
+| `syalia` | SYALIA briefings and proposals | `report` in the house brand: ink navy, syalia blue, amber, Space Grotesk |
 
 ## Customizing (three tiers of effort)
 

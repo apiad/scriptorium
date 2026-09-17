@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Features
+
+- **`syalia` theme.** SYALIA's brand identity over `report`: the ink-navy ramp
+  from syalia.com, syalia blue as the accent, amber for eyebrows and kickers,
+  Space Grotesk headings (vendored), and a cover master with the gradient S mark
+  and the wordmark. The `report` component vocabulary is written against
+  `--slate-*`, so remapping that ramp onto the ink ramp tints every KPI tile,
+  card and callout without touching a component rule.
+
 ## [v0.10.0] - 2026-09-16
 
 ### Breaking

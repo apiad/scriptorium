@@ -1,0 +1,18 @@
+name: syalia
+extends: report
+description: SYALIA brand identity (ink navy, syalia blue, amber) over the report
+  theme. Cover with the gradient S mark and the wordmark, Space Grotesk headings,
+  each chapter (h1) on a new page. Palette taken from syalia.com and syalia-ui.css.
+
+page:
+  size: A4
+  margin: 18mm
+
+vars:
+  accent: "#3e72ad"        # syalia-500
+  accent-dark: "#3d6584"   # syalia-700
+  ink: "#11152a"           # ink-800
+  muted: "#6e7ba0"         # ink-400
+  rule: "#e9ecf5"          # ink-100
+  body-font: "Inter"
+  heading-font: "Space Grotesk"
