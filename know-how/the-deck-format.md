@@ -37,6 +37,23 @@ onto slides. It sets `page.size: "16:9"`, `toc_depth: 1` (the agenda lists
 sections), and provides `title` / `statement` / `closing` masters. The agenda
 slide is a normal `::: toc`; slide numbers come from `target-counter`.
 
+## Speaker notes for a deck
+
+`themes/speaker` is the companion, and it is a document theme, not a deck mode:
+the flow pipeline paginates it and CSS Fragmentation does the breaks. It sets
+`page.size: "16:9"` so a page is the same shape as the slide it describes, and
+`h1 { break-before: page }` so one h1 is one slide.
+
+Two traps live in those two lines. `h1:first-of-type` does *not* suppress the
+leading break, because `emit` wraps every block in its own `.unit` and so every
+h1 is the first of its parent — the rule cancels every break in the document.
+Use `.unit:first-child h1`. And a 16:9 page leaves 230mm of column, about 118
+characters a line, so the theme caps `.unit` at 180mm and turns hyphenation off;
+notes are usually not in the language the hyphenator was handed.
+
+`tests/test_galley.py::test_speaker_theme_gives_one_page_per_h1` pins the page
+count against `examples/speaker.md`.
+
 ## Adding to a deck
 
 - New slide kind → a master template + a `components:` hint with `master: <name>`

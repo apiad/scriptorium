@@ -1,0 +1,17 @@
+name: speaker
+extends: note
+description: >
+  Speaker notes for a deck. One landscape page per slide, at the same 16:9
+  geometry as the slides themselves, so a presenter flipping notes on a second
+  screen stays in step with what the room is looking at. Every h1 starts a new
+  page and reads as a slide title rather than a chapter heading.
+page: { size: "16:9", margin: 12mm }
+vars:
+  accent: "#4f46e5"
+  accent-dark: "#3730a3"
+  body-font: "Inter"
+  heading-font: "Inter"
+masters:
+  body: { classes: "", furniture: stamp }
+components:
+  meta: {}

@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from scriptorium.galley import CONTENT_H, emit, pack, render_pdf
+from scriptorium.galley import CONTENT_H, _page_size, emit, pack, render_pdf
+from scriptorium.theme import load_theme
 from scriptorium.model import Unit
 from scriptorium.parse import parse
 
@@ -195,3 +196,19 @@ def test_missing_css_file_warns_rather_than_raising(tmp_path):
 
     assert out.exists()
     assert any("nope.css" in w for w in report.warnings)
+
+
+def test_speaker_theme_gives_one_page_per_h1(tmp_path):
+    """The speaker theme's whole job: an h1 is a slide, so it starts a page.
+
+    A `h1:first-of-type` rule looks right and silently cancels every break,
+    because emit wraps each block in its own `.unit` and so every h1 is the
+    first of its parent. Four h1s must produce four pages, landscape.
+    """
+    src = Path("examples/speaker.md").read_text(encoding="utf-8")
+    assert src.count("\n# ") + src.startswith("# ") == 4
+    out = tmp_path / "speaker.pdf"
+    report = render_pdf(src, str(out), base_url="examples/")
+    assert report.n_pages == 4
+    w, h = _page_size(load_theme("speaker"))
+    assert (round(w), round(h)) == (254, 143)

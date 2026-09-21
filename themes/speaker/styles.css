@@ -1,0 +1,30 @@
+/* speaker (extends note) — presenter notes that run beside a deck.
+   Signature: one landscape page per h1, a slide-title band, and a text column
+   narrow enough to scan rather than read. */
+
+/* An h1 is a slide, so the page break is the whole theme. WeasyPrint applies
+   break-before on the nested heading, not on the .unit wrapper around it. */
+h1 { break-before:page;
+     font-size:13pt; font-weight:800; letter-spacing:-0.01em;
+     margin:0 0 3.5mm 0; padding-bottom:2mm;
+     border-bottom:2px solid var(--accent); color:var(--ink); }
+/* every h1 sits in its own .unit, so :first-of-type would match all of them
+   and cancel every break. Suppress only the document's first unit. */
+.unit:first-child h1 { break-before:auto; }
+
+/* A 16:9 page leaves 230mm of column. Unconstrained that is ~118 characters a
+   line, which nobody scans under stage light; 180mm brings it near 92.
+   Hyphenation is off because these notes are usually not in the document
+   language the hyphenator was given, and a presenter reads them at a glance. */
+body { font-size:11pt; line-height:1.5; hyphens:none; }
+.unit { max-width:180mm; }
+
+h2 { font-size:11.5pt; margin:4mm 0 1.5mm 0; }
+h3 { font-size:10.5pt; margin:3mm 0 1mm 0; }
+p, ul, ol { margin:0 0 2.2mm 0; }
+li { margin-bottom:0.8mm; }
+
+/* The page break already separates one slide's notes from the next. */
+hr { display:none; }
+
+.stamp { left:12mm; right:12mm; bottom:6mm; }

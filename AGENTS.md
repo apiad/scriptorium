@@ -48,7 +48,7 @@ Markdown → parse → [tangle | execute] → measure → pack → emit → PDF
 - **`theme.py`** — theme loading + `extends:` inheritance + the mustache template
   engine (`{{holes}}`, `{{#sections}}` / loops).
 - **`project.py`** — `scriptorium.yaml` (concatenate files + inject vars).
-- **`themes/`** — `base` + `note` / `article` / `report` / `book` / `deck` / `syalia`.
+- **`themes/`** — `base` + `note` / `article` / `report` / `book` / `deck` / `speaker` / `syalia`.
 
 ## Conventions
 
