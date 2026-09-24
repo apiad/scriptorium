@@ -1,0 +1,62 @@
+/* uh theme: Universidad de La Habana brand (guinda + oro) over the report theme.
+   Palette from brand/README.md. Fonts are the ones scriptorium vendors in base
+   (Source Serif 4 for display, Inter for text), so the theme needs no network. */
+
+:root {
+  --guinda:#6D222E; --guinda-osc:#3E121A; --guinda-clr:#8A3140;
+  --oro:#D6C499; --oro-vivo:#C9A54E; --papel:#FBF9F5; --tinta:#1E1418;
+  --paper:#FBF9F5;
+  --grad-dark: radial-gradient(circle at 88% 8%, rgba(201,165,78,0.16) 0%, transparent 50%),
+               linear-gradient(155deg, #6D222E 0%, #4A1720 60%, #3E121A 100%);
+}
+
+@page { background:#FBF9F5; }
+
+body { color:var(--tinta); }
+strong, tbody td strong { color:var(--tinta); }
+a { color:var(--guinda); }
+
+/* ---- headings ---- */
+h1, h2 { font-family:'Source Serif 4', Georgia, serif; color:var(--guinda); }
+h1 {
+  break-before:page;
+  font-size:28pt; font-weight:700; letter-spacing:-0.01em; line-height:1.1;
+  margin:0 0 7mm 0; padding-bottom:4mm; border-bottom:0.6mm solid var(--oro-vivo);
+}
+/* the first flow heading of a document without a cover must not open on a blank page */
+body > .unit:first-child h1 { break-before:auto; }
+h2 { font-size:17pt; font-weight:700; letter-spacing:-0.005em; margin:8mm 0 3mm 0; }
+h3 { font-family:'Inter', sans-serif; font-size:11pt; font-weight:700; color:var(--tinta); margin:5mm 0 2mm 0; }
+h4 { color:var(--guinda-clr); }
+
+li::marker { color:var(--oro-vivo); }
+blockquote { border-left-color:var(--oro-vivo); }
+hr { border-top-color:var(--oro); }
+
+/* ---- tables ---- */
+thead th { color:var(--guinda); border-bottom:0.5mm solid var(--guinda); }
+tbody td { border-bottom:1px solid #E6DCC8; }
+tbody tr:nth-child(even) td { background:rgba(214,196,153,0.14); }
+
+/* ---- apparatus ---- */
+.references a, .footnotes a { color:var(--guinda); }
+
+/* ---- COVER ---- */
+.page.dark { color:#F3EAD8; }
+.cover { padding:24mm 22mm 22mm 22mm; }
+.cover .uh-top { display:flex; align-items:center; gap:7mm; }
+/* the escudo is a jpg on white; its oval shape lets an elliptical clip drop the white corners */
+.cover .uh-escudo { width:21mm; height:auto; display:block; border-radius:50%; }
+.cover .uh-wordmark { width:100mm; height:6.1mm;
+  background:url('assets/texto-oro.svg') no-repeat left center; background-size:contain; }
+.cover .uh-body { margin-top:auto; margin-bottom:22mm; }
+.cover .uh-kicker { font-family:'Inter', sans-serif; font-size:8.5pt; font-weight:600;
+  letter-spacing:0.28em; text-transform:uppercase; color:var(--oro-vivo); margin-bottom:6mm; }
+.cover .uh-rule { width:36mm; height:0.8mm; background:var(--oro-vivo); margin:0 0 9mm 0; }
+.cover .wordmark { font-family:'Source Serif 4', Georgia, serif; font-size:66pt; font-weight:700;
+  letter-spacing:0.03em; color:var(--oro); line-height:1; }
+.cover .tag { font-family:'Source Serif 4', Georgia, serif; font-size:17pt; font-weight:400;
+  color:#F3EAD8; line-height:1.35; max-width:150mm; margin-top:7mm; hyphens:none; }
+.cover .meta { font-family:'Inter', sans-serif; font-size:8.5pt; letter-spacing:0.08em;
+  color:var(--oro); border-top:0.3mm solid rgba(214,196,153,0.45); padding-top:5mm; }
+.cover .meta strong { color:#FFFFFF; letter-spacing:0.12em; }

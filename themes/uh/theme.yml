@@ -1,0 +1,18 @@
+name: uh
+extends: report
+description: Identidad visual de la Universidad de La Habana (guinda y oro) sobre
+  el tema report de scriptorium. Portada con escudo y wordmark institucional,
+  titulares en serif, cada capítulo (h1) en página nueva.
+
+page:
+  size: A4
+  margin: 18mm
+
+vars:
+  accent: "#6D222E"        # guinda
+  accent-dark: "#551A24"
+  ink: "#1E1418"           # tinta
+  muted: "#7A6A5E"
+  rule: "#E6DCC8"
+  body-font: "Inter"
+  heading-font: "Source Serif 4"
