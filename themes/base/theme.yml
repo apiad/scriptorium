@@ -31,6 +31,11 @@ vars:
   # And for the generated endnotes section. `book` overrides nothing — a book
   # that wants "References and Notes" says so in its own scriptorium.yaml.
   footnotes-label: ""
+  # The word before a figure's number, in the caption and in every `@fig-…`
+  # cross-reference. Unlike the three labels above, this one has a default,
+  # because a figure that opted into numbering has already asked for a label;
+  # a Spanish document sets "Figura".
+  figure-label: "Figure"
 
 # Where footnote definitions collect: document | chapter | page.
 # Frontmatter `footnotes:` overrides this per document.

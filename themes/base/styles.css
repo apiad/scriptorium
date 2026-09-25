@@ -52,7 +52,34 @@ sup, sub { line-height:0; }
 /* figures: image fills content width; caption travels with the image */
 figure { margin:4mm 0; break-inside:avoid; }
 figure img { width:100%; height:auto; display:block; }
+/* an inline SVG carries the width its generator computed, in px; without this a
+   wide one overflows the column instead of shrinking to it */
+figure svg { display:block; margin:0 auto; max-width:100%; height:auto; }
 figcaption { font-size:8.5pt; color:var(--muted); margin-top:2mm; font-style:italic; }
+
+/* Numbered figures. The engine never emits <figure>, so these rules only fire
+   for one the author wrote by hand, and only when it carries the id that
+   `@fig-name` points at. Writing id="fig-name" is the opt-in; nothing that
+   exists today changes. `figure-label` carries the word, on the same contract
+   as `references-label`: "Figure" is as wrong for a Spanish document as
+   "Figura" would be for an English one, so the document sets it.
+   The reset sits on `html` and not on `body` because `book` already resets its
+   own counters there, and a second `counter-reset` on the same element replaces
+   the first instead of adding to it. */
+html { counter-reset: figure; }
+figure[id^="fig-"] { counter-increment: figure; }
+figure[id^="fig-"] > figcaption::before {
+  content: var(--figure-label) " " counter(figure) ". ";
+  font-style:normal; font-weight:600;
+}
+/* A cross-reference sits inside a sentence and a caption starts one, so the two
+   do not always take the same word: English keeps "Figure 4" mid-sentence,
+   Spanish wants "figura 4". `figure-ref-label` is the mid-sentence form and
+   falls back to the caption's word when a document does not set it. */
+a.ref-fig::after {
+  content: var(--figure-ref-label, var(--figure-label)) " "
+           target-counter(attr(href url), figure);
+}
 
 /* atomic-unit rhythm (galley wraps each block in .unit; keep margins contained) */
 .unit { display:flow-root; margin:0 0 3.5mm 0; }

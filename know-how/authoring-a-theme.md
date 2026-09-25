@@ -34,7 +34,17 @@ declare its theme in frontmatter — every file in `examples/` does.
 Every theme honors these, injected as CSS custom properties:
 
 `accent`, `accent-dark`, `ink`, `muted`, `rule`, `body-font`, `heading-font`,
-`mono-font`.
+`mono-font`, `figure-label`.
+
+`figure-label` is the word before a figure's number ("Figure", "Figura"). It
+reaches CSS quoted, because it lands inside a `content:`. Numbering itself is
+opt-in through the markup, not through this var: `base` numbers a `<figure>`
+only when it carries `id="fig-…"`, which is the same id `@fig-…` points at.
+
+`figure-ref-label` is the same word as it appears inside a sentence, for a
+language that does not capitalize it there — Spanish writes "la figura 4" but
+"Figura 4." at the head of the caption. It has no default and falls back to
+`figure-label`, so a document only sets it when the two differ.
 
 Declare defaults in `theme.yml vars:`; a project's `scriptorium.yaml vars:`
 overrides them. So `theme: report` + `vars: {accent: "#0d9488"}` rebrands with no

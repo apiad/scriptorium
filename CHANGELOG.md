@@ -14,6 +14,22 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Features
 
+- **Numbered figures in `base`, opted into by the markup.** `parse.py` has always
+  rewritten `@fig-name` into `<a class="ref-fig" href="#fig-name">` and left the
+  text to theme CSS, and no theme supplied it, so every document that wanted a
+  numbered figure hand-rolled the counters in its own stylesheet. `base` now
+  numbers a `<figure>` that carries `id="fig-…"` — the same id the reference
+  points at — and fills the reference in both directions. A plain `<figure>` is
+  untouched, and since the engine never emits one, nothing that exists today
+  changes. Two new vars carry the word, on the same contract as
+  `references-label`: `figure-label` for the caption ("Figure", "Figura") and
+  `figure-ref-label` for the mid-sentence form, which falls back to the first
+  and exists because Spanish writes "la figura 4" but "Figura 4." to open a
+  caption. The counter resets on `html`, not `body`, because `book` already
+  resets its own there and a second `counter-reset` on one element replaces the
+  first. An inline `<figure> svg` also gets the sizing `figure img` already had,
+  so a wide generated figure shrinks to the column instead of overflowing it.
+
 - **`syalia` theme.** SYALIA's brand identity over `report`: the ink-navy ramp
   from syalia.com, syalia blue as the accent, amber for eyebrows and kickers,
   Space Grotesk headings (vendored), and a cover master with the gradient S mark

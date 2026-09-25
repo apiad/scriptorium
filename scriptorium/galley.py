@@ -591,6 +591,7 @@ def _render_deck(units, theme, meta, out_path, base_url, content_h) -> Report:
 _APPEARANCE = {
     "accent", "accent-dark", "brand", "brand-dark", "ink", "muted", "rule",
     "body-font", "heading-font", "mono-font",
+    "figure-label", "figure-ref-label",
 }
 
 
@@ -630,6 +631,9 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
         # multi-word font-family names must be quoted to be a valid CSS value
         if k.endswith("-font") and " " in v and v[0] not in "'\"":
             v = f"'{v}'"
+        # a label ends up inside a `content:`, which only takes a quoted string
+        elif k.endswith("-label") and v[:1] not in ("'", '"'):
+            v = '"' + v.replace('"', '\\"') + '"'
         return f"--{k}:{v};"
 
     overrides = "".join(_css_val(k, merged[k]) for k in _APPEARANCE if k in merged)

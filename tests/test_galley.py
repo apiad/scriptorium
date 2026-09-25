@@ -212,3 +212,68 @@ def test_speaker_theme_gives_one_page_per_h1(tmp_path):
     assert report.n_pages == 4
     w, h = _page_size(load_theme("speaker"))
     assert (round(w), round(h)) == (254, 143)
+
+
+# --- numbered figures (base theme, opt-in via the id) ----------------------
+
+def _text(pdf):
+    import subprocess
+    return subprocess.run(["pdftotext", str(pdf), "-"],
+                          capture_output=True, text=True, check=True).stdout
+
+
+_FIGS = ('<figure id="fig-one"><figcaption>first</figcaption></figure>\n\n'
+         '<figure id="fig-two"><figcaption>second</figcaption></figure>\n\n'
+         'back to @fig-one.\n')
+
+
+def test_figure_id_opts_into_numbering_and_resolves_the_reference(tmp_path):
+    # Asserting the PDF exists would pass with the CSS deleted, so this asserts
+    # the numbers themselves, in both directions: the captions count up, and the
+    # backward @fig- reference resolves to the first one's number.
+    src = "---\ntheme: article\ntitle: T\nvars: {figure-label: Figura}\n---\n\n" + _FIGS
+    out = tmp_path / "numbered.pdf"
+    render_pdf(src, str(out), cwd=str(tmp_path), execute=False)
+
+    text = _text(out)
+    assert "Figura 1. first" in text
+    assert "Figura 2. second" in text
+    assert "back to Figura 1." in text
+
+
+def test_a_plain_figure_is_not_numbered(tmp_path):
+    # The engine never emits <figure>, so the only figures in the wild are
+    # hand-written ones. Numbering all of them would relabel every existing
+    # document; the id prefix is what asks for a number.
+    src = ("---\ntheme: article\ntitle: T\n---\n\n"
+           "<figure><figcaption>uncounted</figcaption></figure>\n")
+    out = tmp_path / "plain.pdf"
+    render_pdf(src, str(out), cwd=str(tmp_path), execute=False)
+
+    text = _text(out)
+    assert "uncounted" in text
+    assert "Figure 1." not in text and "1. uncounted" not in text
+
+
+def test_figure_counter_survives_a_theme_that_resets_its_own(tmp_path):
+    # `book` sets `counter-reset: chapter part` on body. A second counter-reset
+    # on the same element replaces the first rather than adding to it, which is
+    # why base resets the figure counter on `html`.
+    src = ("---\ntheme: book\ntitle: T\nvars: {figure-label: Figura}\n---\n\n"
+           "# Uno\n\n" + _FIGS)
+    out = tmp_path / "book.pdf"
+    render_pdf(src, str(out), cwd=str(tmp_path), execute=False)
+
+    assert "Figura 2. second" in _text(out)
+
+
+def test_reference_label_can_differ_from_the_caption_label(tmp_path):
+    # Spanish capitalizes the caption's word and not the one inside a sentence.
+    src = ('---\ntheme: article\ntitle: T\n'
+           'vars: {figure-label: Figura, figure-ref-label: figura}\n---\n\n' + _FIGS)
+    out = tmp_path / "es.pdf"
+    render_pdf(src, str(out), cwd=str(tmp_path), execute=False)
+
+    text = _text(out)
+    assert "Figura 1. first" in text
+    assert "back to figura 1." in text
