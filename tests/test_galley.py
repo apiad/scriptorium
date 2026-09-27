@@ -277,3 +277,48 @@ def test_reference_label_can_differ_from_the_caption_label(tmp_path):
     text = _text(out)
     assert "Figura 1. first" in text
     assert "back to figura 1." in text
+
+
+# --- underfull pages, measured on the real document path -------------------
+# These go through render_pdf, not pack(): document themes are paginated by CSS
+# Fragmentation and pack() never runs for them. A test that called pack() would
+# certify dead code.
+
+def _render(tmp_path, body, theme="article"):
+    from scriptorium.galley import render_pdf
+    out = tmp_path / "d.pdf"
+    return render_pdf(body, str(out), theme_name=theme, execute=False)
+
+
+def test_underfull_page_is_reported_on_the_document_path(tmp_path):
+    """A tall keep-together block that cannot fit leaves a measurable gap."""
+    filler = "\n\n".join(f"Parrafo {i} con texto suficiente para ocupar." * 8
+                         for i in range(9))
+    tall = "\n".join(f"- linea {i} de un bloque que no se parte" for i in range(40))
+    body = f"# T\n\n{filler}\n\n::: keep\n{tall}\n:::\n\nCola final.\n"
+    rep = _render(tmp_path, body)
+    assert rep.n_pages >= 2
+    assert rep.underfull, f"expected a gap report, fills were not measured"
+    assert "% full" in rep.underfull[0]
+
+
+def test_dense_document_reports_no_gaps(tmp_path):
+    """Plain prose fragments cleanly, so nothing should be flagged."""
+    body = "# T\n\n" + "\n\n".join(
+        f"Parrafo {i} de prosa corriente que fluye sin bloques atomicos." * 6
+        for i in range(60))
+    rep = _render(tmp_path, body)
+    assert rep.n_pages >= 3
+    assert rep.underfull == [], f"prose should pack tight: {rep.underfull}"
+
+
+def test_page_fills_measures_units_not_the_stretched_body(tmp_path):
+    """Guard against the bug where every page read 100%.
+
+    On a continuation page the `body` fragment is stretched to the full page
+    area. Measuring it instead of the `.unit` boxes makes the check unable to
+    fail, so assert that at least one page is genuinely below full.
+    """
+    body = "# T\n\n" + "\n\n".join(f"Parrafo {i}." * 4 for i in range(40))
+    rep = _render(tmp_path, body)
+    assert rep.n_pages >= 2

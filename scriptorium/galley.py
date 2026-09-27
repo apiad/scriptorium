@@ -9,7 +9,9 @@ For deck themes the previous measure -> pack -> emit_deck pipeline is preserved
 because slides use absolute-positioned fixed-size boxes.
 """
 
+import os
 import re
+import sys
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -57,6 +59,7 @@ class Report:
     oversized: list[str]
     page_of: list[int]
     warnings: list[str] = field(default_factory=list)
+    underfull: list[str] = field(default_factory=list)
 
 
 def _geom(theme: Theme):
@@ -68,6 +71,11 @@ def _geom(theme: Theme):
 # module defaults (default theme) so callers/tests can import CONTENT_H
 _MARGIN, CONTENT_W, CONTENT_H = _geom(load_theme())
 
+
+UNDERFULL_FRAC = 0.78  # a page below this fill, not ended on purpose, is reported.
+# There is no float support, so an unsplittable block that does not fit is moved
+# whole to the next page and leaves a gap. The author has to resolve it by
+# resizing the block or reordering the text, and cannot do that without being told.
 
 MEASURE_CHUNK = 50  # units per measure render
 MEASURE_PAGE_MM = 4000  # moderate measure page; a 50-unit chunk spans a few of
@@ -348,6 +356,7 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
 
     if not pages[-1]:
         pages.pop()
+
     return pages, Report(n_pages=len(pages), oversized=oversized, page_of=page_of)
 
 
@@ -476,6 +485,54 @@ def _emit_css(theme: Theme, meta: dict | None = None) -> str:
 def _fill_tokens(tpl: str, mapping: dict) -> str:
     return re.sub(r"\{(\w+)\}", lambda m: str(mapping.get(m.group(1), "")), tpl)
 
+
+def page_fills(doc) -> list[tuple[float, float]]:
+    """(used_mm, available_mm) per rendered page, from WeasyPrint's box tree.
+
+    CSS Fragmentation paginates, so the only way to know how full a page ended
+    up is to measure the rendered result.
+
+    Measure the `.unit` boxes, not their containers: on every page but the last
+    the `body` fragment is stretched to the full page area, so taking the lowest
+    bottom edge of the whole tree reports 100% for every page and the check can
+    never fail. Only the units are real content.
+    """
+    out: list[tuple[float, float, bool]] = []
+    for page in doc.pages:
+        pb = page._page_box
+        top, avail = pb.content_box_y(), pb.height
+        bottom, exempt = top, False
+        stack = list(getattr(pb, "children", []) or [])
+        while stack:
+            b = stack.pop()
+            el = getattr(b, "element", None)
+            cls = ((el.get("class") or "") if el is not None else "").split()
+            if "page" in cls or "pagebreak" in cls:
+                exempt = True  # full-page master, or a break the author asked for
+            if "unit" in cls or "page" in cls:
+                y2 = b.position_y + b.margin_height()
+                if y2 > bottom:
+                    bottom = y2
+            stack.extend(getattr(b, "children", []) or [])
+        out.append(((bottom - top) / PX_PER_MM, avail / PX_PER_MM, exempt))
+    return out
+
+
+def underfull_pages(fills, frac: float = UNDERFULL_FRAC) -> list[str]:
+    """Report pages the fragmenter left short because a block did not fit.
+
+    There are no page floats in WeasyPrint, so an unsplittable block that does
+    not fit moves whole to the next page. Only the author can resolve the gap,
+    and cannot do it without being told where it is. The last page is short by
+    nature; full-page masters and author-requested breaks are exempt.
+    """
+    msgs = []
+    for i, (used, avail, exempt) in enumerate(fills[:-1], start=1):
+        if exempt or not avail or used >= avail * frac:
+            continue
+        msgs.append(f"page {i} is only {100 * used / avail:.0f}% full "
+                    f"({avail - used:.0f}mm empty): a block below it did not fit")
+    return msgs
 
 def emit(units: list[Unit], theme: Theme, meta: dict | None = None) -> str:
     """Emit a single-flow HTML document; CSS Fragmentation handles page breaks."""
@@ -702,4 +759,11 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
     # Document themes: CSS Fragmentation handles all pagination — no measure, no pack.
     doc = HTML(string=emit(units, theme, meta), base_url=base_url).render()
     doc.write_pdf(out_path)
-    return Report(n_pages=len(doc.pages), oversized=[], page_of=[], warnings=warnings)
+    fills = page_fills(doc)
+    if os.environ.get("SCRIPTORIUM_DEBUG_FILL"):
+        for i, (used, avail, ex) in enumerate(fills, 1):
+            print(f"    page {i:>3}: {used:7.1f} / {avail:7.1f} mm  "
+                  f"{100 * used / avail if avail else 0:5.1f}%"
+                  f"{'  (exempt)' if ex else ''}", file=sys.stderr)
+    return Report(n_pages=len(doc.pages), oversized=[], page_of=[],
+                  warnings=warnings, underfull=underfull_pages(fills))

@@ -45,6 +45,8 @@ def main(argv=None) -> int:
                 print(f"  ⚠ {w}", file=sys.stderr)
             for w in report.warnings:
                 print(f"  ⚠ {w}", file=sys.stderr)
+            for w in report.underfull:
+                print(f"  ⚠ {w}", file=sys.stderr)
             return 0
         out = args.output or args.input.with_suffix(".pdf")
         cwd = str(args.input.resolve().parent)
@@ -54,6 +56,8 @@ def main(argv=None) -> int:
         for w in report.oversized:
             print(f"  ⚠ {w}", file=sys.stderr)
         for w in report.warnings:
+            print(f"  ⚠ {w}", file=sys.stderr)
+        for w in report.underfull:
             print(f"  ⚠ {w}", file=sys.stderr)
         return 0
 
