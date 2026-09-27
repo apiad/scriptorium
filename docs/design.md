@@ -6,10 +6,14 @@ A Markdown-native document engine that replaces Quarto for everything except
 scientific papers (where LaTeX still wins). One source document fans out to a
 lean **HTML book**, an **exact-geometry paginated PDF**, and an **EPUB**; it
 **tangles** code to real source files (subsuming [illiterate](https://github.com/apiad/illiterate));
-and it **executes** code blocks in place. Its distinguishing capability is a
-pagination engine — `galley` — that measures rendered content and packs it into
-physical pages with deterministic geometry, so "print to PDF" yields real pages
-laid out under rules the author controls, not whatever the flow happened to do.
+and it **executes** code blocks in place. Its distinguishing capability is exact page geometry: per-page masters,
+components that never split, and break rules the author controls.
+
+> **Status note (2026-09-27).** Sections 7.1 and 7.2 below describe a Python
+> bin-packer that **no longer runs for documents**. Since `b99dc6a` (2026-08-02)
+> document themes paginate through WeasyPrint's CSS Fragmentation Module, and
+> `measure`/`pack` are reserved for `deck` themes. The text is kept because it
+> still describes the deck path; read it with that restriction, and see §7.4.
 
 The reference bar for output quality is a hand-crafted, design-system report —
 ~100 hand-placed A4 pages with covers, section openers, KPI tiles, finding
@@ -79,7 +83,8 @@ Markdown + ::: components + math + fenced blocks (run / export= / name=)
         └──► [execute]  run → subshell → stdout spliced raw → re-parsed
                  │  (enriched AST: outputs inline, so heights are knowable)
                  ├──► [HTML book]   lean: content + nav + theme + vendored search
-                 ├──► [galley PDF]  measure → pack → emit, exact geometry
+                 ├──► [document PDF]  emit → CSS Fragmentation (no pack)
+                 ├──► [deck PDF]      measure → pack → emit_deck
                  └──► [EPUB]        reflowable
 ```
 
@@ -331,8 +336,10 @@ system). Features carried over verbatim:
 
 ## 7. The `galley` pagination engine
 
-The core IP. Three passes, one shared rendering path so measurement never drifts
-from output.
+**Deck themes only.** For documents WeasyPrint paginates and none of §7.1-§7.3
+runs; see the status note in §1 and the document path in §7.4.
+
+Three passes, one shared rendering path so measurement never drifts from output.
 
 ### 7.1 Measure
 
@@ -457,6 +464,21 @@ rewriting prose into empty anchors; requiring brackets keeps citations and
 cross-references separable at the parser rather than by convention.
 
 ---
+
+### 7.4 Documents: CSS Fragmentation
+
+`emit()` produces a single HTML flow with every block in a `.unit`, and the
+theme CSS decides the breaks with `break-inside: avoid`, `break-before`,
+`orphans` and `widows`. WeasyPrint paginates. Full-page masters (cover, section
+opener, back cover) are the one exception: they stay as fixed `.page` divs bound
+to a named `@page` rule.
+
+What this costs: **there are no page floats.** WeasyPrint does not implement
+GCPM page floats, so an unsplittable block that does not fit in the space left
+moves whole to the next page and leaves a gap. Nothing reflows the body around
+it. The diagnostic is `page_fills(doc)`, which measures the real fill of every
+page off the already-rendered box tree; resolving a gap is the author's job, by
+resizing the block or reordering the text.
 
 ## 8. Page masters and PDF furniture
 

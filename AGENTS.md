@@ -11,16 +11,29 @@ PDF. `README.md` is the user view; `docs/design.md` is the full design.
 ## The pipeline (the mental model)
 
 ```
-Markdown → parse → [tangle | execute] → measure → pack → emit → PDF
-                                          (deck mode: group-into-slides)
+documents  Markdown → parse → [tangle | execute] → emit → WeasyPrint → PDF
+                                                    └─ CSS Fragmentation paginates
+decks      Markdown → parse → [tangle | execute] → measure → pack → emit_deck → PDF
 ```
+
+**Who paginates, and why it decides where you edit.** For the document themes
+(`base`, `note`, `article`, `report`, `book`) there is **no Python pagination**:
+`emit()` produces one HTML flow and WeasyPrint's CSS Fragmentation Module breaks
+the pages using `break-before/inside/after` and the `@page` rules. `measure()`
+and `pack()` **do not run**. Only `deck` themes keep the measure-and-pack
+pipeline, because a slide is a fixed-size absolutely-positioned box.
+
+This has been true since `b99dc6a` (2026-08-02, *replace Python bin-packing with
+CSS Fragmentation Module*). To change how a document paginates, edit the theme
+CSS and `emit()`, never `pack()`. Editing `pack()` for a document produces dead
+code that the `pack()` unit tests happily certify.
 
 - **`parse.py`** — markdown-it-py + `:::` components + code fences + math + `@ref`
   → a flat list of `Unit`s (the model in `model.py`).
-- **`galley.py`** — the core. `measure` (unit heights from WeasyPrint's box tree,
-  in chunks) → `pack` (fixed pages: keep-together, code/table splitting, oversize
-  warn, drift guard) → `emit` (page divs → PDF). Also the **deck** path
-  (`_group_slides` / `emit_deck`) and the `render_pdf` entry point.
+- **`galley.py`** — `emit()` (one flow, plus `.page` divs for full-page masters),
+  `page_fills()` (real per-page fill, read off the box tree **after** the render)
+  and the `render_pdf` entry point. `measure()` and `pack()` are still here but
+  **only the deck path uses them** (`_group_slides` / `emit_deck`).
 - **`execute.py`** — run code in a subshell, splice stdout, per-file session
   state, freeze cache, `PYTHONPATH`.
 - **`tangle.py`** — `export=` extraction (illiterate-compatible, byte-exact).
@@ -63,7 +76,7 @@ Markdown → parse → [tangle | execute] → measure → pack → emit → PDF
 
 ## Know-how index — match your task, then load the doc
 
-- Pagination / measure / a layout or overflow bug → `know-how/the-galley-engine.md`
+- Pagination, a gap on a page, a block that jumps → `know-how/the-galley-engine.md`
 - Creating or changing a theme, a font/customization issue → `know-how/authoring-a-theme.md`
 - The deck / slide format → `know-how/the-deck-format.md`
 - Cutting a release → `know-how/releasing.md`
