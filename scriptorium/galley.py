@@ -373,6 +373,11 @@ def _tpl_to_css_content(tpl: str, meta: dict) -> str:
         "page":    "counter(page)",
         "total":   "counter(pages)",
     }
+    def quoted(text) -> str:
+        # a document's own strings land here, and a bare `"` ends the CSS string
+        text = str(text).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+        return f'"{text}"'
+
     parts = re.split(r"(\{[^}]+\})", tpl)
     css_parts = []
     for part in parts:
@@ -380,10 +385,35 @@ def _tpl_to_css_content(tpl: str, meta: dict) -> str:
             continue
         if part.startswith("{") and part.endswith("}"):
             key = part[1:-1]
-            css_parts.append(_CSS_TOKENS.get(key, f'"{meta.get(key, key)}"'))
+            css_parts.append(_CSS_TOKENS.get(key) or quoted(meta.get(key, key)))
         else:
-            css_parts.append(f'"{part}"')
+            css_parts.append(quoted(part))
     return " ".join(css_parts)
+
+
+def _furniture_css(theme: Theme, meta: dict) -> list[str]:
+    """Header and footer lines a document sets for itself: frontmatter
+    `header:` / `footer:`, each a mapping of `left` / `center` / `right`
+    templates, falling back to the theme's own top-level keys. `false` removes
+    the theme's default. Every page gets the same line, unlike the verso/recto
+    running heads of `masters.body.header`."""
+    parts: list[str] = []
+    for edge, box, align in (("header", "top", "bottom"), ("footer", "bottom", "top")):
+        cfg = meta[edge] if edge in meta else theme.meta.get(edge)
+        if not cfg:
+            continue
+        if not isinstance(cfg, dict):
+            raise ValueError(f"{edge}: expected a mapping of left/center/right templates "
+                             f"or false, got {cfg!r}")
+        pad = "padding-bottom" if box == "top" else "padding-top"
+        for slot in ("left", "center", "right"):
+            if cfg.get(slot):
+                parts.append(
+                    f"@page{{@{box}-{slot}{{content:{_tpl_to_css_content(str(cfg[slot]), meta)};"
+                    f"font-family:var(--body-font),serif;font-size:9pt;color:var(--muted);"
+                    f"vertical-align:{align};{pad}:4mm}}}}"
+                )
+    return parts
 
 
 def _emit_css(theme: Theme, meta: dict | None = None) -> str:
@@ -422,8 +452,10 @@ def _emit_css(theme: Theme, meta: dict | None = None) -> str:
     # suppress the spurious blank page that would precede the very first element
     parts.append(".page:first-child{break-before:auto}")
 
+    furniture = _furniture_css(theme, meta)
+
     # ── string-set: let WeasyPrint track chapter / section automatically ──────
-    if body_furniture == "stamp" or header_cfg:
+    if body_furniture == "stamp" or header_cfg or furniture:
         parts.append("h1{string-set:chapter content()}")
         parts.append("h2{string-set:section content()}")
 
@@ -454,6 +486,9 @@ def _emit_css(theme: Theme, meta: dict | None = None) -> str:
                 f"@page:right{{@top-right{{content:{css_r};{font};"
                 f"vertical-align:bottom;padding-bottom:3mm}}}}"
             )
+
+    # ── page furniture: the document's own header / footer lines ─────────────
+    parts.extend(furniture)
 
     # ── fragmentation rules ───────────────────────────────────────────────────
     parts.extend([

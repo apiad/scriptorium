@@ -14,6 +14,20 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Features
 
+- **A `formal` theme for contracts and official letters.** All black,
+  Liberation Serif at 12pt (Times New Roman metrics, vendored as unsubsetted
+  WOFF2 under the OFL), 2.5 cm margins, justified without hyphenation.
+  `::: clauses` numbers its `##` headings as clauses and the ordered lists under
+  them as sub-clauses (1.1, 1.2); `::: signatures` lays out `::: signature
+  {name=… role=…}` blocks side by side; `::: right` and `::: center` align a
+  date line or a seal line. A page-number footer is the default.
+  `examples/formal.md` is a two-page services agreement.
+- **Per-document `header:` / `footer:` lines.** Frontmatter or a project's
+  `scriptorium.yaml` sets `left` / `center` / `right` templates that repeat on
+  every page; `{page}` and `{total}` count pages, any other `{key}` reads the
+  frontmatter. A theme can ship defaults under the same keys, and `false`
+  removes them. Running-head values are now escaped, so a party name with a
+  double quote no longer drops the whole margin box.
 - **Numbered figures in `base`, opted into by the markup.** `parse.py` has always
   rewritten `@fig-name` into `<a class="ref-fig" href="#fig-name">` and left the
   text to theme CSS, and no theme supplied it, so every document that wanted a
