@@ -14,21 +14,25 @@ import re
 import sys
 from collections import deque
 from dataclasses import dataclass, field
-from pathlib import Path
 
-from weasyprint import HTML
 
-from .execute import ExecEnv
-from .freeze import Freeze
 from .highlight import css as hl_css
 from .highlight import highlight
 from .model import Unit
-from .tangle import write as tangle_write
 from .theme import Theme, load_theme, render_template
 from .emit import (  # noqa: F401  (re-exported: galley's public surface)
     _APPEARANCE, _SIZES, DEFAULT_THEME, FOOTER_RESERVE, PAGE_H, PAGE_W, PX_PER_MM,
     _emit_css, _geom, _mm, _page_size, _tpl_to_css_content, emit, resolve_theme_name,
 )
+
+
+def _weasy():
+    """WeasyPrint is only needed to print; import it on the PDF path alone."""
+    try:
+        from weasyprint import HTML
+    except ImportError as exc:
+        raise RuntimeError("PDF output needs WeasyPrint: install scriptorium[pdf]") from exc
+    return HTML
 
 EPS = 0.5
 
@@ -58,6 +62,7 @@ MEASURE_PAGE_MM = 4000  # moderate measure page; a 50-unit chunk spans a few of
 
 
 def measure(units: list[Unit], theme: Theme, base_url: str | None = None) -> None:
+    HTML = _weasy()
     _, content_w, _ = _geom(theme)
     css = (
         theme.css
@@ -443,6 +448,7 @@ def emit_deck(slides, theme: Theme, meta: dict) -> str:
 
 
 def _render_deck(units, theme, meta, out_path, base_url, content_h) -> Report:
+    HTML = _weasy()
     slides = _group_slides(units, has_title=bool(meta.get("title")))
     oversized = []
     for i, (master, us) in enumerate(slides, 1):
@@ -465,85 +471,13 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
                execute: bool = True, vars: dict | None = None,
                code_root: str | None = None,
                project_meta: dict | None = None) -> Report:
-    from .parse import frontmatter, parse
+    from .render import prepare
 
-    theme = load_theme(resolve_theme_name(src, theme_name))
+    HTML = _weasy()
+    p = prepare(src, theme_name=theme_name, cwd=cwd, execute=execute, vars=vars,
+                code_root=code_root, project_meta=project_meta)
+    theme, meta, units, warnings = p.theme, p.meta, p.units, p.warnings
     _, _, content_h = _geom(theme)
-    # theme var defaults, overridden by project vars, then by per-doc frontmatter
-    merged = {**theme.vars, **(vars or {})}
-    # a project's chapters have had their frontmatter stripped, so project_meta
-    # is the only route in for its content keys (bibliography, nocite)
-    meta = {**merged, **(project_meta or {}), **frontmatter(src)}
-    # a single document carries its vars in a frontmatter `vars:` block — same
-    # contract as scriptorium.yaml, and the last word on appearance.
-    merged = {**merged, **(meta.get("vars") or {})}
-
-    def _css_val(k, v):
-        v = str(v)
-        # multi-word font-family names must be quoted to be a valid CSS value
-        if k.endswith("-font") and " " in v and v[0] not in "'\"":
-            v = f"'{v}'"
-        # a label ends up inside a `content:`, which only takes a quoted string
-        elif k.endswith("-label") and v[:1] not in ("'", '"'):
-            v = '"' + v.replace('"', '\\"') + '"'
-        return f"--{k}:{v};"
-
-    overrides = "".join(_css_val(k, merged[k]) for k in _APPEARANCE if k in merged)
-    if overrides:
-        theme.css += f":root{{{overrides}}}"
-
-    # A project's own stylesheet. load_theme resolves only from scriptorium's
-    # themes directory, so without this a book with any custom styling has to
-    # author a theme inside this repo. Appended after the theme's own rules, so
-    # it wins on equal specificity.
-    css_warnings: list[str] = []
-    css_spec = meta.get("css")
-    for rel in [css_spec] if isinstance(css_spec, str) else list(css_spec or []):
-        path = Path(rel)
-        if cwd and not path.is_absolute():
-            path = Path(cwd) / path
-        try:
-            theme.css += "\n" + path.read_text(encoding="utf-8")
-        except OSError as exc:
-            css_warnings.append(f"css file {rel!r} could not be read: {exc}")
-
-    # freeze cache serves both executed code and rendered math
-    freeze = Freeze(Path(cwd) / ".scriptorium" / "freeze.json") if cwd else None
-    from . import mathrender
-    mathrender.set_freeze(freeze)
-
-    env = None
-    if execute:
-        # tangle export= blocks first so executed blocks can import them
-        stem = str(meta.get("stem", "doc"))
-        if cwd:
-            tangle_write(src, cwd, doc_stem=stem)
-        pythonpath = []
-        if cwd and code_root:
-            pythonpath = [str((Path(cwd) / code_root).resolve())]
-        env = ExecEnv(cwd=cwd, freeze=freeze, pythonpath=pythonpath)
-        if isinstance(meta.get("execute"), dict) and meta["execute"].get("interpreters"):
-            env.interpreters.update(meta["execute"]["interpreters"])
-
-    from .parse import fill_toc
-    from .footnotes import process_footnotes, resolve_footnote_mode
-    from .citations import process_citations
-    from .glossary import process_glossary
-    from .timeline import process_timeline
-
-    # Citations run after footnotes on purpose: a [@key] written inside a note
-    # body has by then been moved to where the note actually renders, so it is
-    # numbered by reading order rather than by where its definition happened to
-    # sit in the source. The glossary runs last for exactly the same reason.
-    src, warnings = process_footnotes(src, resolve_footnote_mode(meta, theme.meta))
-    src, cite_warnings = process_citations(src, meta)
-    src, gloss_warnings = process_glossary(src, meta, Path(cwd) if cwd else None)
-    src, tl_warnings = process_timeline(src, meta, Path(cwd) if cwd else None)
-    warnings = css_warnings + warnings + cite_warnings + gloss_warnings + tl_warnings
-    units = parse(src, theme, env, meta=meta)
-    if env is not None:
-        warnings = warnings + env.warnings
-    units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
 
     if str(theme.meta.get("mode", "")) == "deck":  # slides: keep measure+pack pipeline
         measure(units, theme, base_url=base_url)
