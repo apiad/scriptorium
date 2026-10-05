@@ -4,7 +4,24 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Features
+
+- **`render_html()` and `scriptorium render --html` return the document HTML.**
+  Everything a PDF goes through (footnotes, citations, glossary, timeline, the
+  parser, `emit()`) without the printing, so a screen consumer gets every
+  Markdown feature. `render_pdf()` is now `render_html`'s pipeline plus
+  WeasyPrint.
+- **Frozen renders.** `render_html(..., frozen=True)` serves cached code outputs and
+  never runs code; a miss shows the source and warns.
+- **`execute:` in `scriptorium.yaml`.** Projects can set interpreters and a run
+  `timeout` (default 30 s).
+- **WeasyPrint moved to the `pdf` extra.** `pip install scriptorium` renders
+  HTML; `pip install 'scriptorium[pdf]'` prints PDFs and decks.
+
 ### Fixes
+
+- **Wheels ship the themes.** The wheel packaged only `scriptorium/` and looked
+  for themes at the repo root, so a non-editable install had none.
 
 - **A `stat-strip` of four stats no longer wraps.** The strip defaulted to three
   columns, so a fourth stat dropped onto a second row carrying a dangling

@@ -74,6 +74,9 @@ class ExecEnv:
     chain: dict = field(default_factory=dict)  # lang -> sources of the current chain
     ran: set = field(default_factory=set)  # langs that ran a block in this file
     warnings: list = field(default_factory=list)
+    # frozen: serve cached results only and never start an interpreter (a
+    # reader such as marginalia shows a book's outputs without running it)
+    frozen: bool = False
 
     def reset_session(self) -> None:
         """New document/chapter: chains never cross a file boundary."""
@@ -115,6 +118,10 @@ class ExecEnv:
 
         if hit is not None:
             result = RunResult(hit) if isinstance(hit, str) else RunResult(**hit)
+        elif self.frozen:
+            first = next((ln.strip() for ln in source.splitlines() if ln.strip()), "")
+            self.warnings.append(f"{lang} block not run yet, so it has no output: {first}")
+            result = RunResult("", "", False)
         else:
             try:
                 proc = subprocess.run(

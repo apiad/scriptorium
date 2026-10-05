@@ -14,43 +14,27 @@ import re
 import sys
 from collections import deque
 from dataclasses import dataclass, field
-from pathlib import Path
 
-from weasyprint import HTML
 
-from .execute import ExecEnv
-from .freeze import Freeze
 from .highlight import css as hl_css
 from .highlight import highlight
 from .model import Unit
-from .tangle import write as tangle_write
 from .theme import Theme, load_theme, render_template
+from .emit import (  # noqa: F401  (re-exported: galley's public surface)
+    _APPEARANCE, _SIZES, DEFAULT_THEME, FOOTER_RESERVE, PAGE_H, PAGE_W, PX_PER_MM,
+    _emit_css, _geom, _mm, _page_size, _tpl_to_css_content, emit, resolve_theme_name,
+)
 
-PX_PER_MM = 96 / 25.4
-PAGE_W, PAGE_H = 210.0, 297.0
-FOOTER_RESERVE = 8.0  # mm kept clear for the stamp on body pages
+
+def _weasy():
+    """WeasyPrint is only needed to print; import it on the PDF path alone."""
+    try:
+        from weasyprint import HTML
+    except ImportError as exc:
+        raise RuntimeError("PDF output needs WeasyPrint: install scriptorium[pdf]") from exc
+    return HTML
+
 EPS = 0.5
-
-# named page sizes (mm) — landscape slides for decks
-_SIZES = {
-    "a4": (210.0, 297.0), "letter": (215.9, 279.4),
-    "16:9": (254.0, 142.875), "4:3": (254.0, 190.5),
-}
-
-
-def _mm(v, default=14.0) -> float:
-    if isinstance(v, (int, float)):
-        return float(v)
-    m = re.match(r"([\d.]+)", str(v or ""))
-    return float(m.group(1)) if m else default
-
-
-def _page_size(theme: Theme) -> tuple[float, float]:
-    s = str(theme.meta.get("page", {}).get("size", "A4")).lower().strip()
-    if s in _SIZES:
-        return _SIZES[s]
-    nums = re.findall(r"([\d.]+)mm", s)
-    return (float(nums[0]), float(nums[1])) if len(nums) == 2 else _SIZES["a4"]
 
 
 @dataclass
@@ -60,12 +44,6 @@ class Report:
     page_of: list[int]
     warnings: list[str] = field(default_factory=list)
     underfull: list[str] = field(default_factory=list)
-
-
-def _geom(theme: Theme):
-    w, h = _page_size(theme)
-    margin = _mm(theme.meta.get("page", {}).get("margin", "14mm"))
-    return margin, w - 2 * margin, h - 2 * margin - FOOTER_RESERVE
 
 
 # module defaults (default theme) so callers/tests can import CONTENT_H
@@ -84,6 +62,7 @@ MEASURE_PAGE_MM = 4000  # moderate measure page; a 50-unit chunk spans a few of
 
 
 def measure(units: list[Unit], theme: Theme, base_url: str | None = None) -> None:
+    HTML = _weasy()
     _, content_w, _ = _geom(theme)
     css = (
         theme.css
@@ -360,128 +339,6 @@ def pack(units: list[Unit], content_h: float = CONTENT_H) -> tuple[list[list[Uni
     return pages, Report(n_pages=len(pages), oversized=oversized, page_of=page_of)
 
 
-def _tpl_to_css_content(tpl: str, meta: dict) -> str:
-    """Translate a running-head template to a CSS content value.
-
-    '{chapter} — {section}' → 'string(chapter) " — " string(section)'
-    '{title}'               → '"My Document Title"'   (static, inlined)
-    '{page} / {total}'      → 'counter(page) " / " counter(pages)'
-    """
-    _CSS_TOKENS = {
-        "chapter": "string(chapter)",
-        "section": "string(section)",
-        "page":    "counter(page)",
-        "total":   "counter(pages)",
-    }
-    parts = re.split(r"(\{[^}]+\})", tpl)
-    css_parts = []
-    for part in parts:
-        if not part:
-            continue
-        if part.startswith("{") and part.endswith("}"):
-            key = part[1:-1]
-            css_parts.append(_CSS_TOKENS.get(key, f'"{meta.get(key, key)}"'))
-        else:
-            css_parts.append(f'"{part}"')
-    return " ".join(css_parts)
-
-
-def _emit_css(theme: Theme, meta: dict | None = None) -> str:
-    meta = meta or {}
-    margin, _, _ = _geom(theme)
-    w, h = _page_size(theme)
-    masters_cfg = theme.meta.get("masters", {})
-    body_furniture = theme.master_furniture("body")
-    header_cfg = masters_cfg.get("body", {}).get("header")
-
-    parts: list[str] = []
-
-    # ── keep :root custom properties for themes that reference them ──────────
-    parts.append(f":root{{--page-margin:{margin}mm}}")
-    parts.append(theme.css)
-    parts.append(hl_css())
-
-    # ── @page geometry (CSS paged media — replaces fixed .page divs) ─────────
-    # deck: .slide is itself page-sized and carries its own padding, so a page
-    # margin here would double-count and fragment every slide onto a second page.
-    page_margin = 0 if str(theme.meta.get("mode", "")) == "deck" else margin
-    parts.append(f"@page{{size:{w}mm {h}mm;margin:{page_margin}mm}}")
-    parts.append("html,body{margin:0;padding:0}")
-
-    # ── named pages for full-page masters (margin 0 so element fills page) ───
-    for master_name in masters_cfg:
-        if master_name not in ("body",):
-            parts.append(f"@page master-{master_name}{{margin:0}}")
-
-    # ── full-page master divs: break to own page, fill the full sheet ────────
-    parts.append(
-        f".page{{break-before:page;break-after:page;"
-        f"width:{w}mm;height:{h}mm;box-sizing:border-box;"
-        f"position:relative;overflow:hidden}}"
-    )
-    # suppress the spurious blank page that would precede the very first element
-    parts.append(".page:first-child{break-before:auto}")
-
-    # ── string-set: let WeasyPrint track chapter / section automatically ──────
-    if body_furniture == "stamp" or header_cfg:
-        parts.append("h1{string-set:chapter content()}")
-        parts.append("h2{string-set:section content()}")
-
-    # ── page furniture: stamp (footer chapter + page number) ─────────────────
-    if body_furniture == "stamp":
-        font = "font-family:var(--heading-font),sans-serif;font-size:7.5pt;color:var(--muted)"
-        parts.append(
-            f"@page{{@bottom-left{{content:string(chapter,first);{font};"
-            f"vertical-align:top;padding-top:3mm}}"
-            f"@bottom-right{{content:counter(page);{font};"
-            f"vertical-align:top;padding-top:3mm}}}}",
-        )
-
-    # ── page furniture: running header (verso / recto) ────────────────────────
-    if header_cfg:
-        font = "font-family:var(--heading-font),sans-serif;font-size:7.5pt;color:var(--muted)"
-        verso = header_cfg.get("verso", "")
-        recto = header_cfg.get("recto", "")
-        if verso:
-            css_v = _tpl_to_css_content(verso, meta)
-            parts.append(
-                f"@page:left{{@top-left{{content:{css_v};{font};"
-                f"vertical-align:bottom;padding-bottom:3mm}}}}"
-            )
-        if recto:
-            css_r = _tpl_to_css_content(recto, meta)
-            parts.append(
-                f"@page:right{{@top-right{{content:{css_r};{font};"
-                f"vertical-align:bottom;padding-bottom:3mm}}}}"
-            )
-
-    # ── fragmentation rules ───────────────────────────────────────────────────
-    parts.extend([
-        # headings always stay with the element that follows them
-        "h1,h2,h3,h4,h5,h6{break-after:avoid}",
-        # author / theme explicit page break
-        ".pagebreak{break-before:page;display:block;height:0;margin:0;padding:0}",
-        # unit classes
-        ".unit{display:flow-root}",
-        ".unit.break-before{break-before:page}",
-        ".unit.keep{break-inside:avoid}",
-        # figures and captions always travel together
-        "figure{break-inside:avoid;margin:4mm 0}",
-        "figcaption{font-size:8.5pt;color:var(--muted);margin-top:2mm}",
-        # images fill the content column width
-        ".unit img,figure img{width:100%;height:auto;display:block}",
-    ])
-
-    # ── deck: fixed-size slide boxes (unchanged from before) ─────────────────
-    parts.extend([
-        f".slide{{width:{w}mm;height:{h}mm;box-sizing:border-box;"
-        "overflow:hidden;page-break-after:always}",
-        ".slide:last-child{page-break-after:auto}",
-    ])
-
-    return "".join(parts)
-
-
 def _fill_tokens(tpl: str, mapping: dict) -> str:
     return re.sub(r"\{(\w+)\}", lambda m: str(mapping.get(m.group(1), "")), tpl)
 
@@ -533,42 +390,6 @@ def underfull_pages(fills, frac: float = UNDERFULL_FRAC) -> list[str]:
         msgs.append(f"page {i} is only {100 * used / avail:.0f}% full "
                     f"({avail - used:.0f}mm empty): a block below it did not fit")
     return msgs
-
-def emit(units: list[Unit], theme: Theme, meta: dict | None = None) -> str:
-    """Emit a single-flow HTML document; CSS Fragmentation handles page breaks."""
-    meta = meta or {}
-    out = [
-        "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><style>",
-        _emit_css(theme, meta),
-        "</style></head><body>",
-    ]
-
-    for u in units:
-        if u.is_break:
-            out.append('<div class="pagebreak"></div>')
-            continue
-
-        if u.full_page:
-            # Full-page master (cover, section opener, back cover…): wrap in a
-            # fixed-size .page div assigned to the master's named @page rule.
-            # u.html is already fully rendered by the parser (template + content
-            # substituted); never re-render here or {{content}} gets lost.
-            classes = theme.master_classes(u.master)
-            master_page = f"master-{u.master}" if u.master else ""
-            page_attr = f' style="page:{master_page}"' if master_page else ""
-            out.append(f'<div class="page {classes}"{page_attr}>{u.html}</div>')
-            continue
-
-        # Regular flow unit
-        cls = ["unit"]
-        if u.break_before:
-            cls.append("break-before")
-        if u.keep_together:
-            cls.append("keep")
-        out.append(f'<div class="{" ".join(cls)}">{u.html}</div>')
-
-    out.append("</body></html>")
-    return "".join(out)
 
 
 def _group_slides(units: list[Unit], has_title: bool):
@@ -627,6 +448,7 @@ def emit_deck(slides, theme: Theme, meta: dict) -> str:
 
 
 def _render_deck(units, theme, meta, out_path, base_url, content_h) -> Report:
+    HTML = _weasy()
     slides = _group_slides(units, has_title=bool(meta.get("title")))
     oversized = []
     for i, (master, us) in enumerate(slides, 1):
@@ -644,111 +466,18 @@ def _render_deck(units, theme, meta, out_path, base_url, content_h) -> Report:
     return Report(n_pages=len(doc.pages), oversized=oversized, page_of=[])
 
 
-# var names that become CSS custom properties (the customization contract)
-_APPEARANCE = {
-    "accent", "accent-dark", "brand", "brand-dark", "ink", "muted", "rule",
-    "body-font", "heading-font", "mono-font",
-    "figure-label", "figure-ref-label",
-}
-
-
-DEFAULT_THEME = "report"
-
-
-def resolve_theme_name(src: str, explicit: str | None = None) -> str:
-    """An explicit theme (`--theme`, or a project's `scriptorium.yaml`) wins; then
-    the document's own frontmatter `theme:`; then the default."""
-    from .parse import frontmatter
-
-    if explicit:
-        return explicit
-    return str(frontmatter(src).get("theme") or DEFAULT_THEME)
-
-
 def render_pdf(src: str, out_path: str, base_url: str | None = None,
                theme_name: str | None = None, cwd: str | None = None,
                execute: bool = True, vars: dict | None = None,
                code_root: str | None = None,
                project_meta: dict | None = None) -> Report:
-    from .parse import frontmatter, parse
+    from .render import prepare
 
-    theme = load_theme(resolve_theme_name(src, theme_name))
+    HTML = _weasy()
+    p = prepare(src, theme_name=theme_name, cwd=cwd, execute=execute, vars=vars,
+                code_root=code_root, project_meta=project_meta)
+    theme, meta, units, warnings = p.theme, p.meta, p.units, p.warnings
     _, _, content_h = _geom(theme)
-    # theme var defaults, overridden by project vars, then by per-doc frontmatter
-    merged = {**theme.vars, **(vars or {})}
-    # a project's chapters have had their frontmatter stripped, so project_meta
-    # is the only route in for its content keys (bibliography, nocite)
-    meta = {**merged, **(project_meta or {}), **frontmatter(src)}
-    # a single document carries its vars in a frontmatter `vars:` block — same
-    # contract as scriptorium.yaml, and the last word on appearance.
-    merged = {**merged, **(meta.get("vars") or {})}
-
-    def _css_val(k, v):
-        v = str(v)
-        # multi-word font-family names must be quoted to be a valid CSS value
-        if k.endswith("-font") and " " in v and v[0] not in "'\"":
-            v = f"'{v}'"
-        # a label ends up inside a `content:`, which only takes a quoted string
-        elif k.endswith("-label") and v[:1] not in ("'", '"'):
-            v = '"' + v.replace('"', '\\"') + '"'
-        return f"--{k}:{v};"
-
-    overrides = "".join(_css_val(k, merged[k]) for k in _APPEARANCE if k in merged)
-    if overrides:
-        theme.css += f":root{{{overrides}}}"
-
-    # A project's own stylesheet. load_theme resolves only from scriptorium's
-    # themes directory, so without this a book with any custom styling has to
-    # author a theme inside this repo. Appended after the theme's own rules, so
-    # it wins on equal specificity.
-    css_warnings: list[str] = []
-    css_spec = meta.get("css")
-    for rel in [css_spec] if isinstance(css_spec, str) else list(css_spec or []):
-        path = Path(rel)
-        if cwd and not path.is_absolute():
-            path = Path(cwd) / path
-        try:
-            theme.css += "\n" + path.read_text(encoding="utf-8")
-        except OSError as exc:
-            css_warnings.append(f"css file {rel!r} could not be read: {exc}")
-
-    # freeze cache serves both executed code and rendered math
-    freeze = Freeze(Path(cwd) / ".scriptorium" / "freeze.json") if cwd else None
-    from . import mathrender
-    mathrender.set_freeze(freeze)
-
-    env = None
-    if execute:
-        # tangle export= blocks first so executed blocks can import them
-        stem = str(meta.get("stem", "doc"))
-        if cwd:
-            tangle_write(src, cwd, doc_stem=stem)
-        pythonpath = []
-        if cwd and code_root:
-            pythonpath = [str((Path(cwd) / code_root).resolve())]
-        env = ExecEnv(cwd=cwd, freeze=freeze, pythonpath=pythonpath)
-        if isinstance(meta.get("execute"), dict) and meta["execute"].get("interpreters"):
-            env.interpreters.update(meta["execute"]["interpreters"])
-
-    from .parse import fill_toc
-    from .footnotes import process_footnotes, resolve_footnote_mode
-    from .citations import process_citations
-    from .glossary import process_glossary
-    from .timeline import process_timeline
-
-    # Citations run after footnotes on purpose: a [@key] written inside a note
-    # body has by then been moved to where the note actually renders, so it is
-    # numbered by reading order rather than by where its definition happened to
-    # sit in the source. The glossary runs last for exactly the same reason.
-    src, warnings = process_footnotes(src, resolve_footnote_mode(meta, theme.meta))
-    src, cite_warnings = process_citations(src, meta)
-    src, gloss_warnings = process_glossary(src, meta, Path(cwd) if cwd else None)
-    src, tl_warnings = process_timeline(src, meta, Path(cwd) if cwd else None)
-    warnings = css_warnings + warnings + cite_warnings + gloss_warnings + tl_warnings
-    units = parse(src, theme, env, meta=meta)
-    if env is not None:
-        warnings = warnings + env.warnings
-    units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
 
     if str(theme.meta.get("mode", "")) == "deck":  # slides: keep measure+pack pipeline
         measure(units, theme, base_url=base_url)

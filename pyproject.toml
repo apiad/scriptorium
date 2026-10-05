@@ -8,12 +8,15 @@ license = { text = "MIT" }
 authors = [{ name = "Alejandro Piad" }]
 dependencies = [
     "markdown-it-py>=3.0",
-    "weasyprint>=63",
     "pyyaml>=6",
     "pygments>=2.20.0",
     "quickjax>=0.1.0",
     "mdit-py-plugins>=0.6.1",
 ]
+
+[project.optional-dependencies]
+# Printing to PDF. render_html and `scriptorium render --html` do not need it.
+pdf = ["weasyprint>=63"]
 
 [project.scripts]
 scriptorium = "scriptorium.cli:main"
@@ -25,9 +28,13 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["scriptorium"]
 
+# Installed wheels carry the themes inside the package (see theme.THEMES_DIR).
+[tool.hatch.build.targets.wheel.force-include]
+"themes" = "scriptorium/themes"
+
 [dependency-groups]
 # pypdf reads the PDF's link annotations. Every other PDF assertion here reads
 # pdftotext output, which works when the mark is visible text ("↩ 2"); a glossed
 # term's forward link is the word itself, so only the annotation distinguishes a
 # working link from coloured, underlined, dead text.
-dev = ["pytest>=8", "pypdf>=5"]
+dev = ["pytest>=8", "pypdf>=5", "weasyprint>=63"]

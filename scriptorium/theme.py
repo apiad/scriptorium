@@ -23,7 +23,11 @@ from pathlib import Path
 
 import yaml
 
-THEMES_DIR = Path(__file__).resolve().parent.parent / "themes"
+# Installed wheels carry the themes inside the package; a source checkout keeps
+# them at the repo root.
+_PACKAGED_THEMES = Path(__file__).resolve().parent / "themes"
+THEMES_DIR = (_PACKAGED_THEMES if _PACKAGED_THEMES.is_dir()
+              else Path(__file__).resolve().parent.parent / "themes")
 
 # Hyphens are allowed in a key because theme vars are kebab-case by convention
 # (accent-dark, body-font); without this no var could ever reach a template.
