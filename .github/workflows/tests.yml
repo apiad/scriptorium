@@ -6,12 +6,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # requires-python is >=3.12; tracebacks already differ between the two
+        python: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       # the PDF assertions shell out to pdftotext / pdfinfo / pdffonts;
       # WeasyPrint needs Pango
       - run: sudo apt-get update && sudo apt-get install -y poppler-utils libpango-1.0-0 libpangoft2-1.0-0
       - uses: astral-sh/setup-uv@v5
-        with: { enable-cache: true }
+        with: { enable-cache: true, python-version: "${{ matrix.python }}" }
       - run: uv sync --locked
       - run: uv run pytest -q
