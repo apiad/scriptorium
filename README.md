@@ -134,7 +134,7 @@ authoring needed for the common case.
 | `report` | data-forward briefings — covers, KPI tiles, finding cards, timelines |
 | `book` | classic long-form — serif body, chapter numerals, running heads, auto-TOC |
 | `deck` | 16:9 slides with report-grade visuals, agenda, section dividers, slide counter |
-| `formal` | contracts, official letters — all black, Times-metric serif, numbered clauses, signature blocks |
+| `formal` | contracts, official letters — all black, Times-metric serif, open three-rule tables, numbered clauses, signature blocks |
 
 ```yaml
 theme: report

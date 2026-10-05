@@ -40,7 +40,7 @@ The total price is set out in the table below. The Client shall pay each
 instalment within fifteen days of receiving the corresponding invoice.[^vat]
 
 | Instalment | Due on | Amount |
-|---|---|---|
+|---|---|---:|
 | First | Signature | 4 000.00 |
 | Second | Delivery | 4 000.00 |
 | Total | | 8 000.00 |

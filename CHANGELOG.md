@@ -16,7 +16,8 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 - **A `formal` theme for contracts and official letters.** All black,
   Liberation Serif at 12pt (Times New Roman metrics, vendored as unsubsetted
-  WOFF2 under the OFL), 2.5 cm margins, justified without hyphenation.
+  WOFF2 under the OFL), 2.5 cm margins, justified without hyphenation. Tables
+  are open: a heavy rule above and below, a light one under the header, no grid.
   `::: clauses` numbers its `##` headings as clauses and the ordered lists under
   them as sub-clauses (1.1, 1.2); `::: signatures` lays out `::: signature
   {name=… role=…}` blocks side by side; `::: right` and `::: center` align a

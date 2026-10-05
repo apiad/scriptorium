@@ -27,11 +27,14 @@ blockquote { color:var(--ink); border-left:0; padding:0 10mm; }
 hr { border-top:0.5pt solid var(--ink); }
 figcaption { font-size:10pt; color:var(--ink); }
 
-/* tables: the word processor's plain grid */
-table { font-size:11pt; }
+/* tables: open, three rules and no grid — a heavy rule above and below, a
+   light one under the header; the columns are separated by space alone */
+table { font-size:11pt; border-top:1pt solid var(--ink); border-bottom:1pt solid var(--ink); }
 thead th { font-size:11pt; letter-spacing:0; text-transform:none; color:var(--ink);
-           border:0.5pt solid var(--ink); padding:1.5mm 2mm; }
-tbody td { border:0.5pt solid var(--ink); padding:1.5mm 2mm; }
+           border-bottom:0.5pt solid var(--ink); padding:1.5mm 3mm; }
+tbody td { border-bottom:0; padding:1.2mm 3mm; }
+th:first-child, td:first-child { padding-left:0; }
+th:last-child, td:last-child { padding-right:0; }
 
 /* code is rare here, and when it appears it is still black */
 .hl, pre.output { background:none; border:0.5pt solid var(--ink); border-radius:0; }
