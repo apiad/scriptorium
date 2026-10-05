@@ -223,6 +223,11 @@ Where the notes land is the `footnotes:` key — frontmatter (or a project's
 | `chapter` | one section before each `#`, numbering restarts (the `book` default) |
 | `page` | true bottom-of-page footnotes |
 
+The document's language is `lang:` (frontmatter or `scriptorium.yaml`; a BCP 47
+tag such as `es` or `en-GB`). It picks the hyphenation dictionary, so a Spanish
+document without it is hyphenated with English patterns (`per-ro`,
+`desar-rollo`). The default is `en`; the `uh` theme defaults to `es`.
+
 A header or footer line that repeats on every page — a contract number, "page 2
 of 5" — is the `header:` / `footer:` key, in frontmatter or a project's
 `scriptorium.yaml`. Each takes `left`, `center` and `right` templates; `{page}`

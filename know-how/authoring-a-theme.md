@@ -76,6 +76,14 @@ content is a plain `<ol>`. Style `.footnotes` / `.footnote-ref` in your CSS; for
 Leave the hint at `keep_together: false`: an endnotes section is routinely taller
 than a page, and keeping it together would overflow it.
 
+## Language
+
+A top-level `lang:` in `theme.yml` sets the document language for every document
+on the theme (`uh` sets `es`); a document's frontmatter or project's
+`scriptorium.yaml` wins over it, and the fallback is `en`. It becomes
+`<html lang>`, which is how WeasyPrint picks its hyphenation dictionary, so it
+matters for any theme that keeps `base`'s `hyphens: auto`.
+
 ## Header and footer lines
 
 Two kinds of page furniture exist, and they answer different questions.
