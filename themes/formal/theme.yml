@@ -1,0 +1,32 @@
+name: formal
+extends: base
+description: >
+  Contracts, official letters, avales, dictámenes — a document that should look
+  like it came out of a word processor. All black, Liberation Serif (metric-
+  compatible with Times New Roman) at 12pt, 2.5 cm margins, no cover, no color.
+  The header and footer lines come from the document's frontmatter.
+
+page: { size: A4, margin: 25mm }
+
+vars:
+  accent: "#000000"
+  accent-dark: "#000000"
+  ink: "#000000"
+  muted: "#000000"
+  rule: "#000000"
+  body-font: "Liberation Serif"
+  heading-font: "Liberation Serif"
+
+masters:
+  body: { classes: "", furniture: none }
+
+components:
+  signature: {}
+  signatures: {}
+  # A contract's body is one long `::: clauses` block; keeping it together
+  # would push all of it past the page.
+  clauses: { keep_together: false }
+
+# A page number on every page; a frontmatter `footer:` replaces it, `false` drops it.
+footer:
+  center: "{page} / {total}"

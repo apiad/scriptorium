@@ -134,13 +134,14 @@ authoring needed for the common case.
 | `report` | data-forward briefings — covers, KPI tiles, finding cards, timelines |
 | `book` | classic long-form — serif body, chapter numerals, running heads, auto-TOC |
 | `deck` | 16:9 slides with report-grade visuals, agenda, section dividers, slide counter |
+| `formal` | contracts, official letters — all black, Times-metric serif, open three-rule tables, numbered clauses, signature blocks |
 
 ```yaml
 theme: report
 vars: { accent: "#0d9488", body-font: "Source Serif 4" }
 ```
 
-All five `extend` a `base` theme; build your own by extending any of them. See
+All six `extend` a `base` theme; build your own by extending any of them. See
 [`themes/README.md`](themes/README.md).
 
 ## Authoring
@@ -221,6 +222,19 @@ Where the notes land is the `footnotes:` key — frontmatter (or a project's
 | `document` | one endnotes section at the end (default; `book` overrides) |
 | `chapter` | one section before each `#`, numbering restarts (the `book` default) |
 | `page` | true bottom-of-page footnotes |
+
+A header or footer line that repeats on every page — a contract number, "page 2
+of 5" — is the `header:` / `footer:` key, in frontmatter or a project's
+`scriptorium.yaml`. Each takes `left`, `center` and `right` templates; `{page}`
+and `{total}` count pages, and any other `{key}` reads the frontmatter (or a
+project's `vars:`). `false` removes the theme's own default.
+
+```yaml
+theme: formal
+contract: "No. 2026-014"
+header: { right: "Contract {contract}" }
+footer: { center: "Page {page} of {total}" }
+```
 
 The full design is in [`docs/design.md`](docs/design.md).
 
