@@ -11,6 +11,10 @@ All notable changes to this project are documented here. Format: Keep a Changelo
   parser, `emit()`) without the printing, so a screen consumer gets every
   Markdown feature. `render_pdf()` is now `render_html`'s pipeline plus
   WeasyPrint.
+- **Frozen renders.** `render_html(..., frozen=True)` serves cached code outputs and
+  never runs code; a miss shows the source and warns.
+- **`execute:` in `scriptorium.yaml`.** Projects can set interpreters and a run
+  `timeout` (default 30 s).
 - **WeasyPrint moved to the `pdf` extra.** `pip install scriptorium` renders
   HTML; `pip install 'scriptorium[pdf]'` prints PDFs and decks.
 

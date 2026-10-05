@@ -94,3 +94,47 @@ def test_cli_render_html_without_weasyprint(tmp_path):
         f"raise SystemExit(main(['render', {str(src)!r}, '--html', '--no-execute']))")
     assert r.returncode == 0, r.stderr
     assert (tmp_path / "doc.html").read_text().startswith("<!DOCTYPE html>")
+
+
+# --- frozen mode: show cached outputs, never execute -------------------------
+
+RUN_DOC = """# T
+
+```python {run}
+import pathlib
+pathlib.Path("ran.txt").write_text("x")
+print("hello from the block")
+```
+"""
+
+
+def test_frozen_mode_serves_the_cache_without_running(tmp_path):
+    render_html(RUN_DOC, cwd=str(tmp_path))                 # a real run fills the cache
+    (tmp_path / "ran.txt").unlink()
+    html, warnings = render_html(RUN_DOC, cwd=str(tmp_path), frozen=True)
+    assert "<p>hello from the block</p>" in html     # the output, not just the source
+    assert not (tmp_path / "ran.txt").exists()
+    assert warnings == []
+
+
+def test_frozen_mode_never_runs_an_uncached_block(tmp_path):
+    html, warnings = render_html(RUN_DOC, cwd=str(tmp_path), frozen=True)
+    assert not (tmp_path / "ran.txt").exists()
+    assert "<p>hello from the block</p>" not in html
+    assert any("not run yet" in w for w in warnings)
+
+
+def test_frozen_mode_never_tangles(tmp_path):
+    src = "# T\n\n```python {export=out.py}\nx = 1\n```\n"
+    render_html(src, cwd=str(tmp_path), frozen=True)
+    assert not (tmp_path / "out.py").exists()
+
+
+def test_execute_settings_reach_a_project(tmp_path):
+    from scriptorium.project import load
+    (tmp_path / "ch.md").write_text("# T\n")
+    (tmp_path / "scriptorium.yaml").write_text(
+        "files: [ch.md]\nexecute:\n  timeout: 600\n")
+    proj = load(tmp_path / "scriptorium.yaml")
+    p = prepare(proj.src, cwd=str(tmp_path), project_meta=proj.meta)
+    assert p.env.timeout == 600

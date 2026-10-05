@@ -28,7 +28,7 @@ class Prepared:
 def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
             execute: bool = True, vars: dict | None = None,
             code_root: str | None = None,
-            project_meta: dict | None = None) -> Prepared:
+            project_meta: dict | None = None, frozen: bool = False) -> Prepared:
     """Run the preprocessors and the parser: the units, theme and metadata a
     document renders from."""
     from .parse import frontmatter, parse
@@ -78,17 +78,21 @@ def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
     mathrender.set_freeze(freeze)
 
     env = None
-    if execute:
-        # tangle export= blocks first so executed blocks can import them
+    if execute or frozen:
+        # tangle export= blocks first so executed blocks can import them; a
+        # frozen render writes nothing and runs nothing
         stem = str(meta.get("stem", "doc"))
-        if cwd:
+        if cwd and not frozen:
             tangle_write(src, cwd, doc_stem=stem)
         pythonpath = []
         if cwd and code_root:
             pythonpath = [str((Path(cwd) / code_root).resolve())]
-        env = ExecEnv(cwd=cwd, freeze=freeze, pythonpath=pythonpath)
-        if isinstance(meta.get("execute"), dict) and meta["execute"].get("interpreters"):
-            env.interpreters.update(meta["execute"]["interpreters"])
+        env = ExecEnv(cwd=cwd, freeze=freeze, pythonpath=pythonpath, frozen=frozen)
+        settings = meta.get("execute") if isinstance(meta.get("execute"), dict) else {}
+        if settings.get("interpreters"):
+            env.interpreters.update(settings["interpreters"])
+        if settings.get("timeout"):
+            env.timeout = float(settings["timeout"])
 
     from .parse import fill_toc
     from .footnotes import process_footnotes, resolve_footnote_mode

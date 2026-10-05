@@ -70,6 +70,10 @@ writes `doc.html`, and `scriptorium.render.render_html(src)` returns the same
 document as a string. Decks always need the extra, because their slides are
 measured by WeasyPrint.
 
+`render_html(src, cwd=…, frozen=True)` shows cached code outputs without running
+anything: a block that never ran shows its source and a warning. A project sets
+`execute: {timeout: 600, interpreters: {…}}` in `scriptorium.yaml`.
+
 Requires Python 3.12+. Vendored fonts (Inter, Source Serif 4, JetBrains Mono)
 ship with the themes, so output is self-contained.
 
