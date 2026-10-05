@@ -1,0 +1,17 @@
+name: tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # the PDF assertions shell out to pdftotext / pdfinfo / pdffonts;
+      # WeasyPrint needs Pango
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils libpango-1.0-0 libpangoft2-1.0-0
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --locked
+      - run: uv run pytest -q
