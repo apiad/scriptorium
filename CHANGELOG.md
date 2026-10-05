@@ -14,6 +14,12 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Features
 
+- **`lang:` sets the document language.** Every document used to be emitted as
+  `<html lang='en'>`, so Spanish text was hyphenated with English patterns
+  (`per-ro`, `desar-rollo`, `guer-ril-la`). Frontmatter or `scriptorium.yaml`
+  `lang:` now sets it, a theme can default it (`uh` defaults to `es`), and the
+  fallback stays `en`. A value that is not a language tag is a hard error,
+  since it lands in an HTML attribute.
 - **A `formal` theme for contracts and official letters.** All black,
   Liberation Serif at 12pt (Times New Roman metrics, vendored as unsubsetted
   WOFF2 under the OFL), 2.5 cm margins, justified without hyphenation. Tables
