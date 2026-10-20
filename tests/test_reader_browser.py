@@ -1,4 +1,4 @@
-"""The reader in Chromium: turning, jumping, rectos, resume, nothing spilling.
+"""The reader in Chromium: turning, chapters, jumping, rectos, resume, nothing spilling.
 
 Skipped when no Chromium is found: Playwright's own download, or a system one.
 """
@@ -14,6 +14,7 @@ playwright = pytest.importorskip("playwright.sync_api")
 
 PHONE = {"viewport": {"width": 390, "height": 844}, "is_mobile": True, "has_touch": True}
 DESK = {"viewport": {"width": 1440, "height": 900}}
+CHAPTERS = ["chap-faro", "capítulo-de-la-tormenta", "chap-regreso"]
 
 
 def _chromium(p):
@@ -44,12 +45,12 @@ def _open(browser, url, device):
     page.errors = []
     page.on("pageerror", lambda e: page.errors.append(str(e)))
     page.on("console", lambda m: page.errors.append(m.text)
-            if m.type == "error" and "Failed to load resource" not in m.text else None)
+            if m.type in ("error", "warning") and "Failed to load resource" not in m.text else None)
     page.on("response", lambda r: page.errors.append(f"{r.status} {r.url}")
             if r.status >= 400 and not r.url.endswith("/favicon.ico") else None)
     page.goto(url)
-    page.wait_for_function("window.scriptoriumReader && scriptoriumReader.pages > 1")
-    page.wait_for_timeout(300)
+    page.wait_for_function("window.scriptoriumReader && scriptoriumReader.counted")
+    page.wait_for_timeout(200)
     return ctx, page
 
 
@@ -57,33 +58,56 @@ def _page(page):
     return page.evaluate("scriptoriumReader.page")
 
 
+def _on_screen(page, element_id):
+    return page.evaluate("""(id) => {
+        const el = document.getElementById(id);
+        if (!el) return false;
+        const r = el.getBoundingClientRect(), s = document.querySelector('#stage').getBoundingClientRect();
+        return r.left >= s.left - 1 && r.left < s.right;
+    }""", element_id)
+
+
 @pytest.mark.parametrize("device", [PHONE, DESK], ids=["phone", "desktop"])
 def test_toc_jump_turn_and_resume(browser, url, device):
     ctx, page = _open(browser, url, device)
     page.evaluate("document.querySelector('#btn-toc').click()")
     page.click("#toc-list a[data-id='capítulo-de-la-tormenta']")
-    page.wait_for_timeout(300)
+    page.wait_for_function("scriptoriumReader.chapter === 2")
+    page.wait_for_timeout(200)
+    assert _on_screen(page, "capítulo-de-la-tormenta")
     landed = _page(page)
-    chapter_page = page.evaluate("""() => {
-        const h = document.getElementById('capítulo-de-la-tormenta');
-        const stage = document.querySelector('#stage').getBoundingClientRect();
-        return Math.floor((h.getBoundingClientRect().left - stage.left) / stage.width);
-    }""")
-    assert chapter_page == 0  # the chapter's heading is on the screen we landed on
     page.keyboard.press("ArrowRight")
     page.wait_for_timeout(400)
     assert _page(page) == landed + 1
     page.reload()
-    page.wait_for_function("window.scriptoriumReader && scriptoriumReader.pages > 1")
-    page.wait_for_timeout(300)
+    page.wait_for_function("window.scriptoriumReader && scriptoriumReader.counted")
+    page.wait_for_timeout(200)
     assert _page(page) == landed + 1
+    ctx.close()
+
+
+@pytest.mark.parametrize("device", [PHONE, DESK], ids=["phone", "desktop"])
+def test_arrows_walk_every_page_across_chapters(browser, url, device):
+    ctx, page = _open(browser, url, device)
+    pages = page.evaluate("scriptoriumReader.pages")
+    seen = []
+    for _ in range(pages):
+        seen.append((_page(page), page.evaluate("scriptoriumReader.chapter")))
+        page.keyboard.press("ArrowRight")
+        page.wait_for_timeout(150)
+    assert [p for p, _ in seen] == list(range(pages))
+    assert sorted({c for _, c in seen}) == [0, 1, 2, 3]
+    page.keyboard.press("ArrowLeft")
+    page.wait_for_timeout(150)
+    assert _page(page) == pages - 2
     ctx.close()
 
 
 def test_a_swipe_that_starts_on_an_image_turns(browser, url):
     ctx, page = _open(browser, url, PHONE)
-    page.evaluate("scriptoriumReader.goTo(document.querySelector('#fig-faro'))")
-    page.wait_for_timeout(300)
+    page.evaluate("scriptoriumReader.goToId('fig-faro')")
+    page.wait_for_function("scriptoriumReader.chapter === 1")
+    page.wait_for_timeout(200)
     before = _page(page)
     box = page.locator("#fig-faro img").bounding_box()
     y = box["y"] + box["height"] / 2
@@ -99,16 +123,15 @@ def test_a_swipe_that_starts_on_an_image_turns(browser, url):
 
 def test_rectos_in_a_spread(browser, url):
     ctx, page = _open(browser, url, DESK)
-    sides = page.evaluate("""() => {
-        const stage = document.querySelector('#stage').getBoundingClientRect();
-        const half = stage.width / 2;
-        return [...document.querySelectorAll('.recto')].map((sec) => {
-            const h = sec.querySelector(':scope > .unit > h1, :scope > .unit > h2');
-            scriptoriumReader.goTo(h);
-            const x = h.getBoundingClientRect().left - stage.left;
-            return x > half ? 'right' : 'left';
-        });
-    }""")
+    sides = []
+    for ident in CHAPTERS:
+        page.evaluate("(id) => scriptoriumReader.goToId(id)", ident)
+        page.wait_for_function("(id) => document.getElementById(id)", arg=ident)
+        page.wait_for_timeout(200)
+        sides.append(page.evaluate("""(id) => {
+            const s = document.querySelector('#stage').getBoundingClientRect();
+            return document.getElementById(id).getBoundingClientRect().left - s.left > s.width / 2 ? 'right' : 'left';
+        }""", ident))
     assert sides == ["right", "right", "right"]
     ctx.close()
 
@@ -116,60 +139,81 @@ def test_rectos_in_a_spread(browser, url):
 @pytest.mark.parametrize("device", [PHONE, DESK], ids=["phone", "desktop"])
 def test_nothing_spills_out_of_its_page(browser, url, device):
     ctx, page = _open(browser, url, device)
-    spills = page.evaluate("""() => {
-        const out = [];
-        const stage = document.querySelector('#stage').getBoundingClientRect();
-        const pad = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--m'));
-        const step = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--col')) + 2 * pad;
-        for (const el of document.querySelectorAll('#book .unit p, #book .unit pre, #book .unit table, #book figure img')) {
-            for (const r of el.getClientRects()) {
-                const x = r.left - document.querySelector('#book').getBoundingClientRect().left - pad;
-                const colRight = (Math.floor((x + 2) / step) + 1) * step - 2 * pad;
-                if (x + r.width > colRight + 1) out.push(el.tagName + ' ' + el.textContent.slice(0, 30));
+    spills = []
+    for ident in CHAPTERS:
+        page.evaluate("(id) => scriptoriumReader.goToId(id)", ident)
+        page.wait_for_function("(id) => document.getElementById(id)", arg=ident)
+        spills += page.evaluate("""() => {
+            const out = [];
+            const css = getComputedStyle(document.documentElement);
+            const pad = parseFloat(css.getPropertyValue('--m'));
+            const step = parseFloat(css.getPropertyValue('--col')) + 2 * pad;
+            const left = document.querySelector('#book').getBoundingClientRect().left;
+            for (const el of document.querySelectorAll('#book .unit p, #book .unit pre, #book .unit table, #book figure img')) {
+                for (const r of el.getClientRects()) {
+                    const x = r.left - left - pad;
+                    const colRight = (Math.floor((x + 2) / step) + 1) * step - 2 * pad;
+                    if (x + r.width > colRight + 1) out.push(el.tagName + ' ' + el.textContent.slice(0, 30));
+                }
             }
-        }
-        return out;
-    }""")
+            return out;
+        }""")
     assert spills == []
     ctx.close()
 
 
-def test_a_reference_link_turns_to_its_target(browser, url):
+def test_a_link_to_another_chapter_loads_it(browser, url):
     ctx, page = _open(browser, url, PHONE)
+    page.evaluate("scriptoriumReader.goToId('chap-regreso')")
+    page.wait_for_function("scriptoriumReader.chapter === 3")
+    page.evaluate("document.querySelector('a.ref-chap').click()")
+    page.wait_for_function("scriptoriumReader.chapter === 1")
+    page.wait_for_timeout(200)
+    assert _on_screen(page, "chap-faro")
+    ctx.close()
+
+
+def test_a_reference_in_the_same_chapter_turns_to_it(browser, url):
+    ctx, page = _open(browser, url, PHONE)
+    page.evaluate("scriptoriumReader.goToId('chap-faro')")
+    page.wait_for_function("scriptoriumReader.chapter === 1")
     page.evaluate("scriptoriumReader.goTo(document.querySelector('a.ref-fig'))")
-    page.wait_for_timeout(300)
-    page.evaluate("scriptoriumReader.go(scriptoriumReader.pages - 1)")
-    page.wait_for_timeout(300)
     page.evaluate("document.querySelector('a.ref-fig').click()")
     page.wait_for_timeout(300)
-    fig_page = page.evaluate("""() => {
-        const f = document.getElementById('fig-faro').getBoundingClientRect();
-        return f.left >= 0 && f.left < innerWidth;
-    }""")
-    assert fig_page
+    assert _on_screen(page, "fig-faro")
     ctx.close()
 
 
 def test_font_change_keeps_the_first_block(browser, url):
     ctx, page = _open(browser, url, PHONE)
-    page.evaluate("scriptoriumReader.goTo(document.getElementById('capítulo-de-la-tormenta'))")
-    page.wait_for_timeout(300)
+    page.evaluate("scriptoriumReader.goToId('capítulo-de-la-tormenta')")
+    page.wait_for_function("scriptoriumReader.chapter === 2")
+    page.wait_for_timeout(200)
     page.evaluate("document.querySelector('[data-font=\"1\"]').click()")
     page.evaluate("document.querySelector('[data-font=\"1\"]').click()")
-    page.wait_for_timeout(400)
-    on_screen = page.evaluate("""() => {
-        const r = document.getElementById('capítulo-de-la-tormenta').getBoundingClientRect();
-        return r.left >= 0 && r.left < innerWidth;
-    }""")
-    assert on_screen
+    page.wait_for_timeout(500)
+    assert _on_screen(page, "capítulo-de-la-tormenta")
+    ctx.close()
+
+
+def test_a_hash_opens_at_its_target(browser, url):
+    ctx = browser.new_context(**PHONE)
+    page = ctx.new_page()
+    page.goto(url + "#chap-regreso")
+    page.wait_for_function("window.scriptoriumReader && scriptoriumReader.chapter === 3")
+    page.wait_for_timeout(200)
+    # a chapter opens on its first page: here its full-page illustration
+    first = page.evaluate("document.querySelector('#book .chapter').firstElementChild.getBoundingClientRect().left")
+    stage = page.evaluate("document.querySelector('#stage').getBoundingClientRect().left")
+    assert abs(first - stage) < 80
     ctx.close()
 
 
 @pytest.mark.parametrize("device", [PHONE, DESK], ids=["phone", "desktop"])
 def test_no_errors_in_the_console(browser, url, device):
     ctx, page = _open(browser, url, device)
-    for _ in range(3):
+    for _ in range(6):
         page.keyboard.press("ArrowRight")
-    page.wait_for_timeout(300)
+        page.wait_for_timeout(120)
     assert page.errors == []
     ctx.close()

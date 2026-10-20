@@ -1,28 +1,42 @@
 // The HTML book's reader. CSS multi-column layout makes the pages; this
-// script never measures text. It sizes the stage, moves the column strip one
-// screen at a time, handles gestures and keys, and remembers the place.
+// script never measures text. It loads one chapter at a time into the column
+// strip, moves the strip one screen at a time, handles gestures and keys,
+// counts the other chapters' pages out of sight, and remembers the place.
 (() => {
   const $ = (s) => document.querySelector(s);
   const root = document.documentElement, body = document.body;
-  const stage = $('#stage'), book = $('#book');
-  const S = window.BOOK.strings;
+  const stage = $('#stage'), book = $('#book'), measure = $('#measure .book');
+  const B = window.BOOK, S = B.strings, CH = B.chapters;
   const KEY = 'book:' + new URL('./', location).pathname;
   const saved = JSON.parse(localStorage.getItem(KEY) || '{}');
   const SIZES = [15, 16, 17, 18, 19, 20, 22, 24, 26, 28];
 
   let fontIdx = saved.font ?? (innerWidth < 500 ? 3 : 4);
   let mode = saved.mode || 'light';
-  let W = 0, colStep = 0, perScreen = 1, M = 0, screens = 1, cur = 0;
-  let blocks = [], anchor = saved.anchor || null, folioStart = 0, noFolio = new Set();
+  let W = 0, colStep = 0, perScreen = 1, M = 0;
+  let ch = -1, cur = 0, screens = 1;         // the loaded chapter, the screen in it, its screens
+  let blocks = [], noFolio = new Set(), anchor = saved.anchor || null;
+  let counts = [], geomKey = '';              // screens per chapter for this geometry, when known
 
   const save = () => localStorage.setItem(KEY, JSON.stringify({ font: fontIdx, mode, anchor }));
   const emit = (name, detail) => document.dispatchEvent(new CustomEvent(name, { detail }));
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+  // ---------- chapters ----------
+  const texts = new Map();
+  function fetchChapter(i) {
+    if (!texts.has(i)) texts.set(i, fetch(CH[i].file).then((r) => {
+      if (!r.ok) throw new Error(`${CH[i].file}: ${r.status}`);
+      return r.text();
+    }).catch((e) => { texts.delete(i); throw e; }));
+    return texts.get(i);
+  }
 
   // ---------- geometry ----------
   // A screen is always a whole number of columns: with side padding M and a
   // column gap of 2M, one column plus one gap is exactly the stage width (one
   // page), or two columns plus two gaps are (a spread).
-  function layout() {
+  function geometry() {
     const vw = innerWidth, vh = innerHeight;
     const spread = vw >= 900 && vw / vh >= 1.15;
     let sw, sh;
@@ -41,45 +55,98 @@
     set('--stage-x', sx); set('--stage-y', sy); set('--stage-w', sw); set('--stage-h', sh);
     set('--m', M); set('--pad-y', padY); set('--col', col); set('--gap', 2 * M);
     root.style.setProperty('--reader-size', SIZES[fontIdx] + 'px');
-
-    // Rectos. Multi-column layout cannot start a block on a given side, so in
-    // a spread a blank page goes before any recto that lands on a left page.
-    // The first blank puts the cover on a right-hand page, as in print.
-    book.querySelectorAll('.blank').forEach((b) => b.remove());
-    if (spread) {
-      const first = book.firstElementChild;
-      if (first) first.before(blank());
-      // what must land on the right is the chapter's heading: an illustration
-      // that opens the chapter then faces it from the left
-      for (const el of book.querySelectorAll('.recto')) {
-        const heading = el.querySelector(':scope > .unit > h1, :scope > .unit > h2') || el;
-        if (colOf(heading) % 2 === 0) el.before(blank());
-      }
+    const key = [sw, sh, perScreen, fontIdx, B.edition].join(':');
+    if (key !== geomKey) {
+      geomKey = key;
+      const c = JSON.parse(localStorage.getItem(KEY + ':counts') || '{}');
+      counts = c.key === key ? c.counts : CH.map(() => null);
     }
-
-    blocks = [...book.querySelectorAll('.fullpage, .titlepage, .chapter > *')];
-    screens = screenOf($('#end')) + 1;
-    $('#scrub').max = screens - 1;
-    const firstChapter = book.querySelector('.chapter');
-    folioStart = firstChapter ? colOf(firstChapter) : 0;
-    noFolio = new Set([...book.querySelectorAll('.fullpage, .titlepage, .blank')].map(colOf));
-    emit('reader:layout', { pages: screens });
   }
-  function blank() { const b = document.createElement('div'); b.className = 'blank'; return b; }
 
-  // column index of an element's first fragment: the one measurement made,
-  // and it reads a layout the browser already did
-  function colOf(el) {
-    const x = el.getBoundingClientRect().left - book.getBoundingClientRect().left;
+  // column index of an element's first fragment inside its strip: the one
+  // measurement made, and it reads a layout the browser already did
+  function colOf(el, strip = book) {
+    const x = el.getBoundingClientRect().left - strip.getBoundingClientRect().left;
     return Math.max(0, Math.floor((x - M + 2) / colStep));
   }
-  const screenOf = (el) => Math.floor(colOf(el) / perScreen);
+  const screenOf = (el, strip = book) => Math.floor(colOf(el, strip) / perScreen);
+  function blank() { const b = document.createElement('div'); b.className = 'blank'; return b; }
+
+  // Put chapter i's HTML into a strip and lay it out; returns its screens.
+  // Rectos: multi-column layout cannot start a block on a given side, so in a
+  // spread a blank page goes first when the chapter's heading would land on a
+  // left page; an opening illustration then faces the heading. The front
+  // starts with a blank too, so the cover is a right-hand page.
+  async function fill(strip, html) {
+    strip.innerHTML = html;
+    await document.fonts.ready;  // a chapter's text may pull in a face not loaded yet
+    if (perScreen === 2) {
+      const sec = strip.firstElementChild;
+      const heading = sec && sec.querySelector(':scope > .unit > h1, :scope > .unit > h2');
+      if (sec && sec.classList.contains('front')) sec.before(blank());
+      else if (heading && sec.classList.contains('recto') && colOf(heading, strip) % 2 === 0) sec.before(blank());
+    }
+    // up to the last fragment of the last block: a marker after a full page
+    // would sit in a column of its own and add an empty page
+    const sec = strip.querySelector('section.chapter');
+    const last = (sec && sec.lastElementChild) || sec || strip;
+    return lastScreenOf(last, strip) + 1;
+  }
+
+  async function load(i) {
+    const html = await fetchChapter(i);
+    ch = i;
+    screens = await fill(book, html);
+    blocks = [...book.querySelectorAll('.chapter > *')];
+    noFolio = new Set([...book.querySelectorAll('.fullpage, .titlepage, .blank')].map((el) => colOf(el)));
+    setCount(i, screens);
+    emit('reader:layout', { chapter: ch, pages: screens });
+    fetchChapter(Math.min(i + 1, CH.length - 1)).catch(() => {});
+  }
+
+  // ---------- pages across chapters ----------
+  function setCount(i, n) {
+    if (counts[i] === n) return;
+    counts[i] = n;
+    localStorage.setItem(KEY + ':counts', JSON.stringify({ key: geomKey, counts }));
+  }
+  // chapters not counted yet are estimated from their length
+  function countOf(i) {
+    if (counts[i] != null) return counts[i];
+    let n = 0, c = 0;
+    counts.forEach((k, j) => { if (k != null) { n += k; c += CH[j].chars; } });
+    return Math.max(1, Math.round(CH[i].chars * (c ? n / c : 1 / 1800)));
+  }
+  const exact = () => counts.every((k) => k != null);
+  const before = (i) => { let n = 0; for (let j = 0; j < i; j++) n += countOf(j); return n; };
+  const total = () => before(CH.length);
+  function locate(page) {
+    let i = 0;
+    while (i < CH.length - 1 && page >= countOf(i)) { page -= countOf(i); i++; }
+    return [i, Math.min(page, countOf(i) - 1)];
+  }
+
+  // Count every chapter's pages in the hidden strip, one per idle moment.
+  let counting = false;
+  const idle = window.requestIdleCallback || ((f) => setTimeout(f, 50));
+  function countRest() {
+    if (counting) return;
+    counting = true;
+    const step = async () => {
+      const i = counts.findIndex((k) => k == null);
+      if (i < 0) { counting = false; measure.innerHTML = ''; paint(); return; }
+      try { setCount(i, await fill(measure, await fetchChapter(i))); } catch { counts[i] = countOf(i); }
+      paint();
+      idle(step);
+    };
+    idle(step);
+  }
 
   // ---------- place ----------
-  // The place is a block and how many screens into it, not a page number, so
-  // it survives a resize or a font change.
-  // The first block visible on this screen: one running in from the previous
-  // screen if there is one, else the first block that starts here.
+  // The place is a chapter, a block in it and how many screens into that
+  // block, so it survives a resize or a font change. The block is the first
+  // one visible: one running in from the previous screen, else the first
+  // that starts on this one.
   function captureAnchor() {
     let lo = 0, hi = blocks.length;
     while (lo < hi) {
@@ -87,19 +154,21 @@
       if (screenOf(blocks[mid]) < cur) lo = mid + 1; else hi = mid;
     }
     const prev = blocks[lo - 1];
-    if (prev && lastScreenOf(prev) >= cur) anchor = { i: lo - 1, d: cur - screenOf(prev) };
-    else anchor = blocks[lo] ? { i: lo, d: 0 } : null;
+    if (prev && lastScreenOf(prev) >= cur) anchor = { c: ch, i: lo - 1, d: cur - screenOf(prev) };
+    else anchor = { c: ch, i: lo, d: 0 };
     save();
   }
-  function lastScreenOf(el) {
+  function lastScreenOf(el, strip = book) {
     const rects = el.getClientRects();
-    if (!rects.length) return screenOf(el);
-    const x = rects[rects.length - 1].left - book.getBoundingClientRect().left;
+    if (!rects.length) return screenOf(el, strip);
+    const x = rects[rects.length - 1].left - strip.getBoundingClientRect().left;
     return Math.floor(Math.max(0, Math.floor((x - M + 2) / colStep)) / perScreen);
   }
-  function restoreAnchor() {
-    if (!anchor || !blocks[anchor.i]) return go(0, false);
-    go(screenOf(blocks[anchor.i]) + (anchor.d || 0), false);
+  async function restoreAnchor() {
+    const a = anchor && anchor.c != null && anchor.c < CH.length ? anchor : { c: 0, i: 0, d: 0 };
+    await load(a.c);
+    const el = blocks[a.i];
+    go(el ? screenOf(el) + (a.d || 0) : 0, false);
   }
 
   // ---------- turning ----------
@@ -112,28 +181,56 @@
     place(0, animate);
     paint();
   }
-  const turn = (n) => { go(n); captureAnchor(); };
-  const next = () => turn(cur + 1);
-  const prev = () => turn(cur - 1);
-  const goTo = (el, animate = false) => { go(screenOf(el), animate); captureAnchor(); };
+  let busy = Promise.resolve();
+  // `where`: a screen number, 'last', or an element id in that chapter
+  function show(i, where = 0, animate = false) {
+    busy = busy.then(async () => {
+      if (i !== ch) await load(i);
+      let n = where;
+      if (where === 'last') n = screens - 1;
+      else if (typeof where === 'string') {
+        const el = document.getElementById(where);
+        n = el ? screenOf(el.matches('h1, h2') && el.closest('.chapter') ? el.closest('.chapter') : el) : 0;
+      }
+      go(n, animate && i === ch);
+      captureAnchor();
+    }).catch((e) => console.warn(e));
+    return busy;
+  }
+  function next() {
+    if (cur < screens - 1) { go(cur + 1); captureAnchor(); }
+    else if (ch < CH.length - 1) show(ch + 1, 0);
+    else place(0, true);
+  }
+  function prev() {
+    if (cur > 0) { go(cur - 1); captureAnchor(); }
+    else if (ch > 0) show(ch - 1, 'last');
+    else place(0, true);
+  }
+  const goToId = (id) => (id in B.ids ? show(B.ids[id], id) : Promise.resolve());
 
-  const chapters = (window.BOOK.toc || []).map((t) => ({ ...t, el: document.getElementById(t.id) }));
-  let lastChapter;
+  let lastChapter = '';
   function paint() {
-    const c = cur * perScreen;
-    $('#folio-l').textContent = folio(c);
-    $('#folio-r').textContent = folio(c + 1);
-    $('#scrub').value = cur;
-    $('#foot-page').textContent = `${cur + 1} / ${screens}`;
+    const page = before(ch) + cur, all = total();
+    const approx = exact() ? '' : '~';
+    $('#folio-l').textContent = folio(0);
+    $('#folio-r').textContent = folio(1);
+    $('#scrub').max = all - 1;
+    $('#scrub').value = page;
+    $('#foot-page').textContent = `${page + 1} / ${approx}${all}`;
     let here = null;
-    for (const ch of chapters) if (ch.el && screenOf(ch.el.closest('.chapter') || ch.el) <= cur) here = ch;
+    for (const t of B.toc) if (t.chapter <= ch) here = t;
     $('#foot-chapter').textContent = here ? here.title : '';
     document.querySelectorAll('#toc-list a').forEach((a) => a.classList.toggle('here', !!here && a.dataset.id === here.id));
     lastChapter = here ? here.title : '';
-    emit('reader:page', { page: cur, pages: screens, chapter: lastChapter });
+    emit('reader:page', { page, pages: all, chapter: lastChapter });
   }
-  function folio(col) {
-    return col >= folioStart && col < screens * perScreen && !noFolio.has(col) ? String(col - folioStart + 1) : '';
+  // folios count pages from the first chapter after the front; full pages,
+  // the title page and blanks carry none
+  function folio(side) {
+    const col = cur * perScreen + side;
+    if (ch < 1 || noFolio.has(col) || col >= screens * perScreen) return '';
+    return String((before(ch) - countOf(0)) * perScreen + col + 1);
   }
 
   // ---------- input ----------
@@ -164,8 +261,10 @@
     const d = down; down = null;
     if (d.drag) {
       const fast = Math.abs(dx) / dt > 0.45 && Math.abs(dx) > 24;
-      if (dx < -W * 0.14 || (fast && dx < 0)) next();
-      else if (dx > W * 0.14 || (fast && dx > 0)) prev();
+      const edge = (cur === 0 && dx > 0) || (cur === screens - 1 && dx < 0);
+      const far = Math.abs(dx) > W * (edge ? 0.035 : 0.14);  // the edge drag is damped
+      if ((far || fast) && dx < 0) next();
+      else if ((far || fast) && dx > 0) prev();
       else place(0, true);
       return;
     }
@@ -179,22 +278,23 @@
   });
   stage.addEventListener('pointercancel', () => { if (down?.drag) place(0, true); down = null; });
 
-  // in-book links (references, notes, back-links) turn to their target
+  // in-book links (references, notes, back-links) turn to their target,
+  // loading its chapter first when it is another one
   book.addEventListener('click', (e) => {
     const a = e.target.closest('a[href^="#"]');
     if (!a) return;
-    const target = document.getElementById(decodeURIComponent(a.getAttribute('href').slice(1)));
-    if (!target) return;
+    const id = decodeURIComponent(a.getAttribute('href').slice(1));
+    if (!(id in B.ids)) return;
     e.preventDefault();
-    goTo(target);
+    goToId(id);
   });
 
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT') return;
     if (['ArrowRight', 'PageDown'].includes(e.key) || (e.key === ' ' && !e.shiftKey)) { e.preventDefault(); next(); }
     else if (['ArrowLeft', 'PageUp'].includes(e.key) || (e.key === ' ' && e.shiftKey)) { e.preventDefault(); prev(); }
-    else if (e.key === 'Home') turn(0);
-    else if (e.key === 'End') turn(screens - 1);
+    else if (e.key === 'Home') show(0, 0);
+    else if (e.key === 'End') show(CH.length - 1, 'last');
     else if (e.key === 'Escape') { closePanels(); hideChrome(); }
   });
 
@@ -208,8 +308,10 @@
     if (Math.abs(wheelAcc) > 40) { wheelAcc > 0 ? next() : prev(); wheelAcc = 0; wheelLock = now + 380; }
   }, { passive: false });
 
-  $('#scrub').addEventListener('input', (e) => go(+e.target.value, false));
-  $('#scrub').addEventListener('change', captureAnchor);
+  $('#scrub').addEventListener('input', (e) => {
+    $('#foot-page').textContent = `${+e.target.value + 1} / ${exact() ? '' : '~'}${total()}`;
+  });
+  $('#scrub').addEventListener('change', (e) => { const [i, n] = locate(+e.target.value); show(i, n); });
 
   // ---------- chrome and panels ----------
   const hideChrome = () => body.classList.remove('chrome');
@@ -222,18 +324,25 @@
   $('#btn-toc').onclick = () => openPanel('#toc');
   $('#btn-settings').onclick = () => openPanel('#settings');
 
-  const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  $('#toc-list').innerHTML = chapters
+  $('#toc-list').innerHTML = B.toc
     .map((c) => `<li><a href="#${esc(c.id)}" data-id="${esc(c.id)}">${esc(c.title)}</a></li>`).join('');
   $('#toc-list').addEventListener('click', (e) => {
     const a = e.target.closest('a'); if (!a) return;
     e.preventDefault();
-    const el = document.getElementById(a.dataset.id);
-    goTo(el.closest('.chapter') || el);
+    const t = B.toc.find((x) => x.id === a.dataset.id);
+    show(t.chapter, 0);
     closePanels(); hideChrome();
   });
 
-  function relayout() { layout(); restoreAnchor(); }
+  // a resize or a font change lays out only the open chapter again; the
+  // other chapters are recounted out of sight
+  async function relayout() {
+    if (ch >= 0) captureAnchor();
+    geometry();
+    texts.forEach((p, i) => { if (i !== ch && i !== ch + 1) texts.delete(i); });
+    await restoreAnchor();
+    countRest();
+  }
   document.querySelectorAll('[data-font]').forEach((b) => b.onclick = () => {
     fontIdx = Math.max(0, Math.min(SIZES.length - 1, fontIdx + +b.dataset.font));
     save(); relayout();
@@ -255,20 +364,23 @@
   }
 
   window.scriptoriumReader = {
-    go: (n) => turn(n), goTo: (el) => goTo(el), relayout,
-    get page() { return cur; }, get pages() { return screens; },
-    toast, captureAnchor,
+    go: (page) => { const [i, n] = locate(page); return show(i, n); },
+    goTo: (el) => { go(screenOf(el), false); captureAnchor(); },
+    goToId, relayout, toast, captureAnchor,
+    get page() { return before(ch) + cur; }, get pages() { return total(); },
+    get chapter() { return ch; }, get chapterPages() { return screens; },
+    get counted() { return exact(); },
   };
 
   // ---------- start ----------
   applyMode();
-  document.fonts.ready.then(() => {
-    layout();
+  document.fonts.ready.then(async () => {
+    geometry();
     const hash = decodeURIComponent(location.hash.slice(1));
-    const target = hash && document.getElementById(hash);
-    if (target) goTo(target.closest('.chapter') && target.matches('h1, h2') ? target.closest('.chapter') : target);
-    else restoreAnchor();
-    addEventListener('load', relayout);
-    emit('reader:ready', { pages: screens });
+    if (hash && hash in B.ids) await show(B.ids[hash], hash);
+    else await restoreAnchor();
+    paint();
+    emit('reader:ready', { pages: total() });
+    setTimeout(countRest, 300);
   });
 })();

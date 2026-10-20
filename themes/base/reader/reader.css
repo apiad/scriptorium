@@ -28,23 +28,23 @@ body:not(.spread) #paper > div:last-child { display:none; }
 
 /* The book: one multi-column strip. The browser breaks the text into columns
    one page wide; turning a page translates the strip by one screen. */
-#book {
+.book {
   position:relative; height:100%; padding: var(--pad-y) var(--m);
   column-width: var(--col); column-gap: var(--gap); column-fill: auto;
   font-size: var(--reader-size); color: var(--ink); overflow-wrap: anywhere;
-  will-change: transform;
 }
+#book { will-change: transform; }
 #book.animate { transition: transform .32s cubic-bezier(.2,.7,.2,1); }
-#book p { hyphens: auto; -webkit-hyphens: auto; orphans: 2; widows: 2; }
-#book a { color: var(--brand, var(--accent)); }
-#book img { -webkit-user-drag: none; user-drag: none; pointer-events: none; max-width: 100%; height: auto; }
-#book pre { white-space: pre-wrap; }
-#book table { display: block; max-width: 100%; overflow-x: auto; }
-#book figure { break-inside: avoid; }
-#book figure img { width: auto; max-height: calc(var(--stage-h) - 2 * var(--pad-y) - 5em); margin: 0 auto; }
+.book p { hyphens: auto; -webkit-hyphens: auto; orphans: 2; widows: 2; }
+.book a { color: var(--brand, var(--accent)); }
+.book img { -webkit-user-drag: none; user-drag: none; pointer-events: none; max-width: 100%; height: auto; }
+.book pre { white-space: pre-wrap; }
+.book table { display: block; max-width: 100%; overflow-x: auto; }
+.book figure { break-inside: avoid; }
+.book figure img { width: auto; max-height: calc(var(--stage-h) - 2 * var(--pad-y) - 5em); margin: 0 auto; }
 
 .chapter { break-before: column; -webkit-column-break-before: always; }
-#book p.dropcap::first-letter { font-size: 3.1em; float: left; line-height: .85; padding: .06em .08em 0 0; color: var(--accent); font-weight: 600; }
+.book p.dropcap::first-letter { font-size: 3.1em; float: left; line-height: .85; padding: .06em .08em 0 0; color: var(--accent); font-weight: 600; }
 
 /* full pages: the cover, the title page, a figure.fullpage, a master, a blank */
 .fullpage, .titlepage, .blank {
@@ -53,8 +53,8 @@ body:not(.spread) #paper > div:last-child { display:none; }
   display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;
 }
 .blank { break-before: column; -webkit-column-break-before: always; }
-#book .fullpage img, #book .fullpage figure img { width:auto; max-width:100%; max-height: calc(var(--stage-h) - 2 * var(--pad-y)); }
-#book .fullpage figure { margin: 0; max-height: 100%; }
+.book .fullpage img, .book .fullpage figure img { width:auto; max-width:100%; max-height: calc(var(--stage-h) - 2 * var(--pad-y)); }
+.book .fullpage figure { margin: 0; max-height: 100%; }
 .cover img { box-shadow: 0 6px 24px rgba(0,0,0,.25); border-radius: 2px; }
 .titlepage .book-title { font-family: var(--heading-font), var(--body-font), serif; font-weight:700; font-size: 2.1em; line-height:1.1; margin: 0 0 .6em; hyphens:none; text-indent: 0; }
 .titlepage .book-subtitle { font-style: italic; color: var(--muted); text-indent: 0; }
@@ -99,3 +99,8 @@ body:not(.spread) #folio-r { display:none; }
   background: #2b2118; color:#f6efe2; padding:.6em 1em; border-radius: 10px; font: 14px/1.3 system-ui, sans-serif; transition: all .25s ease; max-width: 90vw; }
 #toast.show { opacity:1; transform: translate(-50%, 0); pointer-events: auto; }
 #toast button { color: #f2b27c; font-weight: 600; margin-left: .6em; }
+
+/* where chapters are laid out out of sight to count their pages: the same
+   size and the same rules as the stage, never painted */
+#measure { position:fixed; left:0; top:0; width:var(--stage-w); height:var(--stage-h); overflow:hidden;
+  visibility:hidden; pointer-events:none; transform: translateX(-200vw); contain: strict; }
