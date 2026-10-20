@@ -34,6 +34,9 @@ code that the `pack()` unit tests happily certify.
   `render_html()`, the document HTML with no WeasyPrint involved.
 - **`emit.py`** — `emit()` (one flow, plus `.page` divs for full-page masters),
   `_emit_css()` and the page geometry. Imports nothing from WeasyPrint.
+- **`book.py`** — `render_book()`, the HTML book: `browser_css()`,
+  `resolve_refs()`, images as WebP, the reader from `themes/base/reader/`, the
+  manifest, icons and a content-versioned `sw.js`. See `know-how/the-html-book.md`.
 - **`galley.py`** — the `render_pdf` entry point (`prepare` + WeasyPrint),
   `page_fills()` (real per-page fill, read off the box tree **after** the
   render), and the deck path: `measure()`, `pack()`, `_group_slides`,
@@ -84,3 +87,4 @@ code that the `pack()` unit tests happily certify.
 - Creating or changing a theme, a font/customization issue → `know-how/authoring-a-theme.md`
 - The deck / slide format → `know-how/the-deck-format.md`
 - Cutting a release → `know-how/releasing.md`
+- The HTML book, its reader, caching and updates → `know-how/the-html-book.md`

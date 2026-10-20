@@ -1,5 +1,7 @@
 # HTML Ebook Format — Implementation Plan
 
+> **Superseded** by `docs/superpowers/specs/2026-10-20-html-book-design.html`, which adds offline reading and installation and drops the single-file mode.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add `scriptorium render --format html` that produces a self-contained

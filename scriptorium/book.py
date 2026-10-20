@@ -440,7 +440,7 @@ def emit_book(units, theme, meta: dict, output, strings: dict) -> tuple[str, lis
         "lang": _esc(meta.get("lang") or theme.meta.get("lang") or "en"),
         "title": _esc(title), "subtitle": _esc(meta.get("subtitle", "")),
         "book": json.dumps(book, ensure_ascii=False).replace("</", "<\\/"),
-        "head": "", "scripts": "\n".join(f'<script src="{_esc(js)}" defer></script>' for js in output.js),
+        "head": _HEAD, "scripts": "\n".join(f'<script src="{_esc(js)}" defer></script>' for js in output.js),
     }
     page = (READER_DIR / "index.html").read_text(encoding="utf-8")
     page = re.sub(r"\{\{s\.(\w+)\}\}", lambda m: _esc(strings[m.group(1)]), page)
@@ -504,7 +504,84 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
         except OSError as exc:
             warnings.append(f"js file {rel!r} could not be copied: {exc}")
     (out_dir / "index.html").write_text(html, encoding="utf-8")
+    make_icons(base_dir / output.cover if output.cover else None, str(p.meta.get("title") or ""),
+               str(p.meta.get("brand") or ""), out_dir)
+    write_manifest(p.meta, str(p.meta.get("lang") or p.theme.meta.get("lang") or "en"), out_dir)
+    version = write_service_worker(out_dir)
 
     files = [f for f in out_dir.rglob("*") if f.is_file()]
     return BookReport(files=len(files), bytes=sum(f.stat().st_size for f in files),
-                      version="", warnings=warnings)
+                      version=version, warnings=warnings)
+
+
+_HEAD = ('<link rel="manifest" href="manifest.webmanifest">\n'
+         '<link rel="icon" href="icons/icon-192.png">\n'
+         '<link rel="apple-touch-icon" href="icons/icon-192.png">\n'
+         '<meta name="apple-mobile-web-app-capable" content="yes">\n'
+         '<meta name="mobile-web-app-capable" content="yes">')
+
+
+def make_icons(cover: Path | None, title: str, brand: str, out_dir: Path) -> None:
+    """The app icons: the cover cropped to a square from its top, or, without a
+    cover, the title's first letter on the brand colour. The maskable icon
+    keeps the art inside the safe zone (80%) on the brand colour."""
+    from PIL import Image, ImageColor, ImageDraw, ImageFont
+
+    try:
+        bg = ImageColor.getrgb(brand)
+    except ValueError:
+        bg = (43, 33, 24)
+    if cover and cover.is_file():
+        with Image.open(cover) as im:
+            im = im.convert("RGB")
+            side = min(im.size)
+            art = im.crop(((im.width - side) // 2, 0, (im.width - side) // 2 + side, side))
+            art = art.resize((512, 512), Image.LANCZOS)
+    else:
+        art = Image.new("RGB", (512, 512), bg)
+        letter = (title.strip()[:1] or "·").upper()
+        font = ImageFont.load_default(size=300)
+        ImageDraw.Draw(art).text((256, 256), letter, fill=(255, 255, 255), font=font, anchor="mm")
+    icons = out_dir / "icons"
+    icons.mkdir(parents=True, exist_ok=True)
+    art.save(icons / "icon-512.png", optimize=True)
+    art.resize((192, 192), Image.LANCZOS).save(icons / "icon-192.png", optimize=True)
+    mask = Image.new("RGB", (512, 512), bg)
+    mask.paste(art.resize((410, 410), Image.LANCZOS), (51, 51))
+    mask.save(icons / "icon-maskable-512.png", optimize=True)
+
+
+def write_manifest(meta: dict, lang: str, out_dir: Path) -> None:
+    title = str(meta.get("title") or "Book")
+    manifest = {
+        "name": title, "short_name": title if len(title) <= 24 else title[:23] + "…",
+        "description": str(meta.get("subtitle") or ""), "lang": lang,
+        "start_url": "./", "scope": "./", "display": "standalone",
+        "background_color": "#2b2118", "theme_color": "#2b2118",
+        "icons": [
+            {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+            {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+            {"src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+        ],
+    }
+    (out_dir / "manifest.webmanifest").write_text(json.dumps(manifest, ensure_ascii=False, indent=1) + "\n",
+                                                  encoding="utf-8")
+
+
+def site_version(out_dir: Path) -> str:
+    """The first 12 hex digits of sha256 over every file but sw.js, in path
+    order, hashing each path and then its bytes."""
+    digest = hashlib.sha256()
+    for f in sorted(p for p in out_dir.rglob("*") if p.is_file() and p.name != "sw.js"):
+        digest.update(f.relative_to(out_dir).as_posix().encode() + b"\0" + f.read_bytes())
+    return digest.hexdigest()[:12]
+
+
+def write_service_worker(out_dir: Path) -> str:
+    assets = ["./"] + sorted(p.relative_to(out_dir).as_posix()
+                             for p in out_dir.rglob("*") if p.is_file() and p.name != "sw.js")
+    version = site_version(out_dir)
+    sw = (READER_DIR / "sw.js").read_text(encoding="utf-8")
+    sw = sw.replace("__VERSION__", version).replace("__ASSETS__", json.dumps(assets, indent=1))
+    (out_dir / "sw.js").write_text(sw, encoding="utf-8")
+    return version

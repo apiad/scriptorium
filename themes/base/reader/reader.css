@@ -41,7 +41,11 @@ body:not(.spread) #paper > div:last-child { display:none; }
 .book pre { white-space: pre-wrap; }
 .book table { display: block; max-width: 100%; overflow-x: auto; }
 .book figure { break-inside: avoid; }
-.book figure img { width: auto; max-height: calc(var(--stage-h) - 2 * var(--pad-y) - 5em); margin: 0 auto; }
+/* Image boxes never depend on the image having loaded: the full column width,
+   the height from the width/height attributes' ratio, capped, and the picture
+   fitted inside. A box sized by the loaded image would give a chapter another
+   page count in the hidden strip than on the stage. */
+.book figure img { width: 100%; height: auto; max-height: calc(var(--stage-h) - 2 * var(--pad-y) - 5em); object-fit: contain; margin: 0 auto; }
 
 .chapter { break-before: column; -webkit-column-break-before: always; }
 .book p.dropcap::first-letter { font-size: 3.1em; float: left; line-height: .85; padding: .06em .08em 0 0; color: var(--accent); font-weight: 600; }
@@ -53,9 +57,9 @@ body:not(.spread) #paper > div:last-child { display:none; }
   display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;
 }
 .blank { break-before: column; -webkit-column-break-before: always; }
-.book .fullpage img, .book .fullpage figure img { width:auto; max-width:100%; max-height: calc(var(--stage-h) - 2 * var(--pad-y)); }
-.book .fullpage figure { margin: 0; max-height: 100%; }
-.cover img { box-shadow: 0 6px 24px rgba(0,0,0,.25); border-radius: 2px; }
+.book .fullpage img, .book .fullpage figure img { width:100%; height:100%; max-height:none; object-fit: contain; }
+.book .fullpage figure { margin: 0; width: 100%; height: 100%; }
+.cover img { filter: drop-shadow(0 6px 16px rgba(0,0,0,.25)); }
 .titlepage .book-title { font-family: var(--heading-font), var(--body-font), serif; font-weight:700; font-size: 2.1em; line-height:1.1; margin: 0 0 .6em; hyphens:none; text-indent: 0; }
 .titlepage .book-subtitle { font-style: italic; color: var(--muted); text-indent: 0; }
 .titlepage .book-author { margin-top: 3em; font-size: .85em; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); text-indent: 0; }

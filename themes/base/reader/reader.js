@@ -79,7 +79,8 @@
   // starts with a blank too, so the cover is a right-hand page.
   async function fill(strip, html) {
     strip.innerHTML = html;
-    await document.fonts.ready;  // a chapter's text may pull in a face not loaded yet
+    void strip.offsetHeight;     // style it now, so any face it needs starts loading
+    await document.fonts.ready;  // ...and is in place before its pages are counted
     if (perScreen === 2) {
       const sec = strip.firstElementChild;
       const heading = sec && sec.querySelector(':scope > .unit > h1, :scope > .unit > h2');
@@ -372,9 +373,42 @@
     get counted() { return exact(); },
   };
 
+  // ---------- install, offline, new editions ----------
+  let deferred = null;
+  addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; $('#btn-install').hidden = false; });
+  $('#btn-install').onclick = async () => {
+    if (!deferred) return;
+    deferred.prompt(); await deferred.userChoice;
+    deferred = null; $('#btn-install').hidden = true;
+  };
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone) $('#install-hint').hidden = false;
+
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    const prefix = 'book:' + new URL('./', location).pathname + ':';
+    const markOffline = () => { $('#foot-offline').textContent = S.offline; };
+    // the first worker only takes control; every later change is a new edition
+    let controlled = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then((reg) => {
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update(); });
+    }).catch(() => {});
+    navigator.serviceWorker.addEventListener('message', (e) => { if (e.data?.type === 'cached') markOffline(); });
+    navigator.serviceWorker.ready.then(async () => {
+      if ((await caches.keys()).some((k) => k.startsWith(prefix))) markOffline();
+    });
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!controlled) { controlled = true; return; }
+      const t = toast(`${esc(S.update)} <button>${esc(S.update_button)}</button>`, 0);
+      t.querySelector('button').onclick = () => { captureAnchor(); location.reload(); };
+    });
+  }
+
   // ---------- start ----------
   applyMode();
-  document.fonts.ready.then(async () => {
+  // Every face the theme declares, loaded before anything is laid out: a page
+  // counted with a fallback font while its face was still on the way would
+  // give another chapter length than the one the reader then shows.
+  Promise.all([...document.fonts].map((f) => f.load().catch(() => {}))).then(async () => {
     geometry();
     const hash = decodeURIComponent(location.hash.slice(1));
     if (hash && hash in B.ids) await show(B.ids[hash], hash);
