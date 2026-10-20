@@ -5,9 +5,27 @@
 caches or updates wrongly in a browser.*
 
 `render_book()` (`scriptorium/book.py`) writes a static directory from the same
-units a PDF prints from: `index.html`, `book.css`, `reader.js`, `sw.js`,
-`manifest.webmanifest`, `icons/`, `img/`, `fonts/`. Every URL is relative, so
+units a PDF prints from: `index.html`, `chapters/NNN.html`, `book.css`,
+`reader.js`, `sw.js`, `manifest.webmanifest`, `icons/`, `img/`, `fonts/`. Every URL is relative, so
 the directory works under any path on any static host.
+
+## One chapter at a time
+
+Each chapter is its own file and its own column strip; chapter 0 is the front
+(cover and title page). `index.html` carries the TOC, which chapter holds each
+id (so a link or a `#hash` loads its chapter first) and each chapter's length.
+The reader lays out only the open chapter. It counts the other chapters' pages
+in `#measure`, a hidden strip with the same size and the same `.book` rules,
+one chapter per idle moment, caches the counts per geometry, font size and
+edition, and estimates from length until then (the page total shows `~`).
+
+Because each chapter is laid out alone, the themes' CSS counters would restart
+in every chapter. `_carry_counters()` gives each section a `counter-reset` with
+the chapter, part and figure values the chapters before it reached.
+
+Splitting was not optional. With the whole book in `index.html`, an 861-page
+book took 1.2 s just to parse its 1 MB, and 2.8 s more for the theme's styles
+and the columns, before anything showed; a font change re-laid every page.
 
 ## CSS paginates; JavaScript never measures text
 
@@ -74,10 +92,11 @@ cache. Tests that check deletion must poll, and Playwright's
 
 ## Cost
 
-Layout is proportional to the book. On a 129,000-word book (861 phone pages)
-a font change re-lays everything: 1.05 s on a fast CPU, 4.1 s at 4× CPU
-throttling; a page turn is 6 to 18 ms. A book of a few dozen pages costs a
-proportional fraction.
+On a 129,000-word book (861 pages at 390×844), on a fast CPU and at 4× CPU
+throttling: ready to read in 0.44 s / 0.70 s, a font change in 28 / 66 ms,
+crossing into a chapter in 8–21 / 35–110 ms, every page counted in the
+background after 2.7 / 7.7 s. With one strip for the whole book the same book
+took 3.7 / 11.6 s to open and 1.05 / 4.1 s per font change.
 
 ## Tests
 

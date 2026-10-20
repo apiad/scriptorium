@@ -439,7 +439,7 @@ def test_manifest_fields(site):
 <li>The version is not bumped in task 9: <code>know-how/releasing.md</code> bumps it when a release is cut, from the commits since the last tag.</li>
 <li>The know-how doc follows the repo's own form (an italic "When to reach for it" line), not a <code>when:</code> line.</li>
 <li>Rectos are decided by the chapter's heading, not by the section: a chapter that opens with a full-page illustration puts the illustration on the left and the heading on the right (<code>themes/base/reader/reader.js</code>, <code>layout()</code>).</li>
-<li>The layout measurement (task 7) came out over budget for an 861-page book; the per-chapter question is open in PR 2.</li>
+<li>The layout measurement (task 7) came out over budget for an 861-page book (font change 1.05 s, 4.1 s at CPU ×4). With the maintainer's go-ahead each chapter became its own file and its own strip, as the spec's open question foresaw; the page counts are measured in a hidden strip in idle time. Font change: 28 ms (66 ms at ×4).</li>
 </ul>
 </main>
 

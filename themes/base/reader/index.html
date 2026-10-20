@@ -12,11 +12,7 @@
 <body>
 <div id="stage">
   <div id="paper" aria-hidden="true"><div></div><div></div></div>
-  <div id="book">
-{{front}}
-{{body}}
-    <span id="end"></span>
-  </div>
+  <div id="book" class="book"></div>
 </div>
 
 <div id="folio" aria-hidden="true"><span id="folio-l"></span><span id="folio-r"></span></div>
@@ -45,8 +41,9 @@
   <p id="install-hint" hidden>{{s.ios_hint}}</p>
 </aside>
 <div id="toast" role="status"></div>
+<div id="measure" aria-hidden="true"><div class="book"></div></div>
 
-<script>window.BOOK = {toc: {{toc}}, strings: {{strings}}};</script>
+<script>window.BOOK = {{book}};</script>
 <script src="reader.js"></script>
 {{scripts}}
 </body>

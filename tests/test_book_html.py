@@ -1,11 +1,16 @@
 """The HTML book's directory: what the example book builds to."""
 
+import json
 import re
 from pathlib import Path
 
 
+def _all_html(site: Path) -> str:
+    return "".join(p.read_text(encoding="utf-8") for p in sorted(site.glob("chapters/*.html")))
+
+
 def _local_urls(site: Path):
-    html = (site / "index.html").read_text(encoding="utf-8")
+    html = (site / "index.html").read_text(encoding="utf-8") + _all_html(site)
     css = (site / "book.css").read_text(encoding="utf-8")
     urls = re.findall(r'(?:src|href)="([^"#][^"]*)"', html)
     urls += re.findall(r"url\(\s*['\"]?([^)'\"]+)", css)
@@ -17,8 +22,25 @@ def test_site_has_the_reader_files(site):
         assert (site / f).is_file()
 
 
+def test_one_file_per_chapter_and_a_small_index(site):
+    files = sorted(p.name for p in (site / "chapters").iterdir())
+    assert files == ["000.html", "001.html", "002.html", "003.html"]
+    index = (site / "index.html").read_text(encoding="utf-8")
+    assert "Marta" not in index  # the text lives in the chapters
+    book = json.loads(re.search(r"window.BOOK = (\{.*?\});</script>", index, re.S).group(1))
+    assert [c["file"] for c in book["chapters"]] == [f"chapters/{f}" for f in files]
+    assert book["ids"]["fig-faro"] == 1 and book["ids"]["chap-regreso"] == 3
+    assert [t["chapter"] for t in book["toc"]] == [1, 2, 3]
+
+
+def test_chapters_carry_their_counters(site):
+    starts = [re.search(r'counter-reset: ([^"]+)"', (site / f"chapters/00{n}.html").read_text()).group(1)
+              for n in range(4)]
+    assert starts[3] == "chapter 2 part 0 figure 1"
+
+
 def test_every_img_has_dimensions(site):
-    html = (site / "index.html").read_text(encoding="utf-8")
+    html = _all_html(site)
     assert re.findall(r"<img(?![^>]*\bwidth=)[^>]*>", html) == []
     assert len(re.findall(r"<img\b", html)) == 3
 
@@ -32,15 +54,15 @@ def test_every_local_url_is_relative_and_exists(site):
 
 
 def test_lang_rectos_dropcaps_and_toc(site):
-    html = (site / "index.html").read_text(encoding="utf-8")
-    assert '<html lang="es"' in html
-    assert html.count('<section class="chapter recto">') == 3
+    assert '<html lang="es"' in (site / "index.html").read_text(encoding="utf-8")
+    html = _all_html(site)
+    assert len(re.findall(r'<section [^>]*class="chapter recto">', html)) == 3
     assert re.findall(r'<p class="dropcap">(\w)', html) == ["M", "L", "P"]
-    assert '"id": "capítulo-de-la-tormenta"' in html
+    assert '"id": "capítulo-de-la-tormenta"' in (site / "index.html").read_text(encoding="utf-8")
 
 
 def test_references_are_text(site):
-    html = (site / "index.html").read_text(encoding="utf-8")
+    html = _all_html(site)
     assert '<a class="ref-fig" href="#fig-faro">“El faro de la punta en un día de calma”</a>' in html
     assert '<a class="ref-chap" href="#chap-faro">Chapter 1</a>' in html
 
@@ -53,8 +75,8 @@ def test_css_is_for_a_browser(site):
 
 
 def test_the_opening_illustration_belongs_to_its_chapter(site):
-    html = (site / "index.html").read_text(encoding="utf-8")
-    assert re.search(r'<section class="chapter recto"><div class="fullpage"><figure class="fullpage">', html)
+    html = (site / "chapters/003.html").read_text(encoding="utf-8")
+    assert re.search(r'class="chapter recto"><div class="fullpage"><figure class="fullpage">', html)
 
 
 def test_single_file_format_html(tmp_path):

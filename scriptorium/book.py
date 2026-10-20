@@ -365,16 +365,50 @@ def _unit_html(u, theme) -> str:
     return f'<div class="{" ".join(cls)}">{u.html}</div>'
 
 
-def emit_book(units, theme, meta: dict, output, strings: dict) -> str:
-    """The book's index.html: cover, title page, then one section per chapter."""
+def _carry_counters(sections: list[str]) -> list[str]:
+    """Each chapter is laid out on its own, so the CSS counters the themes
+    number with would restart at every chapter. Each section starts its own
+    instances at the values the chapters before it reached, counted as
+    `resolve_refs` counts them."""
+    chapter = part = figure = 0
+    out = []
+    for html in sections:
+        start = f"counter-reset: chapter {chapter} part {part} figure {figure}"
+        out.append(html.replace("<section ", f'<section style="{start}" ', 1))
+        for m in re.finditer(r"<(h1|figure)\b([^>]*)>", html):
+            classes = re.search(r'class="([^"]*)"', m.group(2))
+            classes = set(classes.group(1).split()) if classes else set()
+            if m.group(1) == "h1":
+                if "part" in classes:
+                    part += 1
+                elif "unnumbered" not in classes:
+                    chapter += 1
+            elif re.search(r'\bid="fig-', m.group(2)):
+                figure += 1
+    return out
+
+
+def emit_book(units, theme, meta: dict, output, strings: dict) -> tuple[str, list[str]]:
+    """The book's index.html and one HTML fragment per chapter. Chapter 0 is
+    the front: the cover and the title page. The reader loads and lays out one
+    chapter at a time, so a long book opens as fast as a short one."""
     chapters, toc = _chapters(units)
-    sections = []
+    title = meta.get("title", "")
+    front = []
+    if output.cover:
+        front.append(f'<div class="fullpage cover"><img src="{_esc(output.cover)}" alt="{_esc(title)}"></div>')
+    front.append('<section class="titlepage">'
+                 f'<p class="book-title">{_esc(title)}</p>'
+                 + (f'<p class="book-subtitle">{_esc(meta["subtitle"])}</p>' if meta.get("subtitle") else "")
+                 + (f'<p class="book-author">{_esc(meta["author"])}</p>' if meta.get("author") else "")
+                 + "</section>")
+    sections = ['<section class="chapter front">' + "".join(front) + "</section>"]
     for chapter in chapters:
         parts, dropcap_done = [], False
         for i, u in enumerate(chapter):
             if u.is_break:
-                # a file boundary right before a chapter is already a new page
-                if i == len(chapter) - 1 or (i == 0 and len(sections) > 0):
+                # a file boundary at a chapter's edge is already a new page
+                if i == len(chapter) - 1 or i == 0:
                     continue
                 parts.append('<div class="pagebreak"></div>')
                 continue
@@ -387,27 +421,30 @@ def emit_book(units, theme, meta: dict, output, strings: dict) -> str:
         cls = "chapter recto" if chapter_starts else "chapter"
         sections.append(f'<section class="{cls}">{"".join(parts)}</section>')
 
-    title = meta.get("title", "")
-    front = []
-    if output.cover:
-        front.append(f'<div class="fullpage cover"><img src="{_esc(output.cover)}" alt="{_esc(title)}"></div>')
-    front.append('<section class="titlepage">'
-                 f'<p class="book-title">{_esc(title)}</p>'
-                 + (f'<p class="book-subtitle">{_esc(meta["subtitle"])}</p>' if meta.get("subtitle") else "")
-                 + (f'<p class="book-author">{_esc(meta["author"])}</p>' if meta.get("author") else "")
-                 + "</section>")
+    sections = _carry_counters(sections)
 
+    # which chapter holds each id, so a link or a #hash can load it first
+    ids = {}
+    for n, html in enumerate(sections):
+        for ident in re.findall(r'\bid="([^"]+)"', html):
+            ids.setdefault(ident, n)
+    for entry in toc:
+        entry["chapter"] = ids.get(entry["id"], 0)
+    book = {
+        "toc": toc, "ids": ids, "strings": strings,
+        "chapters": [{"file": f"chapters/{n:03d}.html", "chars": len(_TAGS.sub("", h))}
+                     for n, h in enumerate(sections)],
+        "edition": hashlib.sha256("".join(sections).encode()).hexdigest()[:12],
+    }
     fills = {
         "lang": _esc(meta.get("lang") or theme.meta.get("lang") or "en"),
         "title": _esc(title), "subtitle": _esc(meta.get("subtitle", "")),
-        "front": "\n".join(front), "body": "\n".join(sections),
-        "toc": json.dumps(toc, ensure_ascii=False).replace("</", "<\\/"),
-        "strings": json.dumps(strings, ensure_ascii=False).replace("</", "<\\/"),
+        "book": json.dumps(book, ensure_ascii=False).replace("</", "<\\/"),
         "head": _HEAD, "scripts": "\n".join(f'<script src="{_esc(js)}" defer></script>' for js in output.js),
     }
     page = (READER_DIR / "index.html").read_text(encoding="utf-8")
     page = re.sub(r"\{\{s\.(\w+)\}\}", lambda m: _esc(strings[m.group(1)]), page)
-    return re.sub(r"\{\{(\w+)\}\}", lambda m: fills[m.group(1)], page)
+    return re.sub(r"\{\{(\w+)\}\}", lambda m: fills[m.group(1)], page), sections
 
 
 @dataclass
@@ -440,9 +477,12 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
 
     lang = str(p.meta.get("lang") or p.theme.meta.get("lang") or "en").split("-")[0]
     strings = STRINGS.get(lang, STRINGS["en"])
-    html, img_warnings = collect_images(emit_book(p.units, p.theme, p.meta, output, strings),
-                                        base_dir, out_dir, output.image_max_width)
-    warnings += img_warnings
+    html, sections = emit_book(p.units, p.theme, p.meta, output, strings)
+    (out_dir / "chapters").mkdir()
+    for n, section in enumerate(sections):
+        section, img_warnings = collect_images(section, base_dir, out_dir, output.image_max_width)
+        warnings += img_warnings
+        (out_dir / f"chapters/{n:03d}.html").write_text(section, encoding="utf-8")
 
     css = [relative_sizes(browser_css(collect_css_assets(_emit_css(p.theme, p.meta), out_dir))),
            (READER_DIR / "reader.css").read_text(encoding="utf-8")]
