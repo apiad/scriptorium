@@ -54,16 +54,25 @@ PDF" yields real, controlled pages.
 
 ## Install
 
-Scriptorium is a Python package. It renders through **WeasyPrint**, which needs a
+Scriptorium is a Python package. PDFs print through **WeasyPrint**, which needs a
 few system libraries (Pango, Cairo, GDK-PixBuf, libffi) — see the
 [WeasyPrint install docs](https://doc.courtbouillon.org/weasyprint/stable/first_steps.html#installation)
-for your platform. Then:
+for your platform. WeasyPrint is the `pdf` extra:
 
 ```bash
-uv pip install git+https://github.com/apiad/scriptorium
+uv pip install 'scriptorium[pdf] @ git+https://github.com/apiad/scriptorium'
 # or, from a clone:
-uv pip install -e .
+uv pip install -e '.[pdf]'
 ```
+
+Without the extra, scriptorium renders HTML only: `scriptorium render doc.md --html`
+writes `doc.html`, and `scriptorium.render.render_html(src)` returns the same
+document as a string. Decks always need the extra, because their slides are
+measured by WeasyPrint.
+
+`render_html(src, cwd=…, frozen=True)` shows cached code outputs without running
+anything: a block that never ran shows its source and a warning. A project sets
+`execute: {timeout: 600, interpreters: {…}}` in `scriptorium.yaml`.
 
 Requires Python 3.12+. Vendored fonts (Inter, Source Serif 4, JetBrains Mono)
 ship with the themes, so output is self-contained.

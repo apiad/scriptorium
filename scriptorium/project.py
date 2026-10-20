@@ -50,7 +50,7 @@ def load(path: str | Path) -> Project:
     meta = {k: spec[k]
             for k in ("bibliography", "nocite", "glossary", "css", "footnotes",
                       "header", "footer", "lang",
-                      "timeline", "timeline-group", "timeline-group-max")
+                      "timeline", "timeline-group", "timeline-group-max", "execute")
             if k in spec}
 
     bodies = []

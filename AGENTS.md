@@ -30,10 +30,14 @@ code that the `pack()` unit tests happily certify.
 
 - **`parse.py`** — markdown-it-py + `:::` components + code fences + math + `@ref`
   → a flat list of `Unit`s (the model in `model.py`).
-- **`galley.py`** — `emit()` (one flow, plus `.page` divs for full-page masters),
-  `page_fills()` (real per-page fill, read off the box tree **after** the render)
-  and the `render_pdf` entry point. `measure()` and `pack()` are still here but
-  **only the deck path uses them** (`_group_slides` / `emit_deck`).
+- **`render.py`** — `prepare()` (theme, vars, preprocessors, `parse`) and
+  `render_html()`, the document HTML with no WeasyPrint involved.
+- **`emit.py`** — `emit()` (one flow, plus `.page` divs for full-page masters),
+  `_emit_css()` and the page geometry. Imports nothing from WeasyPrint.
+- **`galley.py`** — the `render_pdf` entry point (`prepare` + WeasyPrint),
+  `page_fills()` (real per-page fill, read off the box tree **after** the
+  render), and the deck path: `measure()`, `pack()`, `_group_slides`,
+  `emit_deck`. WeasyPrint (the `pdf` extra) is imported only here, lazily.
 - **`execute.py`** — run code in a subshell, splice stdout, per-file session
   state, freeze cache, `PYTHONPATH`.
 - **`tangle.py`** — `export=` extraction (illiterate-compatible, byte-exact).

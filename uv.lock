@@ -492,6 +492,10 @@ dependencies = [
     { name = "pygments" },
     { name = "pyyaml" },
     { name = "quickjax" },
+]
+
+[package.optional-dependencies]
+pdf = [
     { name = "weasyprint" },
 ]
 
@@ -499,6 +503,7 @@ dependencies = [
 dev = [
     { name = "pypdf" },
     { name = "pytest" },
+    { name = "weasyprint" },
 ]
 
 [package.metadata]
@@ -508,13 +513,15 @@ requires-dist = [
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "quickjax", specifier = ">=0.1.0" },
-    { name = "weasyprint", specifier = ">=63" },
+    { name = "weasyprint", marker = "extra == 'pdf'", specifier = ">=63" },
 ]
+provides-extras = ["pdf"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "pypdf", specifier = ">=5" },
     { name = "pytest", specifier = ">=8" },
+    { name = "weasyprint", specifier = ">=63" },
 ]
 
 [[package]]
