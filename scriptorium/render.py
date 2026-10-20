@@ -29,7 +29,7 @@ def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
             execute: bool = True, vars: dict | None = None,
             code_root: str | None = None,
             project_meta: dict | None = None, frozen: bool = False,
-            page: dict | None = None) -> Prepared:
+            page: dict | None = None, for_screen: bool = False) -> Prepared:
     """Run the preprocessors and the parser: the units, theme and metadata a
     document renders from."""
     from .parse import frontmatter, parse
@@ -108,7 +108,11 @@ def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
     # body has by then been moved to where the note actually renders, so it is
     # numbered by reading order rather than by where its definition happened to
     # sit in the source. The glossary runs last for exactly the same reason.
-    src, warnings = process_footnotes(src, resolve_footnote_mode(meta, theme.meta))
+    mode = resolve_footnote_mode(meta, theme.meta)
+    if for_screen and mode == "page":
+        # a page-floated note needs paged media; on a screen it ends its chapter
+        mode = "chapter"
+    src, warnings = process_footnotes(src, mode)
     src, cite_warnings = process_citations(src, meta)
     src, gloss_warnings = process_glossary(src, meta, Path(cwd) if cwd else None)
     src, tl_warnings = process_timeline(src, meta, Path(cwd) if cwd else None)
@@ -116,7 +120,8 @@ def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
     units = parse(src, theme, env, meta=meta)
     if env is not None:
         warnings = warnings + env.warnings
-    units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
+    if not for_screen:  # the HTML book has its own contents panel
+        units = fill_toc(units, depth=int(meta.get("toc_depth", 2)))
 
     return Prepared(units=units, theme=theme, meta=meta, warnings=warnings, env=env)
 

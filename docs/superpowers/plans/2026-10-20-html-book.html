@@ -230,7 +230,7 @@ def test_only_with_an_unknown_name_lists_the_names(tmp_path, capsys):
 
 <div class="pr">PR 2 · feat: the HTML book · branch <code>html-book</code> (stacked on <code>outputs</code>)</div>
 
-<details class="task" id="task-4" data-state="pending">
+<details class="task" id="task-4" data-state="done">
 <summary><span class="num">4</span><span class="ttl">Theme CSS for a browser</span><span class="state"></span><span class="files">scriptorium/book.py · tests/test_book_css.py</span></summary>
 <div class="iface"><b>produces</b> <code>browser_css(css: str) -&gt; str</code></div>
 <ol>
@@ -260,7 +260,7 @@ def test_break_before_page_with_spaces_is_rewritten():
 <div class="verify"><b>verify</b><br><code>uv run python -c "from scriptorium.book import browser_css; from scriptorium.theme import load_theme; c=browser_css(load_theme('book').css); assert '@page' not in c and 'target-' not in c; print(len(c))"</code> prints a length.</div>
 </details>
 
-<details class="task" id="task-5" data-state="pending">
+<details class="task" id="task-5" data-state="done">
 <summary><span class="num">5</span><span class="ttl">Cross-references as text</span><span class="state"></span><span class="files">scriptorium/book.py · themes/base/theme.yml · themes/book/theme.yml · tests/test_book_refs.py</span></summary>
 <div class="iface"><b>produces</b> <code>resolve_refs(units: list[Unit], formats: dict[str, str], vars: dict) -&gt; list[str]</code> (warnings); fills each empty <code>&lt;a class="ref-K" href="#ID"&gt;&lt;/a&gt;</code> in place. Formats come from <code>theme.meta.get("html-refs", {})</code>.</div>
 <ol>
@@ -296,7 +296,7 @@ def test_base_fig_ref_uses_the_ref_label():
 </ol>
 </details>
 
-<details class="task" id="task-6" data-state="pending">
+<details class="task" id="task-6" data-state="done">
 <summary><span class="num">6</span><span class="ttl">Images and fonts into the site</span><span class="state"></span><span class="files">scriptorium/book.py · pyproject.toml · tests/test_book_assets.py</span></summary>
 <div class="iface"><b>produces</b> <code>collect_images(html: str, base_dir: Path, out_dir: Path, max_width: int) -&gt; tuple[str, list[str]]</code> and <code>collect_css_assets(css: str, out_dir: Path) -&gt; str</code>.</div>
 <ol>
@@ -333,7 +333,7 @@ def test_theme_fonts_are_copied_and_relative(tmp_path):
 </ol>
 </details>
 
-<details class="task" id="task-7" data-state="pending">
+<details class="task" id="task-7" data-state="done">
 <summary><span class="num">7</span><span class="ttl">emit_book, render_book and the reader</span><span class="state"></span><span class="files">scriptorium/book.py · themes/base/reader/{index.html,reader.css,reader.js} · scriptorium/cli.py · tests/test_book_html.py · tests/test_reader_browser.py · tests/conftest.py · examples/html-book/</span></summary>
 <div class="iface"><b>consumes</b> tasks 1, 4, 5, 6 and <code>prepare()</code>. <b>produces</b> <code>render_book(src: str, out_dir: Path, *, output: Output, base_dir: Path, theme_name: str | None, vars: dict, project_meta: dict, execute: bool, code_root: str | None) -&gt; BookReport(files: int, bytes: int, version: str, warnings: list[str])</code>; <code>emit_book(units, theme, meta, output) -&gt; str</code>. JS: <code>window.scriptoriumReader = {go(page), goTo(el), page, pages, relayout()}</code>; events <code>reader:ready</code>, <code>reader:page</code> <code>{page, pages, chapter}</code>, <code>reader:layout</code> on <code>document</code>.</div>
 <ol>

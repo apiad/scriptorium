@@ -12,6 +12,7 @@ dependencies = [
     "pygments>=2.20.0",
     "quickjax>=0.1.0",
     "mdit-py-plugins>=0.6.1",
+    "pillow>=10",
 ]
 
 [project.optional-dependencies]
@@ -37,4 +38,12 @@ packages = ["scriptorium"]
 # pdftotext output, which works when the mark is visible text ("↩ 2"); a glossed
 # term's forward link is the word itself, so only the annotation distinguishes a
 # working link from coloured, underlined, dead text.
-dev = ["pytest>=8", "pypdf>=5", "weasyprint>=63"]
+dev = [
+    "pytest>=8",
+    "pypdf>=5",
+    "weasyprint>=63",
+    "playwright>=1.48",
+]
+
+[tool.pytest.ini_options]
+markers = ["browser: drives the HTML book in Chromium; skipped when none is found"]

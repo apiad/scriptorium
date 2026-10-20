@@ -50,3 +50,9 @@ components:
     keep_together: false   # and a five-hundred-entry glossary most of all
   timeline:
     keep_together: false
+
+# Cross-reference text for the HTML book, where target-counter() does not exist.
+# {chapter} {section} {figure} are counted as this theme's CSS counts them;
+# {text} is the target's heading or caption; any var can be named too.
+html-refs:
+  fig: "{figure-ref-label} {figure}"

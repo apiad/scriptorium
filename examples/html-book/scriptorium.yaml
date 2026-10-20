@@ -1,0 +1,27 @@
+# An HTML book next to two PDFs, all from the same three files.
+theme: book
+lang: es
+footnotes: chapter
+vars:
+  title: El faro de la punta
+  subtitle: Un ejemplo de libro en HTML
+  author: Scriptorium
+  figure-label: Figura
+  figure-ref-label: figura
+files:
+  - 01-el-faro.md
+  - 02-la-tormenta.md
+  - 03-el-regreso.md
+
+outputs:
+  print:
+    format: pdf
+    file: book.pdf
+  pocket:
+    format: pdf
+    file: book-a5.pdf
+    page: {size: A5, margin: 14mm}
+  web:
+    format: html
+    dir: web
+    cover: img/portada.png

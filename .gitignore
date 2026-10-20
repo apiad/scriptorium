@@ -11,3 +11,5 @@ examples/.scriptorium/
 examples/book/book.pdf
 examples/book/.scriptorium/
 .worktrees/
+examples/html-book/web/
+examples/html-book/*.pdf

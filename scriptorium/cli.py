@@ -13,6 +13,13 @@ def _warn(report) -> None:
         print(f"  ⚠ {w}", file=sys.stderr)
 
 
+def _book_line(name, out, report) -> None:
+    version = f", version {report.version}" if report.version else ""
+    print(f"{name}: {out}/, {report.files} files, {report.bytes // 1024} KB{version}")
+    for w in report.warnings:
+        print(f"  ⚠ {w}", file=sys.stderr)
+
+
 def _render_project(args) -> int:
     """Build every output of a scriptorium.yaml, or the ones --only names."""
     from .galley import render_pdf
@@ -42,8 +49,14 @@ def _render_project(args) -> int:
     cwd = str(base)
     for o in outputs:
         if o.format == "html":
-            print(f"{o.name}: html output is not available yet", file=sys.stderr)
-            return 2
+            from .book import render_book
+
+            out = args.output or (base / o.dir)
+            report = render_book(proj.src, out, output=o, base_dir=base, theme_name=proj.theme,
+                                 vars=proj.vars, project_meta=proj.meta,
+                                 execute=not args.no_execute, code_root=proj.code_root)
+            _book_line(o.name, out, report)
+            continue
         out = args.output or (base / o.file)
         report = render_pdf(proj.src, str(out), base_url=cwd + "/",
                             theme_name=proj.theme, cwd=cwd,
@@ -110,8 +123,15 @@ def main(argv=None) -> int:
         if args.input.suffix in (".yaml", ".yml"):  # a project
             return _render_project(args)
         if args.format == "html":
-            print("html output is not available yet", file=sys.stderr)
-            return 2
+            from .book import render_book
+            from .project import Output
+
+            out = args.output or args.input.with_suffix("")
+            report = render_book(src, out, output=Output(name="html", format="html"),
+                                 base_dir=args.input.resolve().parent, theme_name=args.theme,
+                                 execute=not args.no_execute)
+            _book_line("html", out, report)
+            return 0
         out = args.output or args.input.with_suffix(".pdf")
         cwd = str(args.input.resolve().parent)
         report = render_pdf(src, str(out), base_url=cwd + "/", theme_name=args.theme,
