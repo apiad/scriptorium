@@ -173,3 +173,78 @@ def test_no_errors_in_the_console(browser, url, device):
     page.wait_for_timeout(300)
     assert page.errors == []
     ctx.close()
+
+
+# ---------- install, offline, updates ----------
+
+def _controlled(page):
+    page.wait_for_function("navigator.serviceWorker.controller !== null", timeout=20000)
+    page.wait_for_function(
+        "caches.keys().then(k => k.some(n => n.startsWith('book:' + new URL('./', location).pathname)))",
+        timeout=20000)
+
+
+def test_offline_reload_shows_the_book_and_every_image(browser, url):
+    ctx, page = _open(browser, url, PHONE)
+    _controlled(page)
+    ctx.set_offline(True)
+    page.reload()
+    page.wait_for_function("window.scriptoriumReader && scriptoriumReader.pages > 1")
+    page.wait_for_timeout(300)
+    assert page.evaluate("[...document.images].every(i => i.complete && i.naturalWidth > 0)")
+    assert page.inner_text("#foot-offline") == "✓ sin conexión"
+    ctx.close()
+
+
+def test_a_new_edition_shows_the_notice_and_update_shows_it(browser, serve, tmp_path):
+    from conftest import build_example
+    from scriptorium.cli import main
+
+    site = build_example(tmp_path / "book")
+    ctx, page = _open(browser, serve(site), PHONE)
+    _controlled(page)
+    for md in (tmp_path / "book").glob("*.md"):
+        md.write_text(md.read_text(encoding="utf-8").replace("cerillas", "fósforos"), encoding="utf-8")
+    assert main(["render", str(tmp_path / "book" / "scriptorium.yaml"), "--only", "web"]) == 0
+    page.evaluate("navigator.serviceWorker.getRegistration().then(r => r.update())")
+    page.wait_for_function("document.querySelector('#toast').classList.contains('show')", timeout=20000)
+    assert "edición nueva" in page.inner_text("#toast")
+    page.click("#toast button")
+    page.wait_for_function("window.scriptoriumReader && scriptoriumReader.pages > 1")
+    assert "fósforos" in page.inner_text("#book")
+    ctx.close()
+
+
+def test_updating_one_book_leaves_the_others_cache(browser, serve, tmp_path):
+    from conftest import build_example
+
+    root = tmp_path / "root"
+    root.mkdir()
+    a1 = build_example(tmp_path / "a1")
+    shutil.copytree(a1, root / "a")
+    shutil.copytree(a1, root / "b")
+    base = serve(root)
+    ctx = browser.new_context(**PHONE)
+    page = ctx.new_page()
+    for book in ("b", "a"):
+        page.goto(base + book + "/")
+        _controlled(page)
+    before = page.evaluate("caches.keys()")
+    a2 = build_example(tmp_path / "a2", replace=("cerillas", "fósforos"))
+    shutil.rmtree(root / "a")
+    shutil.copytree(a2, root / "a")
+    page.evaluate("navigator.serviceWorker.getRegistration().then(r => r.update())")
+    page.wait_for_function("document.querySelector('#toast').classList.contains('show')", timeout=20000)
+    # the new worker takes control as it activates, and deletes the old cache just after
+    old_a = [k for k in before if k.startswith("book:/a/:")][0]
+    for _ in range(20):
+        if old_a not in page.evaluate("caches.keys()"):
+            break
+        page.wait_for_timeout(250)
+    after = page.evaluate("caches.keys()")
+    b_keys = [k for k in before if k.startswith("book:/b/:")]
+    a_before = [k for k in before if k.startswith("book:/a/:")]
+    assert len(b_keys) == 1 and b_keys[0] in after
+    assert len(a_before) == 1 and a_before[0] not in after
+    assert len([k for k in after if k.startswith("book:/a/:")]) == 1
+    ctx.close()
