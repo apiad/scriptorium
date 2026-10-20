@@ -15,6 +15,59 @@ import yaml
 _VAR = re.compile(r"\{\{\s*([\w.-]+)\s*\}\}")
 
 
+class ProjectError(ValueError):
+    """A scriptorium.yaml that cannot be built as written."""
+
+
+@dataclass
+class Output:
+    """One render of a project: a PDF (`file`) or an HTML book (`dir`)."""
+    name: str
+    format: str
+    file: str | None = None
+    dir: str | None = None
+    page: dict | None = None
+    vars: dict = field(default_factory=dict)
+    cover: str | None = None
+    image_max_width: int = 1600
+    js: list[str] = field(default_factory=list)
+    css: list[str] = field(default_factory=list)
+
+
+# the keys each format accepts; anything else is a typo or a key for the
+# other format, and silently ignoring it would render the wrong book
+_OUTPUT_KEYS = {
+    "pdf": {"format", "file", "page", "vars"},
+    "html": {"format", "dir", "vars", "cover", "image-max-width", "js", "css"},
+}
+
+
+def _outputs(spec) -> list[Output]:
+    if spec is None:
+        return [Output(name="pdf", format="pdf", file="book.pdf")]
+    if not isinstance(spec, dict):
+        raise ProjectError("outputs: expected a mapping of output names to settings")
+    outs = []
+    for name, cfg in spec.items():
+        cfg = cfg or {}
+        fmt = cfg.get("format")
+        if fmt not in _OUTPUT_KEYS:
+            raise ProjectError(f"outputs.{name}: format {fmt!r} is not one of pdf, html")
+        unknown = sorted(set(cfg) - _OUTPUT_KEYS[fmt])
+        if unknown:
+            raise ProjectError(f"outputs.{name}: unknown key(s) for a {fmt} output: "
+                               + ", ".join(unknown))
+        outs.append(Output(
+            name=name, format=fmt,
+            file=cfg.get("file", f"{name}.pdf") if fmt == "pdf" else None,
+            dir=cfg.get("dir", name) if fmt == "html" else None,
+            page=cfg.get("page"), vars=cfg.get("vars") or {}, cover=cfg.get("cover"),
+            image_max_width=int(cfg.get("image-max-width", 1600)),
+            js=list(cfg.get("js") or []), css=list(cfg.get("css") or []),
+        ))
+    return outs
+
+
 @dataclass
 class Project:
     theme: str
@@ -23,6 +76,7 @@ class Project:
     base_dir: Path
     code_root: str | None = None
     meta: dict = field(default_factory=dict)  # content keys: bibliography, nocite
+    outputs: list[Output] = field(default_factory=list)
 
 
 def _strip_frontmatter(text: str) -> str:
@@ -63,4 +117,4 @@ def load(path: str | Path) -> Project:
 
     code_root = (spec.get("code") or {}).get("root")
     return Project(theme=theme, vars=vars, src=src, base_dir=base,
-                   code_root=code_root, meta=meta)
+                   code_root=code_root, meta=meta, outputs=_outputs(spec.get("outputs")))

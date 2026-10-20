@@ -8,6 +8,53 @@ from .tangle import test as tangle_test
 from .tangle import write as tangle_write
 
 
+def _warn(report) -> None:
+    for w in [*report.oversized, *report.warnings, *report.underfull]:
+        print(f"  ⚠ {w}", file=sys.stderr)
+
+
+def _render_project(args) -> int:
+    """Build every output of a scriptorium.yaml, or the ones --only names."""
+    from .galley import render_pdf
+    from .project import ProjectError
+    from .project import load as load_project
+
+    try:
+        proj = load_project(args.input)
+    except ProjectError as e:
+        print(f"scriptorium: {e}", file=sys.stderr)
+        return 2
+    outputs = proj.outputs
+    if args.only:
+        names = [o.name for o in outputs]
+        missing = [n for n in args.only if n not in names]
+        if missing:
+            print(f"scriptorium: no output named {', '.join(missing)}; "
+                  f"this project has {', '.join(names)}", file=sys.stderr)
+            return 2
+        outputs = [o for o in outputs if o.name in args.only]
+    if args.output and len(outputs) > 1:
+        print(f"scriptorium: -o is ambiguous with {len(outputs)} outputs; "
+              "pick one with --only", file=sys.stderr)
+        return 2
+
+    base = args.input.resolve().parent
+    cwd = str(base)
+    for o in outputs:
+        if o.format == "html":
+            print(f"{o.name}: html output is not available yet", file=sys.stderr)
+            return 2
+        out = args.output or (base / o.file)
+        report = render_pdf(proj.src, str(out), base_url=cwd + "/",
+                            theme_name=proj.theme, cwd=cwd,
+                            execute=not args.no_execute, vars={**proj.vars, **o.vars},
+                            code_root=proj.code_root, project_meta=proj.meta,
+                            page=o.page)
+        print(f"{o.name}: {out} — {report.n_pages} page(s)")
+        _warn(report)
+    return 0
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="scriptorium")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -20,6 +67,10 @@ def main(argv=None) -> int:
                    help="override the document's frontmatter `theme:`")
     r.add_argument("--html", action="store_true",
                    help="write the HTML document instead of a PDF (needs no WeasyPrint)")
+    r.add_argument("--only", action="append", metavar="NAME", default=None,
+                   help="build only this output of a project (repeatable)")
+    r.add_argument("--format", choices=("pdf", "html"), default="pdf",
+                   help="for a single file: a PDF (default) or an HTML book")
 
     t = sub.add_parser("tangle", help="extract export= code blocks to source files")
     t.add_argument("input", type=Path)
@@ -57,23 +108,10 @@ def main(argv=None) -> int:
         from .galley import render_pdf
 
         if args.input.suffix in (".yaml", ".yml"):  # a project
-            from .project import load as load_project
-
-            proj = load_project(args.input)
-            out = args.output or (args.input.parent / "book.pdf")
-            cwd = str(args.input.resolve().parent)
-            report = render_pdf(proj.src, str(out), base_url=cwd + "/",
-                                theme_name=proj.theme, cwd=cwd,
-                                execute=not args.no_execute, vars=proj.vars,
-                                code_root=proj.code_root, project_meta=proj.meta)
-            print(f"rendered {out} — {report.n_pages} page(s)")
-            for w in report.oversized:
-                print(f"  ⚠ {w}", file=sys.stderr)
-            for w in report.warnings:
-                print(f"  ⚠ {w}", file=sys.stderr)
-            for w in report.underfull:
-                print(f"  ⚠ {w}", file=sys.stderr)
-            return 0
+            return _render_project(args)
+        if args.format == "html":
+            print("html output is not available yet", file=sys.stderr)
+            return 2
         out = args.output or args.input.with_suffix(".pdf")
         cwd = str(args.input.resolve().parent)
         report = render_pdf(src, str(out), base_url=cwd + "/", theme_name=args.theme,
