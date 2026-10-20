@@ -128,7 +128,9 @@ def test_continue_does_not_cross_newpage(tmp_path):
 
 
 def test_python_traceback_is_cell_relative(tmp_path):
-    r = ExecEnv(cwd=str(tmp_path)).run('x = 1\nint("3.5")', "python")
+    # The failing call is part of a larger expression: Python 3.12 prints no
+    # carets when the error spans the whole line, 3.13 prints them either way.
+    r = ExecEnv(cwd=str(tmp_path)).run('x = 1\ny = int("3.5") + x', "python")
     assert r.failed
     assert 'File "<cell>", line 2' in r.stderr
     assert 'int("3.5")' in r.stderr and "^" in r.stderr
