@@ -129,7 +129,7 @@ pre{font-family:var(--font-mono);font-size:12px;line-height:1.55;background:var(
 
 <div class="pr">PR 1 · feat: several outputs per project · branch <code>outputs</code></div>
 
-<details class="task" id="task-1" data-state="pending">
+<details class="task" id="task-1" data-state="done">
 <summary><span class="num">1</span><span class="ttl">Outputs in the project file</span><span class="state"></span><span class="files">scriptorium/project.py · tests/test_outputs.py</span></summary>
 <div class="iface"><b>produces</b><br><code>@dataclass Output(name: str, format: str, file: str | None = None, dir: str | None = None, page: dict | None = None, vars: dict = {}, cover: str | None = None, image_max_width: int = 1600, js: list[str] = [], css: list[str] = [])</code>; <code>Project.outputs: list[Output]</code>; <code>class ProjectError(ValueError)</code>.</div>
 <ol>
@@ -168,7 +168,7 @@ def test_unknown_format_is_refused(tmp_path):
 <div class="verify"><b>verify</b><br><code>uv run pytest -q</code> ends with "passed" and no failures.</div>
 </details>
 
-<details class="task" id="task-2" data-state="pending">
+<details class="task" id="task-2" data-state="done">
 <summary><span class="num">2</span><span class="ttl">Per-output page size and vars for PDFs</span><span class="state"></span><span class="files">scriptorium/render.py · scriptorium/emit.py · scriptorium/galley.py · tests/test_outputs.py</span></summary>
 <div class="iface"><b>produces</b><br><code>prepare(..., page: dict | None = None)</code> merges into <code>theme.meta["page"]</code> before CSS is emitted; <code>render_pdf(..., page: dict | None = None)</code> passes it through. <code>_SIZES["a5"] = (148.0, 210.0)</code>.</div>
 <ol>
@@ -191,7 +191,7 @@ def test_page_override_sets_a5_and_leaves_the_theme_alone(tmp_path):
 <div class="verify"><b>verify</b><br><code>uv run pytest tests/test_outputs.py -q</code> all pass.</div>
 </details>
 
-<details class="task" id="task-3" data-state="pending">
+<details class="task" id="task-3" data-state="done">
 <summary><span class="num">3</span><span class="ttl">CLI: render every output, --only, --format</span><span class="state"></span><span class="files">scriptorium/cli.py · tests/test_outputs.py · README.md · CHANGELOG.md</span></summary>
 <div class="iface"><b>consumes</b> <code>Project.outputs</code>, <code>render_pdf(..., page=)</code>. <b>produces</b> <code>scriptorium render X.yaml [--only NAME]... [-o PATH]</code>; <code>scriptorium render X.md --format {pdf,html}</code>.</div>
 <ol>
