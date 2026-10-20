@@ -224,7 +224,7 @@ def _is_local(url: str) -> bool:
     return not url.startswith(("http:", "https:", "data:", "//", "#"))
 
 
-def _webp(src: Path, dst: Path, max_width: int) -> tuple[int, int]:
+def _webp(src: Path, dst: Path, max_width: int, quality: int) -> tuple[int, int]:
     from PIL import Image
 
     with Image.open(src) as im:
@@ -232,7 +232,7 @@ def _webp(src: Path, dst: Path, max_width: int) -> tuple[int, int]:
         im = im.convert("RGBA" if alpha else "RGB")
         if im.width > max_width:
             im = im.resize((max_width, round(im.height * max_width / im.width)), Image.LANCZOS)
-        im.save(dst, "WEBP", quality=80, method=6)
+        im.save(dst, "WEBP", quality=quality, method=6)
         return im.size
 
 
@@ -242,12 +242,15 @@ def _svg_size(path: Path) -> tuple[int, int] | None:
     return (round(float(w.group(1))), round(float(h.group(1)))) if w and h else None
 
 
-def collect_images(html: str, base_dir: Path, out_dir: Path, max_width: int) -> tuple[str, list[str]]:
+def collect_images(html: str, base_dir: Path, out_dir: Path, max_width: int,
+                   quality: int = 80, lazy: bool = False) -> tuple[str, list[str]]:
     """Copy every local image into `out_dir/img/`, rasters as WebP no wider
     than `max_width`, and rewrite each tag to point there with its intrinsic
     `width` and `height`: an image without them reflows every column after it
     when it loads. Files are named by content, so a build is deterministic and
-    an image used twice is stored once."""
+    an image used twice is stored once. With `lazy`, each tag also gets
+    `loading="lazy"`: the reader's hidden counting strip then never fetches
+    the images of the chapters it measures."""
     done: dict[Path, tuple[str, tuple[int, int] | None]] = {}
     warnings: list[str] = []
 
@@ -262,12 +265,14 @@ def collect_images(html: str, base_dir: Path, out_dir: Path, max_width: int) -> 
                 warnings.append(f"image {src.group(1)!r} not found")
                 return tag
             data = path.read_bytes()
-            digest = hashlib.sha256(data + str(max_width).encode()).hexdigest()[:12]
+            # the default quality keeps the old names, so existing books keep their edition
+            key = str(max_width) if quality == 80 else f"{max_width}/{quality}"
+            digest = hashlib.sha256(data + key.encode()).hexdigest()[:12]
             (out_dir / "img").mkdir(parents=True, exist_ok=True)
             ext = path.suffix.lower()
             if ext in _RASTER:
                 name = f"img/{digest}.webp"
-                size = _webp(path, out_dir / name, max_width)
+                size = _webp(path, out_dir / name, max_width, quality)
             else:
                 name = f"img/{digest}{ext}"
                 shutil.copyfile(path, out_dir / name)
@@ -276,6 +281,8 @@ def collect_images(html: str, base_dir: Path, out_dir: Path, max_width: int) -> 
         name, size = done[path]
         tag = _SIZE_ATTR.sub("", tag)
         dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
+        if lazy and "loading=" not in tag:
+            dims += ' loading="lazy" decoding="async"'
         return tag.replace(src.group(0), f'src="{name}"{dims}', 1)
 
     return _IMG.sub(sub, html), warnings
@@ -480,7 +487,8 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
     html, sections = emit_book(p.units, p.theme, p.meta, output, strings)
     (out_dir / "chapters").mkdir()
     for n, section in enumerate(sections):
-        section, img_warnings = collect_images(section, base_dir, out_dir, output.image_max_width)
+        section, img_warnings = collect_images(section, base_dir, out_dir, output.image_max_width,
+                                               output.image_quality, not output.offline_images)
         warnings += img_warnings
         (out_dir / f"chapters/{n:03d}.html").write_text(section, encoding="utf-8")
 
@@ -507,7 +515,7 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
     make_icons(base_dir / output.cover if output.cover else None, str(p.meta.get("title") or ""),
                str(p.meta.get("brand") or ""), out_dir)
     write_manifest(p.meta, str(p.meta.get("lang") or p.theme.meta.get("lang") or "en"), out_dir)
-    version = write_service_worker(out_dir)
+    version = write_service_worker(out_dir, output.offline_images)
 
     files = [f for f in out_dir.rglob("*") if f.is_file()]
     return BookReport(files=len(files), bytes=sum(f.stat().st_size for f in files),
@@ -577,11 +585,15 @@ def site_version(out_dir: Path) -> str:
     return digest.hexdigest()[:12]
 
 
-def write_service_worker(out_dir: Path) -> str:
+def write_service_worker(out_dir: Path, offline_images: bool = True) -> str:
+    """Without `offline_images`, `img/` stays out of the precache: the worker
+    caches each image the first time it is fetched instead."""
     assets = ["./"] + sorted(p.relative_to(out_dir).as_posix()
-                             for p in out_dir.rglob("*") if p.is_file() and p.name != "sw.js")
+                             for p in out_dir.rglob("*") if p.is_file() and p.name != "sw.js"
+                             and (offline_images or not p.relative_to(out_dir).as_posix().startswith("img/")))
     version = site_version(out_dir)
     sw = (READER_DIR / "sw.js").read_text(encoding="utf-8")
-    sw = sw.replace("__VERSION__", version).replace("__ASSETS__", json.dumps(assets, indent=1))
+    sw = (sw.replace("__VERSION__", version).replace("__ASSETS__", json.dumps(assets, indent=1))
+          .replace("__LAZY_IMAGES__", "false" if offline_images else "true"))
     (out_dir / "sw.js").write_text(sw, encoding="utf-8")
     return version

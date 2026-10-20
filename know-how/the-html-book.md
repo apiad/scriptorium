@@ -76,6 +76,17 @@ starts activating, a moment before its `activate` handler deletes the old
 cache. Tests that check deletion must poll, and Playwright's
 `wait_for_function` does not await a returned promise.
 
+## Heavy books
+
+The worker precaches every file, so by default a reader downloads every image
+on the first visit. An illustrated book sets `offline-images: false`: `img/`
+leaves the precache, each tag gets `loading="lazy"`, and the worker caches an
+image the first time it is fetched, so pages already read keep their images
+offline. `image-quality` (default 80) and `image-max-width` set the WebP. The
+counting strip `#measure` sits far off screen: Chrome fetches a lazy image
+within about a screen of the viewport even inside `visibility:hidden`, and at
+`-200vw` a phone fetched the first image of every chapter.
+
 ## Defects the first version had, kept as rules
 
 - An illustration that does not fit under a chapter title jumps to the next

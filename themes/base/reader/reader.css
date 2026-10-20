@@ -105,6 +105,8 @@ body:not(.spread) #folio-r { display:none; }
 #toast button { color: #f2b27c; font-weight: 600; margin-left: .6em; }
 
 /* where chapters are laid out out of sight to count their pages: the same
-   size and the same rules as the stage, never painted */
+   size and the same rules as the stage, never painted. Far away, because
+   Chrome fetches a lazy image within about a screen of the viewport even when
+   hidden: at -200vw a phone fetched every chapter's first image */
 #measure { position:fixed; left:0; top:0; width:var(--stage-w); height:var(--stage-h); overflow:hidden;
-  visibility:hidden; pointer-events:none; transform: translateX(-200vw); contain: strict; }
+  visibility:hidden; pointer-events:none; transform: translate(-100000px, -100000px); contain: strict; }

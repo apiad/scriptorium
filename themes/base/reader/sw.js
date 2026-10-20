@@ -4,6 +4,8 @@
 // changed book is a changed sw.js and the browser installs it.
 const VERSION = '__VERSION__';
 const ASSETS = __ASSETS__;
+// true when img/ is not precached: an image is cached the first time it is fetched
+const LAZY_IMAGES = __LAZY_IMAGES__;
 const SCOPE = new URL('./', self.location).pathname;
 const PREFIX = 'book:' + SCOPE + ':';
 const CACHE = PREFIX + VERSION;
@@ -30,6 +32,9 @@ self.addEventListener('fetch', (e) => {
   e.respondWith((async () => {
     const c = await caches.open(CACHE);
     const hit = await c.match(e.request.mode === 'navigate' ? './' : e.request, { ignoreSearch: true });
-    return hit || fetch(e.request);
+    if (hit) return hit;
+    const res = await fetch(e.request);
+    if (LAZY_IMAGES && res.ok && url.pathname.startsWith(SCOPE + 'img/')) await c.put(e.request, res.clone());
+    return res;
   })());
 });
