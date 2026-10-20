@@ -76,6 +76,20 @@ content is a plain `<ol>`. Style `.footnotes` / `.footnote-ref` in your CSS; for
 Leave the hint at `keep_together: false`: an endnotes section is routinely taller
 than a page, and keeping it together would overflow it.
 
+## Header and footer lines
+
+Two kinds of page furniture exist, and they answer different questions.
+`masters.body.header` (verso/recto) and `furniture: stamp` are the theme's own
+running heads: `book` puts the title on the left page and the chapter on the
+right. The top-level `header:` / `footer:` keys are lines a *document* sets,
+identical on every page, each with `left` / `center` / `right` templates. A theme
+may set defaults there (`formal` ships `footer: {center: "{page} / {total}"}`);
+frontmatter or a project's `scriptorium.yaml` replaces the whole mapping, and
+`false` removes it. Anything else is a hard error. The engine writes them as
+`@page` margin boxes in 9pt `--body-font` and `--muted`, so a theme restyles
+them through its vars. A full-page master's `@page` has zero margin, so its
+margin boxes have no room and covers stay clean.
+
 ## Citations
 
 Citations work the same way and are a *separate* apparatus: the engine emits

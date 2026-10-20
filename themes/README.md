@@ -16,6 +16,7 @@ list of dead ends.
 | `book` | polished long-form books | classic serif, quiet large chapter numerals, running heads, auto-TOC |
 | `syalia` | SYALIA briefings and proposals | `report` in the house brand: ink navy, syalia blue, amber, Space Grotesk |
 | `uh` | Universidad de La Habana documents | `report` in the institutional brand: guinda and gold, Source Serif 4 headings, crested cover |
+| `formal` | contracts, official letters, avales | the word-processor document: all black, Liberation Serif 12pt (Times New Roman metrics), 2.5 cm margins, open three-rule tables, `::: clauses` numbering, `::: signatures`, page-number footer |
 
 ## Customizing (three tiers of effort)
 

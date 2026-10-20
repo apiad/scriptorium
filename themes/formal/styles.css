@@ -1,0 +1,72 @@
+/* formal (extends base) — the plain word-processor document: contracts,
+   official letters, avales. Everything is black; the only typographic voice is
+   weight and italic. Signature: nothing. */
+
+@font-face { font-family:'Liberation Serif'; font-weight:400; font-style:normal; src:url('assets/fonts/LiberationSerif-Regular.woff2') format('woff2'); }
+@font-face { font-family:'Liberation Serif'; font-weight:400; font-style:italic; src:url('assets/fonts/LiberationSerif-Italic.woff2') format('woff2'); }
+@font-face { font-family:'Liberation Serif'; font-weight:700; font-style:normal; src:url('assets/fonts/LiberationSerif-Bold.woff2') format('woff2'); }
+@font-face { font-family:'Liberation Serif'; font-weight:700; font-style:italic; src:url('assets/fonts/LiberationSerif-BoldItalic.woff2') format('woff2'); }
+
+/* Justified like an official document, but never hyphenated, which is also
+   what a word processor does by default. */
+body { font-family:var(--body-font), 'Times New Roman', serif; font-size:12pt;
+       line-height:1.35; text-align:justify; hyphens:manual; }
+
+h1, h2, h3, h4, h5, h6 { font-family:var(--heading-font), 'Times New Roman', serif;
+  letter-spacing:0; line-height:1.25; text-align:left; }
+h1 { font-size:13pt; text-align:center; text-transform:uppercase; margin:0 0 6mm 0; }
+h2 { font-size:12pt; margin:5mm 0 2mm 0; }
+h3 { font-size:12pt; font-style:italic; margin:4mm 0 1.5mm 0; }
+h4 { font-size:12pt; font-weight:400; font-style:italic; margin:3mm 0 1mm 0; }
+
+p { margin:0 0 3mm 0; orphans:2; widows:2; }
+ul, ol { margin:0 0 3mm 0; padding-left:8mm; }
+.unit { margin:0 0 3mm 0; }
+a { color:inherit; }
+blockquote { color:var(--ink); border-left:0; padding:0 10mm; }
+hr { border-top:0.5pt solid var(--ink); }
+figcaption { font-size:10pt; color:var(--ink); }
+
+/* tables: open, three rules and no grid — a heavy rule above and below, a
+   light one under the header; the columns are separated by space alone */
+table { font-size:11pt; border-top:1pt solid var(--ink); border-bottom:1pt solid var(--ink); }
+thead th { font-size:11pt; letter-spacing:0; text-transform:none; color:var(--ink);
+           border-bottom:0.5pt solid var(--ink); padding:1.5mm 3mm; }
+tbody td { border-bottom:0; padding:1.2mm 3mm; }
+th:first-child, td:first-child { padding-left:0; }
+th:last-child, td:last-child { padding-right:0; }
+
+/* code is rare here, and when it appears it is still black */
+.hl, pre.output { background:none; border:0.5pt solid var(--ink); border-radius:0; }
+.hl *, pre.output { color:var(--ink) !important; font-weight:inherit !important; font-style:normal !important; }
+pre.output { border-left:0.5pt solid var(--ink); }
+
+/* apparatus: notes and references at a step below the body */
+.footnotes, .references, .glossary { border-top:0.5pt solid var(--ink); }
+.apparatus-title { font-size:12pt; }
+.footnotes ol, .references ol, .glossary p { font-size:10pt; line-height:1.3; }
+.footnote-inline { font-size:10pt; }
+@page { @footnote { border-top:0.5pt solid #000; } }
+
+/* alignment for the letter's date line, a centered seal line, etc. */
+.right { text-align:right; }
+.center { text-align:center; }
+
+/* `::: clauses` numbers its h2 as clauses (1.) and the items of an ordered
+   list under one as sub-clauses (1.1, 1.2). The words ("Cláusula", "PRIMERA")
+   are the document's to write. */
+.clauses { counter-reset:clause; }
+.clauses h2 { counter-increment:clause; }
+.clauses h2::before { content:counter(clause) ". "; }
+.clauses ol { list-style:none; padding-left:0; counter-reset:subclause; }
+.clauses ol > li { counter-increment:subclause; padding-left:10mm; text-indent:-10mm; }
+.clauses ol > li::before { content:counter(clause) "." counter(subclause);
+  display:inline-block; width:10mm; text-indent:0; font-weight:700; }
+
+/* signatures: side by side, with room to sign above the line */
+.signatures { display:flex; gap:15mm; margin-top:8mm; break-inside:avoid; }
+.signatures > .signature { flex:1; margin-top:0; }
+.signature { break-inside:avoid; text-align:center; margin-top:8mm; }
+.signature-space { height:18mm; border-bottom:0.5pt solid var(--ink); margin-bottom:1.5mm; }
+.signature-role { font-style:italic; }
+.signature p { margin:0; text-align:center; }
