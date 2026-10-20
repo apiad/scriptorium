@@ -79,7 +79,8 @@
   // starts with a blank too, so the cover is a right-hand page.
   async function fill(strip, html) {
     strip.innerHTML = html;
-    await document.fonts.ready;  // a chapter's text may pull in a face not loaded yet
+    void strip.offsetHeight;     // style it now, so any face it needs starts loading
+    await document.fonts.ready;  // ...and is in place before its pages are counted
     if (perScreen === 2) {
       const sec = strip.firstElementChild;
       const heading = sec && sec.querySelector(':scope > .unit > h1, :scope > .unit > h2');
@@ -404,7 +405,10 @@
 
   // ---------- start ----------
   applyMode();
-  document.fonts.ready.then(async () => {
+  // Every face the theme declares, loaded before anything is laid out: a page
+  // counted with a fallback font while its face was still on the way would
+  // give another chapter length than the one the reader then shows.
+  Promise.all([...document.fonts].map((f) => f.load().catch(() => {}))).then(async () => {
     geometry();
     const hash = decodeURIComponent(location.hash.slice(1));
     if (hash && hash in B.ids) await show(B.ids[hash], hash);
