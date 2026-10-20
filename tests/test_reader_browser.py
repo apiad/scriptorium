@@ -259,8 +259,11 @@ def test_a_new_edition_shows_the_notice_and_update_shows_it(browser, serve, tmp_
     for md in (tmp_path / "book").glob("*.md"):
         md.write_text(md.read_text(encoding="utf-8").replace("cerillas", "fósforos"), encoding="utf-8")
     assert main(["render", str(tmp_path / "book" / "scriptorium.yaml"), "--only", "web"]) == 0
-    page.evaluate("navigator.serviceWorker.getRegistration().then(r => r.update())")
-    page.wait_for_function("document.querySelector('#toast').classList.contains('show')", timeout=20000)
+    for _ in range(60):  # the edition check is the browser's; ask until it lands
+        page.evaluate("navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {})")
+        page.wait_for_timeout(500)
+        if page.evaluate("document.querySelector('#toast').classList.contains('show')"):
+            break
     assert "edición nueva" in page.inner_text("#toast")
     page.click("#toast button")
     page.wait_for_function("window.scriptoriumReader && scriptoriumReader.chapter === 2")
@@ -286,14 +289,14 @@ def test_updating_one_book_leaves_the_others_cache(browser, serve, tmp_path):
     a2 = build_example(tmp_path / "a2", replace=("cerillas", "fósforos"))
     shutil.rmtree(root / "a")
     shutil.copytree(a2, root / "a")
-    page.evaluate("navigator.serviceWorker.getRegistration().then(r => r.update())")
-    page.wait_for_function("document.querySelector('#toast').classList.contains('show')", timeout=20000)
-    # the new worker takes control as it activates, and deletes the old cache just after
+    # the edition check is the browser's; ask again until /a/'s cache turns over
     old_a = [k for k in before if k.startswith("book:/a/:")][0]
-    for _ in range(20):
-        if old_a not in page.evaluate("caches.keys()"):
+    for _ in range(60):
+        page.evaluate("navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {})")
+        page.wait_for_timeout(500)
+        keys = page.evaluate("caches.keys()")
+        if old_a not in keys and any(k.startswith("book:/a/:") for k in keys):
             break
-        page.wait_for_timeout(250)
     after = page.evaluate("caches.keys()")
     b_keys = [k for k in before if k.startswith("book:/b/:")]
     a_before = [k for k in before if k.startswith("book:/a/:")]
