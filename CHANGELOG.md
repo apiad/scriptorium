@@ -6,6 +6,10 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Features
 
+- **Several outputs per project.** `outputs:` in `scriptorium.yaml` names
+  several renders of one source, each PDF with its own page size (`page:`) and
+  vars. `scriptorium render` builds them all; `--only NAME` picks. A project
+  without `outputs:` still renders `book.pdf`.
 - **`render_html()` and `scriptorium render --html` return the document HTML.**
   Everything a PDF goes through (footnotes, citations, glossary, timeline, the
   parser, `emit()`) without the printing, so a screen consumer gets every

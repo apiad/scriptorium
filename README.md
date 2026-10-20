@@ -131,6 +131,32 @@ scriptorium render scriptorium.yaml     # concatenates the files -> book.pdf
 scriptorium tangle scriptorium.yaml     # extract export= code into src/
 ```
 
+### Several outputs
+
+`outputs:` names several renders of the same project. Without it a project
+renders one PDF, `book.pdf`, as before.
+
+```yaml
+outputs:
+  print:                          # the name is what --only takes
+    format: pdf                   # file defaults to <name>.pdf
+    file: book.pdf
+  pocket:
+    format: pdf
+    file: book-a5.pdf
+    page: {size: A5, margin: 14mm}   # overrides the theme's page block
+```
+
+`page.size` takes `A4`, `A5`, `letter`, `16:9`, `4:3` or `"<w>mm <h>mm"`; an
+output's `vars` override the project's. Paths are relative to the project file.
+
+```bash
+scriptorium render scriptorium.yaml                 # every output
+scriptorium render scriptorium.yaml --only pocket   # one (repeatable)
+```
+
+`-o` works only when a single output is being built.
+
 ## Themes
 
 Themes are project templates. Point at one and customize with `vars:` — no theme

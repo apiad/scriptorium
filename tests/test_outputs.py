@@ -72,3 +72,61 @@ def test_page_override_sets_a5_and_leaves_the_theme_alone(tmp_path):
     w4, h4 = _mm(tmp_path / "a4.pdf")
     assert abs(w5 - 148) < 0.5 and abs(h5 - 210) < 0.5
     assert abs(w4 - 210) < 0.5 and abs(h4 - 297) < 0.5
+
+
+def _two_pdf_project(tmp_path):
+    (tmp_path / "a.md").write_text("# A\n\nHello.\n", encoding="utf-8")
+    path = tmp_path / "scriptorium.yaml"
+    path.write_text("""theme: book
+files: [a.md]
+outputs:
+  print: {format: pdf}
+  pocket: {format: pdf, file: small.pdf, page: {size: A5}}
+""", encoding="utf-8")
+    return path
+
+
+def test_render_builds_every_output(tmp_path, capsys):
+    from scriptorium.cli import main
+    proj = _two_pdf_project(tmp_path)
+    assert main(["render", str(proj)]) == 0
+    assert (tmp_path / "print.pdf").exists() and (tmp_path / "small.pdf").exists()
+    assert abs(_mm(tmp_path / "small.pdf")[0] - 148) < 0.5
+    out = capsys.readouterr().out
+    assert "print:" in out and "pocket:" in out
+
+
+def test_only_builds_one(tmp_path):
+    from scriptorium.cli import main
+    proj = _two_pdf_project(tmp_path)
+    assert main(["render", str(proj), "--only", "pocket"]) == 0
+    assert not (tmp_path / "print.pdf").exists() and (tmp_path / "small.pdf").exists()
+
+
+def test_dash_o_with_several_outputs_is_refused(tmp_path, capsys):
+    from scriptorium.cli import main
+    proj = _two_pdf_project(tmp_path)
+    assert main(["render", str(proj), "-o", str(tmp_path / "x.pdf")]) == 2
+    assert "--only" in capsys.readouterr().err
+
+
+def test_dash_o_with_one_selected_output_writes_there(tmp_path):
+    from scriptorium.cli import main
+    proj = _two_pdf_project(tmp_path)
+    assert main(["render", str(proj), "--only", "print", "-o", str(tmp_path / "x.pdf")]) == 0
+    assert (tmp_path / "x.pdf").exists()
+
+
+def test_only_with_an_unknown_name_lists_the_names(tmp_path, capsys):
+    from scriptorium.cli import main
+    proj = _two_pdf_project(tmp_path)
+    assert main(["render", str(proj), "--only", "web"]) == 2
+    assert "print, pocket" in capsys.readouterr().err
+
+
+def test_project_without_outputs_still_writes_book_pdf(tmp_path):
+    from scriptorium.cli import main
+    (tmp_path / "a.md").write_text("# A\n\nHello.\n", encoding="utf-8")
+    (tmp_path / "scriptorium.yaml").write_text("theme: book\nfiles: [a.md]\n", encoding="utf-8")
+    assert main(["render", str(tmp_path / "scriptorium.yaml")]) == 0
+    assert (tmp_path / "book.pdf").exists()
