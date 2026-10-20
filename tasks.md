@@ -66,4 +66,4 @@ Actionable items for scriptorium. One line each; link the spec when there is one
       prose **silently**, with no warning and a page that looks fine, so only a
       source-to-page comparison catches it.
 
-- [ ] HTML book output: a self-contained, swipe-paged HTML target (CSS columns per chapter, inlined WebP images and fonts, footnotes as a bottom sheet, TOC menu). A working playground prototype that drives `process_footnotes` + `parse` as a library lives at `~/Workspace/.playground/enciclopedia-html/` (build.py, reader.{html,css,js}); generalize it into an emit path or a theme (2026-10-11).
+- [x] HTML book output (done 2026-10-20, #14 #15 #16; an installable directory, not a single file): a self-contained, swipe-paged HTML target (CSS columns per chapter, inlined WebP images and fonts, footnotes as a bottom sheet, TOC menu). A working playground prototype that drives `process_footnotes` + `parse` as a library lives at `~/Workspace/.playground/enciclopedia-html/` (build.py, reader.{html,css,js}); generalize it into an emit path or a theme (2026-10-11).
