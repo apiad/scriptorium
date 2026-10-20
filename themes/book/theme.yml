@@ -34,3 +34,8 @@ components:
 
 # A book's notes belong with their chapter, not 300 pages away.
 footnotes: chapter
+
+html-refs:
+  chap: "Chapter {chapter}"
+  sec: "§{chapter}.{section}"
+  fig: "“{text}”"

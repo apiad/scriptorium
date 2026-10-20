@@ -138,3 +138,69 @@ def browser_css(css: str) -> str:
             if kept.strip():
                 out.append(f"{prelude}{{{kept}}}")
     return "\n".join(out)
+
+
+_ID_TAG = re.compile(r'<(\w+)\b([^>]*?)\bid="([^"]+)"([^>]*)>')
+_REF_A = re.compile(r'<a class="ref-(\w+)" href="#([^"]+)"></a>')
+_TAGS = re.compile(r"<[^>]+>")
+_FIELD = re.compile(r"\{([\w-]+)\}")
+
+
+def _inner_text(html: str, start: int, tag: str) -> str:
+    end = html.find(f"</{tag}>", start)
+    return _TAGS.sub("", html[start:end if end >= 0 else start]).strip()
+
+
+def resolve_refs(units, formats: dict, vars: dict) -> list[str]:
+    """Write each `@kind-id` reference's text into its empty anchor.
+
+    Paged media fills these with `target-counter()`, which browsers do not
+    implement. The counting follows the themes' CSS: a chapter is an `h1` that
+    is neither `.unnumbered` nor `.part` and restarts the sections, a section
+    is an `h2`, a figure is a `<figure id="fig-…">`. The strings come from the
+    theme's `html-refs:`; a kind without one shows the target's own text."""
+    counters = {"chapter": 0, "section": 0, "figure": 0}
+    targets: dict[str, dict] = {}
+    for u in units:
+        for m in _ID_TAG.finditer(u.html):
+            tag, attrs, ident = m.group(1).lower(), m.group(2) + m.group(4), m.group(3)
+            classes = re.search(r'class="([^"]*)"', attrs)
+            classes = classes.group(1).split() if classes else []
+            if tag == "h1" and not {"unnumbered", "part"} & set(classes):
+                counters["chapter"] += 1
+                counters["section"] = 0
+            elif tag == "h2":
+                counters["section"] += 1
+            elif tag == "figure" and ident.startswith("fig-"):
+                counters["figure"] += 1
+            if tag == "figure":
+                cap = u.html.find("<figcaption", m.end())
+                text = _inner_text(u.html, u.html.find(">", cap) + 1, "figcaption") if cap >= 0 else ""
+            elif tag == "img":
+                alt = re.search(r'alt="([^"]*)"', attrs)
+                text = alt.group(1) if alt else ""
+            else:
+                text = _inner_text(u.html, m.end(), tag)
+            targets[ident] = {**counters, "text": text}
+
+    def label(key):
+        v = vars.get(key)
+        if v is None and key == "figure-ref-label":
+            v = vars.get("figure-label")
+        return str(v if v is not None else "").strip("\"'")
+
+    warnings = []
+
+    def fill(m):
+        kind, ident = m.group(1), m.group(2)
+        t = targets.get(ident)
+        if t is None:
+            warnings.append(f"unresolved reference @{ident}")
+            return m.group(0)
+        fmt = formats.get(kind, "{text}")
+        text = _FIELD.sub(lambda f: str(t[f.group(1)]) if f.group(1) in t else label(f.group(1)), fmt)
+        return f'<a class="ref-{kind}" href="#{ident}">{text.strip()}</a>'
+
+    for u in units:
+        u.html = _REF_A.sub(fill, u.html)
+    return warnings

@@ -142,7 +142,7 @@ def load_theme(name: str = "report") -> Theme:
         hints.update(m.get("components", {}) or {})
         vars.update(m.get("vars", {}) or {})
         for k, v in m.items():
-            if k in ("masters", "page") and isinstance(v, dict):
+            if k in ("masters", "page", "html-refs") and isinstance(v, dict):
                 meta.setdefault(k, {}).update(v)
             elif k not in ("components", "vars", "extends"):
                 meta[k] = v
