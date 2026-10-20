@@ -30,6 +30,8 @@ class Output:
     vars: dict = field(default_factory=dict)
     cover: str | None = None
     image_max_width: int = 1600
+    image_quality: int = 80
+    offline_images: bool = True
     js: list[str] = field(default_factory=list)
     css: list[str] = field(default_factory=list)
 
@@ -38,7 +40,8 @@ class Output:
 # other format, and silently ignoring it would render the wrong book
 _OUTPUT_KEYS = {
     "pdf": {"format", "file", "page", "vars"},
-    "html": {"format", "dir", "vars", "cover", "image-max-width", "js", "css"},
+    "html": {"format", "dir", "vars", "cover", "image-max-width", "image-quality",
+             "offline-images", "js", "css"},
 }
 
 
@@ -63,6 +66,8 @@ def _outputs(spec) -> list[Output]:
             dir=cfg.get("dir", name) if fmt == "html" else None,
             page=cfg.get("page"), vars=cfg.get("vars") or {}, cover=cfg.get("cover"),
             image_max_width=int(cfg.get("image-max-width", 1600)),
+            image_quality=int(cfg.get("image-quality", 80)),
+            offline_images=bool(cfg.get("offline-images", True)),
             js=list(cfg.get("js") or []), css=list(cfg.get("css") or []),
         ))
     return outs

@@ -51,3 +51,12 @@ def test_theme_fonts_are_copied_and_relative(tmp_path):
     css = collect_css_assets(load_theme("book").css, tmp_path)
     assert "file://" not in css and "url('fonts/" in css
     assert any(p.suffix == ".woff2" for p in (tmp_path / "fonts").iterdir())
+
+
+def test_quality_changes_the_file_and_lazy_marks_the_tag(tmp_path):
+    Image.effect_noise((800, 600), 60).convert("RGB").save(tmp_path / "n.png")
+    hi, _ = collect_images('<img src="n.png">', tmp_path, tmp_path / "hi", 1600)
+    lo, _ = collect_images('<img src="n.png">', tmp_path, tmp_path / "lo", 1600, quality=40, lazy=True)
+    (a,), (b,) = list((tmp_path / "hi/img").iterdir()), list((tmp_path / "lo/img").iterdir())
+    assert a.name != b.name and b.stat().st_size < a.stat().st_size
+    assert 'loading="lazy"' in lo and 'loading=' not in hi

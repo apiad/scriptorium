@@ -173,6 +173,8 @@ outputs:
     dir: web                  # defaults to the output's name
     cover: img/cover.jpg      # cover page and app icons
     image-max-width: 1600     # images become WebP no wider than this
+    image-quality: 80         # their WebP quality
+    offline-images: true      # false: images load as read, not on install
     js: [extras.js]           # loaded after the reader
     css: [web.css]            # appended after the reader's CSS
 ```

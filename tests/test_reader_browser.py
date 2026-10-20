@@ -326,3 +326,28 @@ def test_slow_images_and_fonts_do_not_change_the_page_count(browser, url):
     assert page.evaluate("scriptoriumReader.chapter") == 3
     assert page.evaluate("scriptoriumReader.pages") == counted
     ctx.close()
+
+
+@pytest.mark.parametrize("device", [PHONE, DESK], ids=["phone", "desktop"])
+def test_lazy_images_load_only_when_read(browser, serve, tmp_path, device):
+    """With `offline-images: false`, counting every chapter's pages in the
+    hidden strip must not fetch the images of chapters nobody opened."""
+    import re
+    from conftest import EXAMPLE
+    from scriptorium.cli import main
+
+    shutil.copytree(EXAMPLE, tmp_path / "b", ignore=shutil.ignore_patterns("web", "*.pdf"))
+    cfg = tmp_path / "b/scriptorium.yaml"
+    cfg.write_text(cfg.read_text(encoding="utf-8") + "    offline-images: false\n", encoding="utf-8")
+    assert main(["render", str(cfg), "--only", "web"]) == 0
+    site = tmp_path / "b/web"
+    storm = re.search(r'src="(img/[0-9a-f]+\.webp)"', (site / "chapters/003.html").read_text()).group(1)
+    ctx = browser.new_context(**device)
+    page = ctx.new_page()
+    fetched = []
+    page.on("request", lambda r: fetched.append(r.url))
+    page.goto(serve(site))
+    page.wait_for_function("window.scriptoriumReader && scriptoriumReader.counted")
+    page.wait_for_timeout(500)
+    assert not any(u.endswith(storm) for u in fetched)
+    ctx.close()

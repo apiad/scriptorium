@@ -55,3 +55,26 @@ def test_book_without_cover_or_images_builds(tmp_path):
     from PIL import Image
     with Image.open(tmp_path / "web/icons/icon-512.png") as im:
         assert im.size == (512, 512)
+
+
+def test_without_offline_images_the_worker_skips_img_and_tags_are_lazy(tmp_path):
+    import shutil
+    from conftest import EXAMPLE
+    from scriptorium.cli import main
+
+    shutil.copytree(EXAMPLE, tmp_path / "b", ignore=shutil.ignore_patterns("web", "*.pdf"))
+    cfg = tmp_path / "b/scriptorium.yaml"
+    cfg.write_text(cfg.read_text(encoding="utf-8") + "    offline-images: false\n", encoding="utf-8")
+    assert main(["render", str(cfg), "--only", "web"]) == 0
+    site = tmp_path / "b/web"
+    assert any((site / "img").iterdir())
+    assert not any(a.startswith("img/") for a in _assets(site))
+    assert "const LAZY_IMAGES = true;" in (site / "sw.js").read_text()
+    chapters = "".join(p.read_text(encoding="utf-8") for p in (site / "chapters").glob("*.html"))
+    imgs = re.findall(r"<img [^>]*>", chapters)
+    assert imgs and all('loading="lazy"' in i for i in imgs)
+
+
+def test_offline_images_by_default(site):
+    assert any(a.startswith("img/") for a in _assets(site))
+    assert "const LAZY_IMAGES = false;" in (site / "sw.js").read_text()
