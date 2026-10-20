@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{title}}</title>
+<meta name="description" content="{{subtitle}}">
+<meta name="theme-color" content="#2b2118">
+{{head}}
+<link rel="stylesheet" href="book.css">
+</head>
+<body>
+<div id="stage">
+  <div id="paper" aria-hidden="true"><div></div><div></div></div>
+  <div id="book">
+{{front}}
+{{body}}
+    <span id="end"></span>
+  </div>
+</div>
+
+<div id="folio" aria-hidden="true"><span id="folio-l"></span><span id="folio-r"></span></div>
+
+<header id="bar">
+  <button id="btn-toc" aria-label="{{s.contents}}">☰</button>
+  <span id="bar-title">{{title}}</span>
+  <button id="btn-install" hidden>{{s.install}}</button>
+  <button id="btn-settings" aria-label="{{s.reading}}">Aa</button>
+</header>
+<footer id="foot">
+  <span id="foot-chapter"></span>
+  <input id="scrub" type="range" min="0" max="0" value="0" aria-label="{{s.go_to_page}}">
+  <span id="foot-page"></span>
+  <span id="foot-offline"></span>
+</footer>
+
+<aside id="toc" class="panel" aria-label="{{s.contents}}">
+  <h2>{{s.contents}}</h2>
+  <ol id="toc-list"></ol>
+</aside>
+<aside id="settings" class="panel" aria-label="{{s.reading}}">
+  <h2>{{s.reading}}</h2>
+  <div class="row"><span>{{s.size}}</span><button data-font="-1">A−</button><button data-font="1">A+</button></div>
+  <div class="row"><span>{{s.mode}}</span><button data-mode="light">{{s.light}}</button><button data-mode="sepia">{{s.sepia}}</button><button data-mode="dark">{{s.dark}}</button></div>
+  <p id="install-hint" hidden>{{s.ios_hint}}</p>
+</aside>
+<div id="toast" role="status"></div>
+
+<script>window.BOOK = {toc: {{toc}}, strings: {{strings}}};</script>
+<script src="reader.js"></script>
+{{scripts}}
+</body>
+</html>

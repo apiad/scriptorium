@@ -7,8 +7,10 @@ numbered, collects images and fonts into the site, and writes the reader.
 """
 
 import hashlib
+import json
 import re
 import shutil
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -128,7 +130,7 @@ def browser_css(css: str) -> str:
         if body is None:
             out.append(prelude + ";")
             continue
-        at = prelude.split(None, 1)[0].lower() if prelude.startswith("@") else ""
+        at = re.match(r"@[\w-]*", prelude).group(0).lower() if prelude.startswith("@") else ""
         if at == "@page":
             continue
         if at in _NESTED:
@@ -300,3 +302,169 @@ def collect_css_assets(css: str, out_dir: Path) -> str:
         return f"url('{name}')"
 
     return _CSS_FILE_URL.sub(sub, css)
+
+
+READER_DIR = Path(__file__).resolve().parent.parent / "themes" / "base" / "reader"
+
+# The reader's own words. A book in another language gets the English ones.
+STRINGS = {
+    "en": {"contents": "Contents", "reading": "Reading", "size": "Size", "mode": "Mode",
+           "light": "Light", "sepia": "Sepia", "dark": "Night", "install": "Install",
+           "go_to_page": "Go to page", "offline": "✓ offline",
+           "ios_hint": "To install it on an iPhone or iPad: the Share button, then “Add to Home Screen”.",
+           "update": "A new edition of this book is available.", "update_button": "Update"},
+    "es": {"contents": "Índice", "reading": "Lectura", "size": "Letra", "mode": "Tema",
+           "light": "Claro", "sepia": "Sepia", "dark": "Noche", "install": "Instalar",
+           "go_to_page": "Ir a página", "offline": "✓ sin conexión",
+           "ios_hint": "Para instalarlo en iPhone o iPad: botón Compartir y luego «Añadir a pantalla de inicio».",
+           "update": "Hay una edición nueva de este libro.", "update_button": "Actualizar"},
+}
+
+_PT_SIZE = re.compile(r"(font-size\s*:\s*)([\d.]+)pt\b")
+
+
+def relative_sizes(css: str, base_pt: float = 11.0) -> str:
+    """Font sizes in points become shares of the reader's size, so the theme's
+    proportions hold and A−/A+ scales the headings with the text."""
+    return _PT_SIZE.sub(lambda m: f"{m.group(1)}calc(var(--reader-size) * {float(m.group(2)) / base_pt:.4g})", css)
+
+
+def _esc(text) -> str:
+    return (str(text).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def _chapters(units):
+    """Split the units into chapters at h1, or at h2 in a book without h1. A
+    full page right before a chapter heading opens that chapter, as an
+    illustration facing the chapter's first page does."""
+    level = 1 if any(u.heading_level == 1 for u in units) else 2
+    kept = [u for u in units if u.name != "toc"]
+    chapters, toc = [[]], []
+    for i, u in enumerate(kept):
+        starts = u.heading_level == level
+        opener = _is_fullpage(u) and i + 1 < len(kept) and kept[i + 1].heading_level == level
+        prev_opener = i > 0 and _is_fullpage(kept[i - 1]) and starts
+        if (starts and not prev_opener) or opener:
+            chapters.append([])
+        if starts and "unlisted" not in u.heading_classes:
+            toc.append({"id": u.heading_id, "title": u.heading})
+        chapters[-1].append(u)
+    return [c for c in chapters if c], toc
+
+
+def _is_fullpage(u) -> bool:
+    return u.full_page or bool(re.match(r'\s*<figure\b[^>]*class="[^"]*\bfullpage\b', u.html))
+
+
+def _unit_html(u, theme) -> str:
+    if _is_fullpage(u):
+        classes = " ".join(["fullpage", theme.master_classes(u.master) if u.full_page else ""]).strip()
+        return f'<div class="{classes}">{u.html}</div>'
+    cls = ["unit"] + (["break-before"] if u.break_before else []) + (["keep"] if u.keep_together else [])
+    return f'<div class="{" ".join(cls)}">{u.html}</div>'
+
+
+def emit_book(units, theme, meta: dict, output, strings: dict) -> str:
+    """The book's index.html: cover, title page, then one section per chapter."""
+    chapters, toc = _chapters(units)
+    sections = []
+    for chapter in chapters:
+        parts, dropcap_done = [], False
+        for i, u in enumerate(chapter):
+            if u.is_break:
+                # a file boundary right before a chapter is already a new page
+                if i == len(chapter) - 1 or (i == 0 and len(sections) > 0):
+                    continue
+                parts.append('<div class="pagebreak"></div>')
+                continue
+            if not dropcap_done and u.html.startswith("<p>"):
+                dropcap_done = True
+                if re.match(r"<p>\w", u.html):
+                    u.html = '<p class="dropcap">' + u.html[3:]
+            parts.append(_unit_html(u, theme))
+        chapter_starts = any(u.heading_level and u.heading_id for u in chapter[:2]) or _is_fullpage(chapter[0])
+        cls = "chapter recto" if chapter_starts else "chapter"
+        sections.append(f'<section class="{cls}">{"".join(parts)}</section>')
+
+    title = meta.get("title", "")
+    front = []
+    if output.cover:
+        front.append(f'<div class="fullpage cover"><img src="{_esc(output.cover)}" alt="{_esc(title)}"></div>')
+    front.append('<section class="titlepage">'
+                 f'<p class="book-title">{_esc(title)}</p>'
+                 + (f'<p class="book-subtitle">{_esc(meta["subtitle"])}</p>' if meta.get("subtitle") else "")
+                 + (f'<p class="book-author">{_esc(meta["author"])}</p>' if meta.get("author") else "")
+                 + "</section>")
+
+    fills = {
+        "lang": _esc(meta.get("lang") or theme.meta.get("lang") or "en"),
+        "title": _esc(title), "subtitle": _esc(meta.get("subtitle", "")),
+        "front": "\n".join(front), "body": "\n".join(sections),
+        "toc": json.dumps(toc, ensure_ascii=False).replace("</", "<\\/"),
+        "strings": json.dumps(strings, ensure_ascii=False).replace("</", "<\\/"),
+        "head": "", "scripts": "\n".join(f'<script src="{_esc(js)}" defer></script>' for js in output.js),
+    }
+    page = (READER_DIR / "index.html").read_text(encoding="utf-8")
+    page = re.sub(r"\{\{s\.(\w+)\}\}", lambda m: _esc(strings[m.group(1)]), page)
+    return re.sub(r"\{\{(\w+)\}\}", lambda m: fills[m.group(1)], page)
+
+
+@dataclass
+class BookReport:
+    files: int
+    bytes: int
+    version: str
+    warnings: list[str] = field(default_factory=list)
+
+
+def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: str | None = None,
+                vars: dict | None = None, project_meta: dict | None = None,
+                execute: bool = True, code_root: str | None = None) -> BookReport:
+    """Write the HTML book for `src` into `out_dir`, replacing what was there."""
+    from .emit import _emit_css
+    from .render import prepare
+    from .theme import _chain
+
+    base_dir, out_dir = Path(base_dir), Path(out_dir)
+    p = prepare(src, theme_name=theme_name, cwd=str(base_dir), execute=execute,
+                vars={**(vars or {}), **output.vars}, code_root=code_root,
+                project_meta=project_meta, for_screen=True)
+    if str(p.theme.meta.get("mode", "")) == "deck":
+        raise ValueError("deck themes have no book form; render them to PDF")
+    warnings = list(p.warnings) + resolve_refs(p.units, p.theme.meta.get("html-refs", {}), p.meta)
+
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
+    out_dir.mkdir(parents=True)
+
+    lang = str(p.meta.get("lang") or p.theme.meta.get("lang") or "en").split("-")[0]
+    strings = STRINGS.get(lang, STRINGS["en"])
+    html, img_warnings = collect_images(emit_book(p.units, p.theme, p.meta, output, strings),
+                                        base_dir, out_dir, output.image_max_width)
+    warnings += img_warnings
+
+    css = [relative_sizes(browser_css(collect_css_assets(_emit_css(p.theme, p.meta), out_dir))),
+           (READER_DIR / "reader.css").read_text(encoding="utf-8")]
+    for root, _ in _chain(p.theme.name):
+        if (root / "reader.css").is_file():
+            css.append(collect_css_assets((root / "reader.css").read_text(encoding="utf-8"), out_dir))
+    for rel in output.css:
+        try:
+            css.append((base_dir / rel).read_text(encoding="utf-8"))
+        except OSError as exc:
+            warnings.append(f"css file {rel!r} could not be read: {exc}")
+    (out_dir / "book.css").write_text("\n".join(css), encoding="utf-8")
+    shutil.copyfile(READER_DIR / "reader.js", out_dir / "reader.js")
+    for rel in output.js:
+        try:
+            dst = out_dir / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(base_dir / rel, dst)
+        except OSError as exc:
+            warnings.append(f"js file {rel!r} could not be copied: {exc}")
+    (out_dir / "index.html").write_text(html, encoding="utf-8")
+
+    files = [f for f in out_dir.rglob("*") if f.is_file()]
+    return BookReport(files=len(files), bytes=sum(f.stat().st_size for f in files),
+                      version="", warnings=warnings)

@@ -5,7 +5,8 @@ from scriptorium.theme import load_theme
 
 
 def test_page_rules_and_margin_boxes_go():
-    css = "@page{size:a4;@bottom-center{content:counter(page)}} @page master-cover{margin:0} p{color:red}"
+    css = ("@page{size:a4;@bottom-center{content:counter(page)}} @page master-cover{margin:0} "
+           "@page:left{@top-left{content:'x'}} @page :right{margin:0} p{color:red}")
     assert browser_css(css).strip() == "p{color:red}"
 
 
