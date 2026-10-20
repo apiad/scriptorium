@@ -470,12 +470,12 @@ def render_pdf(src: str, out_path: str, base_url: str | None = None,
                theme_name: str | None = None, cwd: str | None = None,
                execute: bool = True, vars: dict | None = None,
                code_root: str | None = None,
-               project_meta: dict | None = None) -> Report:
+               project_meta: dict | None = None, page: dict | None = None) -> Report:
     from .render import prepare
 
     HTML = _weasy()
     p = prepare(src, theme_name=theme_name, cwd=cwd, execute=execute, vars=vars,
-                code_root=code_root, project_meta=project_meta)
+                code_root=code_root, project_meta=project_meta, page=page)
     theme, meta, units, warnings = p.theme, p.meta, p.units, p.warnings
     _, _, content_h = _geom(theme)
 

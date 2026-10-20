@@ -28,12 +28,16 @@ class Prepared:
 def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
             execute: bool = True, vars: dict | None = None,
             code_root: str | None = None,
-            project_meta: dict | None = None, frozen: bool = False) -> Prepared:
+            project_meta: dict | None = None, frozen: bool = False,
+            page: dict | None = None) -> Prepared:
     """Run the preprocessors and the parser: the units, theme and metadata a
     document renders from."""
     from .parse import frontmatter, parse
 
     theme = load_theme(resolve_theme_name(src, theme_name))
+    if page:
+        # one output's page size and margin; a copy, so no other render sees it
+        theme.meta["page"] = {**theme.meta.get("page", {}), **page}
     # theme var defaults, overridden by project vars, then by per-doc frontmatter
     merged = {**theme.vars, **(vars or {})}
     # a project's chapters have had their frontmatter stripped, so project_meta

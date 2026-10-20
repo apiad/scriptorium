@@ -22,7 +22,7 @@ FOOTER_RESERVE = 8.0  # mm kept clear for the stamp on body pages
 
 # named page sizes (mm) — landscape slides for decks
 _SIZES = {
-    "a4": (210.0, 297.0), "letter": (215.9, 279.4),
+    "a4": (210.0, 297.0), "a5": (148.0, 210.0), "letter": (215.9, 279.4),
     "16:9": (254.0, 142.875), "4:3": (254.0, 190.5),
 }
 

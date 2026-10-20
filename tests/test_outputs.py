@@ -55,3 +55,20 @@ def test_unknown_format_is_refused(tmp_path):
 def test_outputs_must_be_a_mapping(tmp_path):
     with pytest.raises(ProjectError, match="outputs"):
         _project(tmp_path, "files: [a.md]\noutputs: [pdf, html]\n")
+
+
+def _mm(path):
+    from pypdf import PdfReader
+    box = PdfReader(path).pages[0].mediabox
+    return float(box.width) * 25.4 / 72, float(box.height) * 25.4 / 72
+
+
+def test_page_override_sets_a5_and_leaves_the_theme_alone(tmp_path):
+    from scriptorium.galley import render_pdf
+    md = "---\ntheme: book\n---\n\nHello.\n"
+    render_pdf(md, str(tmp_path / "a5.pdf"), page={"size": "A5"})
+    render_pdf(md, str(tmp_path / "a4.pdf"))
+    w5, h5 = _mm(tmp_path / "a5.pdf")
+    w4, h4 = _mm(tmp_path / "a4.pdf")
+    assert abs(w5 - 148) < 0.5 and abs(h5 - 210) < 0.5
+    assert abs(w4 - 210) < 0.5 and abs(h4 - 297) < 0.5
