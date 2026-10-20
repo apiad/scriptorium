@@ -6,7 +6,11 @@ into what a browser runs, resolves the cross-references that paged media
 numbered, collects images and fonts into the site, and writes the reader.
 """
 
+import hashlib
 import re
+import shutil
+from pathlib import Path
+from urllib.parse import unquote
 
 # Declarations only paged media understands. In a browser an unknown function
 # invalidates the whole declaration, so a `content: "Chapter " target-counter()`
@@ -204,3 +208,95 @@ def resolve_refs(units, formats: dict, vars: dict) -> list[str]:
     for u in units:
         u.html = _REF_A.sub(fill, u.html)
     return warnings
+
+
+_IMG = re.compile(r"<img\b[^>]*>")
+_SRC = re.compile(r'\bsrc="([^"]*)"')
+_SIZE_ATTR = re.compile(r'\s(?:width|height)="[^"]*"')
+_RASTER = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+_FONT = {".woff2", ".woff", ".ttf", ".otf"}
+_CSS_FILE_URL = re.compile(r"url\(\s*(['\"]?)file://([^)'\"]+)\1\s*\)")
+
+
+def _is_local(url: str) -> bool:
+    return not url.startswith(("http:", "https:", "data:", "//", "#"))
+
+
+def _webp(src: Path, dst: Path, max_width: int) -> tuple[int, int]:
+    from PIL import Image
+
+    with Image.open(src) as im:
+        alpha = im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info)
+        im = im.convert("RGBA" if alpha else "RGB")
+        if im.width > max_width:
+            im = im.resize((max_width, round(im.height * max_width / im.width)), Image.LANCZOS)
+        im.save(dst, "WEBP", quality=80, method=6)
+        return im.size
+
+
+def _svg_size(path: Path) -> tuple[int, int] | None:
+    head = path.read_text(encoding="utf-8", errors="replace")[:2000]
+    w, h = re.search(r'\bwidth="([\d.]+)', head), re.search(r'\bheight="([\d.]+)', head)
+    return (round(float(w.group(1))), round(float(h.group(1)))) if w and h else None
+
+
+def collect_images(html: str, base_dir: Path, out_dir: Path, max_width: int) -> tuple[str, list[str]]:
+    """Copy every local image into `out_dir/img/`, rasters as WebP no wider
+    than `max_width`, and rewrite each tag to point there with its intrinsic
+    `width` and `height`: an image without them reflows every column after it
+    when it loads. Files are named by content, so a build is deterministic and
+    an image used twice is stored once."""
+    done: dict[Path, tuple[str, tuple[int, int] | None]] = {}
+    warnings: list[str] = []
+
+    def sub(m):
+        tag = m.group(0)
+        src = _SRC.search(tag)
+        if not src or not _is_local(src.group(1)):
+            return tag
+        path = (base_dir / unquote(src.group(1))).resolve()
+        if path not in done:
+            if not path.is_file():
+                warnings.append(f"image {src.group(1)!r} not found")
+                return tag
+            data = path.read_bytes()
+            digest = hashlib.sha256(data + str(max_width).encode()).hexdigest()[:12]
+            (out_dir / "img").mkdir(parents=True, exist_ok=True)
+            ext = path.suffix.lower()
+            if ext in _RASTER:
+                name = f"img/{digest}.webp"
+                size = _webp(path, out_dir / name, max_width)
+            else:
+                name = f"img/{digest}{ext}"
+                shutil.copyfile(path, out_dir / name)
+                size = _svg_size(path) if ext == ".svg" else None
+            done[path] = (name, size)
+        name, size = done[path]
+        tag = _SIZE_ATTR.sub("", tag)
+        dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
+        return tag.replace(src.group(0), f'src="{name}"{dims}', 1)
+
+    return _IMG.sub(sub, html), warnings
+
+
+def collect_css_assets(css: str, out_dir: Path) -> str:
+    """Copy what the theme CSS loads from disk (fonts, a logo) into the site
+    and point the CSS at the copies. Themes reach their assets through
+    `file://` URLs (theme.py makes them absolute for WeasyPrint)."""
+    taken: dict[str, Path] = {}
+
+    def sub(m):
+        path = Path(unquote(m.group(2)))
+        if not path.is_file():
+            return m.group(0)
+        folder = "fonts" if path.suffix.lower() in _FONT else "assets"
+        name = f"{folder}/{path.name}"
+        if taken.get(name, path) != path:  # two themes, one file name
+            name = f"{folder}/{hashlib.sha256(str(path).encode()).hexdigest()[:8]}-{path.name}"
+        if name not in taken:
+            (out_dir / folder).mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(path, out_dir / name)
+            taken[name] = path
+        return f"url('{name}')"
+
+    return _CSS_FILE_URL.sub(sub, css)

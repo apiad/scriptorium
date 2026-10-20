@@ -489,6 +489,7 @@ source = { editable = "." }
 dependencies = [
     { name = "markdown-it-py" },
     { name = "mdit-py-plugins" },
+    { name = "pillow" },
     { name = "pygments" },
     { name = "pyyaml" },
     { name = "quickjax" },
@@ -510,6 +511,7 @@ dev = [
 requires-dist = [
     { name = "markdown-it-py", specifier = ">=3.0" },
     { name = "mdit-py-plugins", specifier = ">=0.6.1" },
+    { name = "pillow", specifier = ">=10" },
     { name = "pygments", specifier = ">=2.20.0" },
     { name = "pyyaml", specifier = ">=6" },
     { name = "quickjax", specifier = ">=0.1.0" },

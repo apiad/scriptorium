@@ -12,6 +12,7 @@ dependencies = [
     "pygments>=2.20.0",
     "quickjax>=0.1.0",
     "mdit-py-plugins>=0.6.1",
+    "pillow>=10",
 ]
 
 [project.optional-dependencies]
