@@ -1,5 +1,7 @@
 # HTML Ebook Format — Design Spec
 
+> **Superseded** by `docs/superpowers/specs/2026-10-20-html-book-design.html`, which adds offline reading and installation and drops the single-file mode.
+
 **Status:** revised · **Date:** 2026-08-14 · **Author:** Alex + Claude
 
 ---

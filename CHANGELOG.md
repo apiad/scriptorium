@@ -6,6 +6,11 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Features
 
+- **The HTML book.** An `html` output writes a static, installable ebook:
+  CSS columns make the pages (swipe on phones, two facing pages on wide
+  screens), the theme's fonts and colours carry over, references become text,
+  images become WebP, and a content-versioned service worker makes it read
+  offline and update itself. `--format html` builds one from a single file.
 - **Several outputs per project.** `outputs:` in `scriptorium.yaml` names
   several renders of one source, each PDF with its own page size (`page:`) and
   vars. `scriptorium render` builds them all; `--only NAME` picks. A project

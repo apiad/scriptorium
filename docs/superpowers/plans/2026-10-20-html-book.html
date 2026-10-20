@@ -385,7 +385,7 @@ def test_no_console_errors(page_at): ...
 
 <div class="pr">PR 3 · feat: installable and offline · branch <code>html-book-pwa</code> (stacked on <code>html-book</code>)</div>
 
-<details class="task" id="task-8" data-state="pending">
+<details class="task" id="task-8" data-state="done">
 <summary><span class="num">8</span><span class="ttl">Manifest, icons, service worker, updates</span><span class="state"></span><span class="files">scriptorium/book.py · themes/base/reader/sw.js · themes/base/reader/reader.js · tests/test_book_pwa.py · tests/test_reader_browser.py</span></summary>
 <div class="iface"><b>produces</b> <code>make_icons(cover: Path | None, title: str, brand: str, out_dir: Path) -&gt; None</code> (192, 512 and maskable 512 PNGs in <code>icons/</code>); <code>site_version(out_dir: Path) -&gt; str</code>; <code>sw.js</code> template with <code>__VERSION__</code> and <code>__ASSETS__</code>.</div>
 <ol>
@@ -419,7 +419,7 @@ def test_manifest_fields(site):
 </ol>
 </details>
 
-<details class="task" id="task-9" data-state="pending">
+<details class="task" id="task-9" data-state="done">
 <summary><span class="num">9</span><span class="ttl">Docs, example, changelog</span><span class="state"></span><span class="files">README.md · know-how/the-html-book.md · AGENTS.md · CHANGELOG.md · docs/superpowers/specs/2026-08-14-html-ebook-design.md · docs/superpowers/plans/2026-08-14-html-ebook.md</span></summary>
 <ol>
 <li>README: "The HTML book" (the output keys, what the reader does) and "Publishing an HTML book" (HTTPS, <code>sw.js</code> not cached long, manifest MIME type, and a Caddy example with mutually exclusive matchers).</li>
@@ -436,6 +436,10 @@ def test_manifest_fields(site):
 <li>The shared front is not lifted in this work: <code>prepare()</code> already exists in PR #3 (<code>scriptorium/render.py</code>), so delivery step 1 becomes "merge #3" plus two keyword arguments (task 7, step 1).</li>
 <li>Reference formats for HTML live in <code>theme.yml</code> under <code>html-refs:</code>. The spec said "counts as the theme's counters do"; the counting rules are fixed in <code>book.py</code> (chapter, section, figure) because they are the only counters any theme uses today, and the strings stay with the theme.</li>
 <li>The spec named the module <code>book.py</code> with <code>emit_book()</code>; it also gets <code>render_book()</code> as the entry point next to <code>render_pdf()</code>.</li>
+<li>The version is not bumped in task 9: <code>know-how/releasing.md</code> bumps it when a release is cut, from the commits since the last tag.</li>
+<li>The know-how doc follows the repo's own form (an italic "When to reach for it" line), not a <code>when:</code> line.</li>
+<li>Rectos are decided by the chapter's heading, not by the section: a chapter that opens with a full-page illustration puts the illustration on the left and the heading on the right (<code>themes/base/reader/reader.js</code>, <code>layout()</code>).</li>
+<li>The layout measurement (task 7) came out over budget for an 861-page book; the per-chapter question is open in PR 2.</li>
 </ul>
 </main>
 

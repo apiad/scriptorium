@@ -157,6 +157,61 @@ scriptorium render scriptorium.yaml --only pocket   # one (repeatable)
 
 `-o` works only when a single output is being built.
 
+### The HTML book
+
+An output with `format: html` writes a static directory that reads like an
+ebook: swipe or tap to turn on a phone, two facing pages on a wide screen, a
+contents panel, three reading modes and font sizes. It installs as an app,
+reads offline with every image and font cached, and picks up a new edition by
+itself. CSS multi-column layout makes the pages, so a book keeps its theme's
+fonts, colours and break rules.
+
+```yaml
+outputs:
+  web:
+    format: html
+    dir: web                  # defaults to the output's name
+    cover: img/cover.jpg      # cover page and app icons
+    image-max-width: 1600     # images become WebP no wider than this
+    js: [extras.js]           # loaded after the reader
+    css: [web.css]            # appended after the reader's CSS
+```
+
+`scriptorium render chapter.md --format html` builds one from a single file.
+Scripts can drive the reader through `window.scriptoriumReader` (`go(page)`,
+`goTo(element)`, `page`, `pages`, `relayout()`) and listen for `reader:ready`,
+`reader:page` and `reader:layout` on `document`. `examples/html-book/` builds
+the same book as two PDFs and a web book.
+
+### Publishing an HTML book
+
+Copy the directory to any static host. It needs three things:
+
+- HTTPS (or `localhost`): browsers register service workers only there.
+- `sw.js` not cached for long. GitHub Pages' ten minutes is fine, because the
+  reader registers the worker with `updateViaCache: 'none'`; a host with long
+  cache lifetimes needs `Cache-Control: no-cache` on `sw.js`.
+- `.webmanifest` served as `application/manifest+json` (GitHub Pages does).
+
+With Caddy, keep the two `Cache-Control` rules mutually exclusive, or the
+general one wins:
+
+```
+books.example.org {
+	root * /var/www/books
+	file_server
+	@sw path */sw.js
+	header @sw Cache-Control "no-cache"
+	@notsw not path */sw.js
+	header @notsw Cache-Control "public, max-age=300"
+	@manifest path *.webmanifest
+	header @manifest Content-Type "application/manifest+json"
+}
+```
+
+Several books can share one origin, one directory each: each book caches under
+its own path and never touches another's cache.
+
 ## Themes
 
 Themes are project templates. Point at one and customize with `vars:` — no theme
