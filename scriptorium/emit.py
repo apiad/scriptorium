@@ -205,11 +205,23 @@ def _emit_css(theme: Theme, meta: dict | None = None) -> str:
     return "".join(parts)
 
 
+_LANG_TAG = re.compile(r"[A-Za-z]{2,3}(?:-[A-Za-z0-9]{1,8})*")
+
+
+def _lang(theme: Theme, meta: dict) -> str:
+    """The document language, which picks WeasyPrint's hyphenation dictionary:
+    frontmatter or a project's `lang:`, then the theme's, then English."""
+    lang = str(meta.get("lang") or theme.meta.get("lang") or "en")
+    if not _LANG_TAG.fullmatch(lang):
+        raise ValueError(f"lang: expected a language tag like 'es' or 'en-GB', got {lang!r}")
+    return lang
+
+
 def emit(units: list[Unit], theme: Theme, meta: dict | None = None) -> str:
     """Emit a single-flow HTML document; CSS Fragmentation handles page breaks."""
     meta = meta or {}
     out = [
-        "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><style>",
+        f"<!DOCTYPE html><html lang='{_lang(theme, meta)}'><head><meta charset='utf-8'><style>",
         _emit_css(theme, meta),
         "</style></head><body>",
     ]

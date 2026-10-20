@@ -22,7 +22,7 @@ from .model import Unit
 from .theme import Theme, load_theme, render_template
 from .emit import (  # noqa: F401  (re-exported: galley's public surface)
     _APPEARANCE, _SIZES, DEFAULT_THEME, FOOTER_RESERVE, PAGE_H, PAGE_W, PX_PER_MM,
-    _emit_css, _geom, _mm, _page_size, _tpl_to_css_content, emit, resolve_theme_name,
+    _emit_css, _geom, _lang, _mm, _page_size, _tpl_to_css_content, emit, resolve_theme_name,
 )
 
 
@@ -428,7 +428,7 @@ def _group_slides(units: list[Unit], has_title: bool):
 
 def emit_deck(slides, theme: Theme, meta: dict) -> str:
     total = len(slides)
-    out = ["<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'><style>",
+    out = [f"<!DOCTYPE html><html lang='{_lang(theme, meta)}'><head><meta charset='utf-8'><style>",
            _emit_css(theme), "</style></head><body>"]
     for n, (master, units) in enumerate(slides, 1):
         out.append(f'<div class="slide {master}">')
