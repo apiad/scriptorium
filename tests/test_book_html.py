@@ -85,3 +85,28 @@ def test_single_file_format_html(tmp_path):
     md.write_text("# Hello\n\nA note.\n", encoding="utf-8")
     assert main(["render", str(md), "--format", "html"]) == 0
     assert (tmp_path / "note" / "index.html").is_file()
+
+
+def test_toc_marks_parts_and_keeps_the_order():
+    from scriptorium.book import _chapters
+    from scriptorium.parse import parse
+    src = ("# Preface {#pre .unnumbered}\n\nx\n\n# North {#p1 .part}\n\n# One {#c1}\n\ny\n\n"
+           "# Two {#c2}\n\nz\n\n# South {#p2 .part}\n\n# Three {#c3}\n\nw")
+    _, toc = _chapters(parse(src))
+    assert [t["id"] for t in toc] == ["pre", "p1", "c1", "c2", "p2", "c3"]
+    assert [t.get("part", False) for t in toc] == [False, True, False, False, True, False]
+
+
+def test_a_book_without_parts_has_no_part_flags(site):
+    index = (site / "index.html").read_text(encoding="utf-8")
+    book = json.loads(re.search(r"window.BOOK = (\{.*?\});</script>", index, re.S).group(1))
+    assert not any("part" in t for t in book["toc"])
+
+
+def test_toc_part_label_follows_the_last_theme_rule():
+    from scriptorium.book import toc_part_css
+    css = ('h1.part::before { content: "Part " counter(part, upper-roman); display:block; }\n'
+           'h1.part::before { content: "Parte " counter(part, upper-roman); }')
+    assert toc_part_css(css) == '#toc-list .toc-part-label::before { content: "Parte " counter(part, upper-roman); }\n'
+    assert toc_part_css('h1.part::before { color: red; }') == ""
+    assert toc_part_css('h1.part::before { content: none; }') == ""
