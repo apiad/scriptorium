@@ -23,6 +23,12 @@ Because each chapter is laid out alone, the themes' CSS counters would restart
 in every chapter. `_carry_counters()` gives each section a `counter-reset` with
 the chapter, part and figure values the chapters before it reached.
 
+The TOC entry of a part heading (`# Title {.part}`) carries `"part": true`.
+The reader nests the chapters up to the next part under it in a `<details>`,
+opens only the part holding the current chapter, and labels it with the
+`content` of the theme's last `h1.part::before` rule (`toc_part_css()`), so
+«Parte I» follows the theme and a theme that does not number parts shows none.
+
 Splitting was not optional. With the whole book in `index.html`, an 861-page
 book took 1.2 s just to parse its 1 MB, and 2.8 s more for the theme's styles
 and the columns, before anything showed; a font change re-laid every page.

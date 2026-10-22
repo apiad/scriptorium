@@ -355,9 +355,30 @@ def _chapters(units):
         if (starts and not prev_opener) or opener:
             chapters.append([])
         if starts and "unlisted" not in u.heading_classes:
-            toc.append({"id": u.heading_id, "title": u.heading})
+            entry = {"id": u.heading_id, "title": u.heading}
+            if "part" in u.heading_classes:
+                entry["part"] = True
+            toc.append(entry)
         chapters[-1].append(u)
     return [c for c in chapters if c], toc
+
+
+_PART_BEFORE = re.compile(r"h1\.part::before\s*\{([^}]*)\}")
+_CONTENT = re.compile(r"(?:^|;)\s*content\s*:\s*([^;]+)")
+
+
+def toc_part_css(css: str) -> str:
+    """The table of contents labels each part as the theme's `h1.part::before`
+    does, counting parts with the same counter. A theme that does not number
+    parts gets no label."""
+    content = None
+    for m in _PART_BEFORE.finditer(css):
+        c = _CONTENT.search(m.group(1))
+        if c:
+            content = c.group(1).strip()
+    if not content or "counter(part" not in content:
+        return ""
+    return f"#toc-list .toc-part-label::before {{ content: {content}; }}\n"
 
 
 def _is_fullpage(u) -> bool:
@@ -502,6 +523,8 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
             css.append((base_dir / rel).read_text(encoding="utf-8"))
         except OSError as exc:
             warnings.append(f"css file {rel!r} could not be read: {exc}")
+    if part_css := toc_part_css("\n".join(css)):
+        css.append(part_css)
     (out_dir / "book.css").write_text("\n".join(css), encoding="utf-8")
     shutil.copyfile(READER_DIR / "reader.js", out_dir / "reader.js")
     for rel in output.js:
