@@ -210,7 +210,7 @@
   }
   const goToId = (id) => (id in B.ids ? show(B.ids[id], id) : Promise.resolve());
 
-  let lastChapter = '';
+  let lastChapter = '', openPart;
   function paint() {
     const page = before(ch) + cur, all = total();
     const approx = exact() ? '' : '~';
@@ -223,6 +223,12 @@
     for (const t of B.toc) if (t.chapter <= ch) here = t;
     $('#foot-chapter').textContent = here ? here.title : '';
     document.querySelectorAll('#toc-list a').forEach((a) => a.classList.toggle('here', !!here && a.dataset.id === here.id));
+    let part = null;
+    for (const t of B.toc) { if (t.chapter > ch) break; if (t.part) part = t.id; }
+    if (part !== openPart) {
+      openPart = part;
+      document.querySelectorAll('#toc-list details').forEach((d) => { d.open = d.dataset.id === part; });
+    }
     lastChapter = here ? here.title : '';
     emit('reader:page', { page, pages: all, chapter: lastChapter });
   }
@@ -325,8 +331,18 @@
   $('#btn-toc').onclick = () => openPanel('#toc');
   $('#btn-settings').onclick = () => openPanel('#settings');
 
-  $('#toc-list').innerHTML = B.toc
-    .map((c) => `<li><a href="#${esc(c.id)}" data-id="${esc(c.id)}">${esc(c.title)}</a></li>`).join('');
+  // a part heads a collapsible group with the chapters up to the next part;
+  // chapters before the first part stay at the top level
+  let tocHtml = '', inPart = false;
+  for (const c of B.toc) {
+    if (c.part) {
+      if (inPart) tocHtml += '</ol></details></li>';
+      tocHtml += `<li class="toc-part"><details data-id="${esc(c.id)}"><summary>`
+        + `<span class="toc-part-label"></span><span class="toc-part-title">${esc(c.title)}</span></summary><ol>`;
+      inPart = true;
+    } else tocHtml += `<li><a href="#${esc(c.id)}" data-id="${esc(c.id)}">${esc(c.title)}</a></li>`;
+  }
+  $('#toc-list').innerHTML = tocHtml + (inPart ? '</ol></details></li>' : '');
   $('#toc-list').addEventListener('click', (e) => {
     const a = e.target.closest('a'); if (!a) return;
     e.preventDefault();
