@@ -1,0 +1,18 @@
+# A docs site and a PDF from the same two chapters. The second chapter runs a
+# block that writes a tone and prints the Markdown for its player.
+theme: report
+base-url: https://example.org/sound/    # where the site is published; the PDF links audio there
+vars:
+  title: Sound, briefly
+files:
+  - 01-what-sound-is.md
+  - 02-a-tone.md
+
+outputs:
+  site:
+    format: docs
+    dir: site
+    repo-url: https://github.com/apiad/scriptorium/tree/main/examples/docs-site
+  print:
+    format: pdf
+    file: sound.pdf

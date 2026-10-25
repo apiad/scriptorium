@@ -37,6 +37,11 @@ code that the `pack()` unit tests happily certify.
 - **`book.py`** — `render_book()`, the HTML book: `browser_css()`,
   `resolve_refs()`, images as WebP, the reader from `themes/base/reader/`, the
   manifest, icons and a content-versioned `sw.js`. See `know-how/the-html-book.md`.
+- **`docs.py`** — `render_docs()`, the docs site: `pages()` splits the units at
+  `#` headings, rewrites links to ids on other pages, builds the page shell
+  and `search.json`. Layout in `themes/base/docs/`. See `know-how/the-docs-format.md`.
+- **`media.py`** — audio: which links are audio, the missing-file check, the
+  box a PDF prints instead of a player, page slugs, and the copy into `media/`.
 - **`galley.py`** — the `render_pdf` entry point (`prepare` + WeasyPrint),
   `page_fills()` (real per-page fill, read off the box tree **after** the
   render), and the deck path: `measure()`, `pack()`, `_group_slides`,
@@ -88,3 +93,4 @@ code that the `pack()` unit tests happily certify.
 - The deck / slide format → `know-how/the-deck-format.md`
 - Cutting a release → `know-how/releasing.md`
 - The HTML book, its reader, caching and updates → `know-how/the-html-book.md`
+- The docs site, its pages, links, layout and search → `know-how/the-docs-format.md`

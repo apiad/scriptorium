@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Features
 
+- **The docs site.** An output with `format: docs` writes a documentation site:
+  one scrolling page per chapter, a sidebar of parts and chapters, an outline
+  of the page, previous and next links, search over an index built at render
+  time, and a drawer on phones. References to another chapter link to its
+  page; `repo-url` adds a "Source" link. `--format docs` builds one from a
+  single file. `examples/docs-site/` builds a site and a PDF.
 - **Audio figures.** `![caption](file.mp3)` alone in its paragraph renders a
   native player with a caption, numbered on its own counter and referenced as
   `@aud-name`. A missing local file fails the render. The HTML book copies
