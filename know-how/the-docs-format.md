@@ -15,15 +15,17 @@ There is no service worker and no manifest: documentation is read online.
 chapters, parts and full-page openers split as in the HTML book. Each page is
 named by `media._pages()`: the chapter heading's id, made unique with `-2`,
 `-3`… (two chapters titled "Exercises" become `exercises.html` and
-`exercises-2.html`). The PDF's audio links use the same function, so a PDF
-link and the site always agree on a page's name.
+`exercises-2.html`). `index` is reserved for the front page, so a chapter
+titled "Index" becomes `index-2.html`. The PDF's audio links use the same
+function, so a PDF link and the site always agree on a page's name.
 
 - Units before the first `#` heading go to `index.html`, which always exists
   and also lists the parts and chapters.
 - A part heading (`{.part}`) with text under it is a page of kind `part`.
-- A part heading with nothing under it is only a label in the sidebar. Its
-  page is kept with kind `label` and never written: its id still resolves (to
-  the next page) and it still counts for the part counter.
+- A part heading with nothing under it is only a label in the sidebar and
+  not in `pages()`. `render_docs()` finds it as a unit whose slug has no page:
+  its ids link to the page after it, and its heading is counted after the
+  page before it, so later parts keep their numbers.
 - A document without any `#` heading is one index page.
 
 Each page is wrapped in a `<section>` and passed through
@@ -45,7 +47,12 @@ are resolved, so a reference to a section reads its title without the `#`.
   the sidebar as a drawer (`body.drawer-open`) below. Colours come from the
   theme's `--ink`, `--muted`, `--rule` and `--accent`; the dark scheme
   overrides them and makes headings inherit the text colour, because themes
-  darken headings from their own scales.
+  darken headings from their own scales. The themes wrap code for paper
+  (`.hl pre { white-space: pre-wrap }`); the docs layout sets `white-space:
+  pre` so a long line scrolls inside its block. Nothing clips overflow on
+  `body`: content wider than the screen must show up, and fail the tests.
+- On a phone the drawer closes on a link, on Escape and on a click on the
+  dimmed page behind it, which does nothing else.
 - `themes/base/docs/docs.js`: the menu button, the outline entry of the
   section in view (an `IntersectionObserver`), the `/` key, and search.
 - The page shell (top bar, sidebar, outline, pager) is built in `_shell()`.
@@ -58,8 +65,10 @@ layout, then the output's own `css:` files, so a project can restyle anything.
 `search_index()` writes one entry per `##` and `###` section, and one for a
 page's text before its first section: `page`, `title`, `url`, and `text`
 (tags stripped, at most 600 characters). The script fetches `search.json` on
-the box's first focus. Every query word must be a prefix of a word in the
-entry; a title word scores 2, a text word 1; the first ten show.
+the box's first focus, and again on a later focus if that fetch failed. Every
+query word must be a prefix of a word in the entry; a title word scores 2, a
+text word 1; the first ten show, with the chapter under each when it differs
+from the title.
 
 ## Testing
 
@@ -73,6 +82,8 @@ uv run pytest tests/test_docs_browser.py -q
 
 It is skipped when no Chromium is found (Playwright's own, or
 `SCRIPTORIUM_CHROMIUM`). The width check fails only when something widens the
-page itself: the drawer is fixed and off-screen, so a wider drawer does not.
-Look at a layout change at 1440 px and 390 px as well; the tests check
+page itself: the drawer is fixed and off-screen, so a wider drawer does not,
+and the theme's code box has `overflow: hidden`. To see it fail, give `main`
+a `min-width: 500px`; to see the code check fail, set `white-space: pre-wrap`
+back on `pre`. Look at a layout change at 1440 px and 390 px as well; the tests check
 behaviour, not looks.
