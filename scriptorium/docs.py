@@ -16,7 +16,7 @@ from pathlib import Path
 
 from .book import (BookReport, _carry_counters, _chapters, _esc, _unit_html, browser_css,
                    collect_css_assets, collect_images, resolve_refs)
-from .media import _pages, collect_media
+from .media import collect_media, page_units
 
 DOCS_DIR = Path(__file__).resolve().parent.parent / "themes" / "base" / "docs"
 
@@ -44,7 +44,7 @@ def pages(units) -> tuple[list[Page], list[dict]]:
     """The pages in reading order and the sidebar tree. Units before the first
     `#` heading go to the index page. A part heading with content under it
     gets a page; one with none is only a label in the sidebar."""
-    slug_of = {id(u): page for u, page in _pages(units)}
+    slug_of = {id(u): page for u, page in page_units(units)}
     if not any(u.heading_level == 1 for u in units):
         return [Page("index", "", None, _content(units), "index")], []
     chunks, _ = _chapters(units)
@@ -223,7 +223,7 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
     where: dict[str, str] = {}
     labels: dict[str, str] = {}  # page slug -> label headings that follow it
     pending, last = [], "index"
-    for u, slug in _pages(p.units):
+    for u, slug in page_units(p.units):
         ids = _ID.findall(u.html)
         if slug not in written:
             pending += ids

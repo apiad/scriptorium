@@ -13,7 +13,7 @@ There is no service worker and no manifest: documentation is read online.
 
 `pages()` cuts the units with `book._chapters()`, at each `#` heading, so
 chapters, parts and full-page openers split as in the HTML book. Each page is
-named by `media._pages()`: the chapter heading's id, made unique with `-2`,
+named by `media.page_units()`: the chapter heading's id, made unique with `-2`,
 `-3`… (two chapters titled "Exercises" become `exercises.html` and
 `exercises-2.html`). `index` is reserved for the front page, so a chapter
 titled "Index" becomes `index-2.html`. The PDF's audio links use the same
