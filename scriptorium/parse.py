@@ -18,6 +18,7 @@ from mdit_py_plugins.dollarmath import dollarmath_plugin
 from .fence import EXT, parse_fence
 from .highlight import highlight
 from .mathrender import render_display, render_inline
+from .media import is_audio
 from .model import Unit
 from .theme import Theme, load_theme, render_template
 
@@ -34,7 +35,7 @@ _md = (
 # is ordinary prose (a BibTeX key, a handle) and rewriting it would delete it
 # from the page, since an anchor with no target renders empty. The free @key
 # namespace is reserved for a future citations feature.
-_REF_PREFIXES = frozenset({"fig", "tbl", "sec", "eq", "lst", "thm", "chap"})
+_REF_PREFIXES = frozenset({"fig", "tbl", "sec", "eq", "lst", "thm", "chap", "aud"})
 _REF = re.compile(r"(?<![\w`])@([a-zA-Z][\w]*)-([\w-]+)")
 
 
@@ -50,6 +51,46 @@ _md.renderer.rules["math_inline"] = lambda t, i, o, e: render_inline(t[i].conten
 _md.renderer.rules["math_inline_double"] = lambda t, i, o, e: render_display(t[i].content)
 _md.renderer.rules["math_block"] = lambda t, i, o, e: render_display(t[i].content)
 _md.renderer.rules["math_block_label"] = lambda t, i, o, e: render_display(t[i].content)
+
+
+def _mark_audio_figures(state):
+    """An audio link alone in its paragraph becomes a figure: hide the <p>.
+
+    A <figure> inside a <p> is invalid HTML, so an audio link in running text
+    stays a bare player and only a paragraph holding nothing else is unwrapped.
+    """
+    toks = state.tokens
+    for i in range(1, len(toks) - 1):
+        kids = toks[i].children or []
+        if (toks[i].type == "inline" and toks[i - 1].type == "paragraph_open"
+                and len(kids) == 1 and kids[0].type == "image"
+                and is_audio(kids[0].attrGet("src") or "")):
+            toks[i - 1].hidden = toks[i + 1].hidden = True
+            kids[0].meta["figure"] = True
+
+
+_default_image = _md.renderer.rules["image"]
+
+
+def _image(tokens, idx, options, env):
+    tok = tokens[idx]
+    src = tok.attrGet("src") or ""
+    if not is_audio(src):
+        return _default_image(tokens, idx, options, env)
+    alt = escape(_md.renderer.renderInlineAsText(tok.children or [], options, env))
+    if not tok.meta.get("figure"):
+        title = f' title="{alt}"' if alt else ""
+        return f'<audio controls preload="none" src="{escape(src)}"{title}></audio>'
+    fid = tok.attrGet("id")
+    id_attr = f' id="{escape(fid)}"' if fid else ""
+    caption = f"<figcaption>{alt}</figcaption>" if alt else ""
+    return (f'<figure class="audio"{id_attr}>'
+            f'<audio controls preload="none" src="{escape(src)}"></audio>'
+            f"{caption}</figure>\n")
+
+
+_md.core.ruler.after("inline", "audio_figure", _mark_audio_figures)
+_md.renderer.rules["image"] = _image
 
 _TRANSPARENT = {"tinted", "group"}
 _FENCE = re.compile(r"^(:{3,})\s*(.*?)\s*$")
