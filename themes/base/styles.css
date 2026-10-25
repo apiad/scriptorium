@@ -85,6 +85,16 @@ a.ref-fig::after {
    their own counter, so "Audio 2" does not depend on how many images came
    before it, and `audio-label` / `audio-ref-label` work as the figure pair. */
 figure.audio audio { width:100%; }
+/* Paper cannot play: print the file name (linked to the site when the project
+   sets base-url) in place of the player. WeasyPrint renders print media. */
+.audio-print { display:none; }
+@media print {
+  figure.audio { border:0.3mm solid var(--rule); border-radius:1.5mm; padding:2.5mm 3mm; }
+  figure.audio audio { display:none; }
+  figure.audio .audio-print { display:block; font-family:var(--mono-font), monospace;
+                              font-size:8pt; margin:0; }
+  figure.audio .audio-print::before { content:"\25B6\00A0"; }
+}
 figure[id^="aud-"] { counter-increment: audio; }
 figure[id^="aud-"] > figcaption::before {
   content: var(--audio-label) " " counter(audio) ". ";

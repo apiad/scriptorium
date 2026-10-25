@@ -1,11 +1,14 @@
 """Audio in documents: which links are audio, and where the HTML names them."""
 
 import re
-from pathlib import PurePosixPath
-from urllib.parse import urlsplit
+from html import escape, unescape
+from pathlib import Path, PurePosixPath
+from urllib.parse import unquote, urlsplit
 
 AUDIO_EXT = frozenset({".mp3", ".ogg", ".opus", ".m4a", ".wav", ".flac"})
 
+_FIGURE = re.compile(r'<figure class="audio"(?: id="([^"]*)")?><audio\b[^>]*\bsrc="([^"]*)"[^>]*></audio>')
+_ID = re.compile(r'\bid="([^"]+)"')
 _SRC = re.compile(r'<(audio|source)\b[^>]*\bsrc="([^"]*)"')
 
 
@@ -17,3 +20,66 @@ def is_audio(url: str) -> bool:
 def audio_sources(html: str) -> list[str]:
     """The src of every <audio> and <source> tag, in document order."""
     return [m.group(2) for m in _SRC.finditer(html)]
+
+
+class MediaError(ValueError):
+    """A document names an audio file that is not there."""
+
+
+def check_audio(units, base_dir: Path) -> None:
+    """Fail on the first local audio file that does not exist, naming the
+    chapter (the last `#` heading before it) so a long book says where."""
+    from .book import _is_local
+
+    chapter = "(front)"
+    for u in units:
+        if u.heading_level == 1:
+            chapter = u.heading or chapter
+        for src in audio_sources(u.html):
+            path = unquote(urlsplit(unescape(src)).path)
+            if _is_local(src) and not (base_dir / path).is_file():
+                raise MediaError(f"audio file {src!r} not found (chapter {chapter!r})")
+
+
+def _pages(units):
+    """Each unit with the slug of the page its chapter becomes: the chapter's
+    `#` heading id, made unique with -2, -3…; units before the first chapter
+    are on "index"."""
+    used: set[str] = set()
+    page = "index"
+    for u in units:
+        if u.heading_level == 1 and u.heading_id:
+            page, n = u.heading_id, 2
+            while page in used:
+                page, n = f"{u.heading_id}-{n}", n + 1
+            used.add(page)
+        yield u, page
+
+
+def page_slugs(units) -> dict[str, str]:
+    """Each element id, mapped to the slug of its chapter's page."""
+    slugs: dict[str, str] = {}
+    for u, page in _pages(units):
+        for ident in _ID.findall(u.html):
+            slugs.setdefault(ident, page)
+    return slugs
+
+
+def link_audio(units, base_url: str) -> None:
+    """Give each audio figure what paper can show instead of a player: a
+    `.audio-print` line with the file name, linked to the figure on the
+    published site when `base_url` is set. It links the page, not the file,
+    so the link survives a rebuild that renames the file's hash."""
+    for u, page in _pages(units):
+        if '<figure class="audio"' not in u.html:
+            continue
+
+        def box(m):
+            ident, src = m.group(1), m.group(2)
+            name = escape(PurePosixPath(unquote(urlsplit(unescape(src)).path)).name)
+            if base_url:
+                href = f"{base_url}{page}.html" + (f"#{ident}" if ident else "")
+                name = f'<a href="{escape(href)}">{name}</a>'
+            return m.group(0) + f'<p class="audio-print">{name}</p>'
+
+        u.html = _FIGURE.sub(box, u.html)

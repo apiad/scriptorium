@@ -1,8 +1,10 @@
 import pytest
+
 from scriptorium.book import _carry_counters, resolve_refs
-from scriptorium.media import audio_sources, is_audio
+from scriptorium.media import MediaError, audio_sources, is_audio
 from scriptorium.parse import parse
-from scriptorium.render import render_html
+from scriptorium.project import load
+from scriptorium.render import prepare, render_html
 
 
 def _html(src):
@@ -47,7 +49,6 @@ def test_audio_sources_finds_audio_and_source_tags():
 
 
 def test_html_refs_number_audio_apart_from_figures():
-    from scriptorium.render import prepare
     src = ('<figure id="fig-a"><figcaption>F</figcaption></figure>\n\n'
            "![one](1.mp3){#aud-one}\n\n![two](2.mp3){#aud-two}\n\nSee @aud-two.")
     p = prepare(src, execute=False)
@@ -65,3 +66,36 @@ def test_carry_counters_carries_audio():
 def test_the_caption_label_is_in_the_css():
     html, _ = render_html("![one](1.mp3){#aud-one}", execute=False)
     assert 'figure[id^="aud-"]' in html and "--audio-label" in html
+
+
+def test_a_missing_audio_file_fails_with_its_name_and_chapter(tmp_path):
+    with pytest.raises(MediaError, match=r"'gone.mp3' not found \(chapter 'Strings'\)"):
+        prepare("# Strings\n\n![x](gone.mp3)", cwd=str(tmp_path), execute=False)
+
+
+def test_a_remote_audio_file_is_not_checked(tmp_path):
+    prepare("![x](https://example.org/a.mp3)", cwd=str(tmp_path), execute=False)
+
+
+def test_a_frozen_output_naming_a_deleted_file_fails(tmp_path):
+    (tmp_path / "t.wav").write_bytes(b"RIFF")
+    src = '```python {run}\nprint("![t](t.wav)")\n```'
+    prepare(src, cwd=str(tmp_path))
+    (tmp_path / "t.wav").unlink()
+    with pytest.raises(MediaError, match="t.wav"):
+        prepare(src, cwd=str(tmp_path), frozen=True)
+
+
+def test_base_url_is_a_project_key(tmp_path):
+    (tmp_path / "a.md").write_text("# A")
+    (tmp_path / "scriptorium.yaml").write_text("base-url: https://example.org/b/\nfiles: [a.md]")
+    assert load(tmp_path / "scriptorium.yaml").meta["base-url"] == "https://example.org/b/"
+
+
+def test_the_print_box_links_to_the_figure_on_the_site(tmp_path):
+    (tmp_path / "p.mp3").write_bytes(b"x")
+    p = prepare("# Strings {#strings}\n\n![Pluck](p.mp3){#aud-pluck}", cwd=str(tmp_path),
+                execute=False, project_meta={"base-url": "https://example.org/b/"})
+    html = "".join(u.html for u in p.units)
+    assert '<a href="https://example.org/b/strings.html#aud-pluck">' in html
+    assert "p.mp3" in html
