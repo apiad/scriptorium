@@ -66,7 +66,7 @@ figcaption { font-size:8.5pt; color:var(--muted); margin-top:2mm; font-style:ita
    The reset sits on `html` and not on `body` because `book` already resets its
    own counters there, and a second `counter-reset` on the same element replaces
    the first instead of adding to it. */
-html { counter-reset: figure; }
+html { counter-reset: figure audio; }
 figure[id^="fig-"] { counter-increment: figure; }
 figure[id^="fig-"] > figcaption::before {
   content: var(--figure-label) " " counter(figure) ". ";
@@ -79,6 +79,20 @@ figure[id^="fig-"] > figcaption::before {
 a.ref-fig::after {
   content: var(--figure-ref-label, var(--figure-label)) " "
            target-counter(attr(href url), figure);
+}
+
+/* Audio figures: `![caption](file.mp3)` alone in its paragraph. They count on
+   their own counter, so "Audio 2" does not depend on how many images came
+   before it, and `audio-label` / `audio-ref-label` work as the figure pair. */
+figure.audio audio { width:100%; }
+figure[id^="aud-"] { counter-increment: audio; }
+figure[id^="aud-"] > figcaption::before {
+  content: var(--audio-label) " " counter(audio) ". ";
+  font-style:normal; font-weight:600;
+}
+a.ref-aud::after {
+  content: var(--audio-ref-label, var(--audio-label)) " "
+           target-counter(attr(href url), audio);
 }
 
 /* atomic-unit rhythm (galley wraps each block in .unit; keep margins contained) */

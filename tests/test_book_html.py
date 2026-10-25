@@ -36,7 +36,7 @@ def test_one_file_per_chapter_and_a_small_index(site):
 def test_chapters_carry_their_counters(site):
     starts = [re.search(r'counter-reset: ([^"]+)"', (site / f"chapters/00{n}.html").read_text()).group(1)
               for n in range(4)]
-    assert starts[3] == "chapter 2 part 0 figure 1"
+    assert starts[3] == "chapter 2 part 0 figure 1 audio 0"
 
 
 def test_every_img_has_dimensions(site):

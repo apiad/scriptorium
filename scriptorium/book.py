@@ -163,9 +163,10 @@ def resolve_refs(units, formats: dict, vars: dict) -> list[str]:
     Paged media fills these with `target-counter()`, which browsers do not
     implement. The counting follows the themes' CSS: a chapter is an `h1` that
     is neither `.unnumbered` nor `.part` and restarts the sections, a section
-    is an `h2`, a figure is a `<figure id="fig-…">`. The strings come from the
+    is an `h2`, a figure is a `<figure id="fig-…">`, an audio figure is a
+    `<figure id="aud-…">`. The strings come from the
     theme's `html-refs:`; a kind without one shows the target's own text."""
-    counters = {"chapter": 0, "section": 0, "figure": 0}
+    counters = {"chapter": 0, "section": 0, "figure": 0, "audio": 0}
     targets: dict[str, dict] = {}
     for u in units:
         for m in _ID_TAG.finditer(u.html):
@@ -179,6 +180,8 @@ def resolve_refs(units, formats: dict, vars: dict) -> list[str]:
                 counters["section"] += 1
             elif tag == "figure" and ident.startswith("fig-"):
                 counters["figure"] += 1
+            elif tag == "figure" and ident.startswith("aud-"):
+                counters["audio"] += 1
             if tag == "figure":
                 cap = u.html.find("<figcaption", m.end())
                 text = _inner_text(u.html, u.html.find(">", cap) + 1, "figcaption") if cap >= 0 else ""
@@ -191,8 +194,8 @@ def resolve_refs(units, formats: dict, vars: dict) -> list[str]:
 
     def label(key):
         v = vars.get(key)
-        if v is None and key == "figure-ref-label":
-            v = vars.get("figure-label")
+        if v is None and key in ("figure-ref-label", "audio-ref-label"):
+            v = vars.get(key.replace("-ref-", "-"))
         return str(v if v is not None else "").strip("\"'")
 
     warnings = []
@@ -398,10 +401,10 @@ def _carry_counters(sections: list[str]) -> list[str]:
     number with would restart at every chapter. Each section starts its own
     instances at the values the chapters before it reached, counted as
     `resolve_refs` counts them."""
-    chapter = part = figure = 0
+    chapter = part = figure = audio = 0
     out = []
     for html in sections:
-        start = f"counter-reset: chapter {chapter} part {part} figure {figure}"
+        start = f"counter-reset: chapter {chapter} part {part} figure {figure} audio {audio}"
         out.append(html.replace("<section ", f'<section style="{start}" ', 1))
         for m in re.finditer(r"<(h1|figure)\b([^>]*)>", html):
             classes = re.search(r'class="([^"]*)"', m.group(2))
@@ -413,6 +416,8 @@ def _carry_counters(sections: list[str]) -> list[str]:
                     chapter += 1
             elif re.search(r'\bid="fig-', m.group(2)):
                 figure += 1
+            elif re.search(r'\bid="aud-', m.group(2)):
+                audio += 1
     return out
 
 

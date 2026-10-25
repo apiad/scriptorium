@@ -1,6 +1,8 @@
 import pytest
+from scriptorium.book import _carry_counters, resolve_refs
 from scriptorium.media import audio_sources, is_audio
 from scriptorium.parse import parse
+from scriptorium.render import render_html
 
 
 def _html(src):
@@ -42,3 +44,24 @@ def test_an_audio_link_in_running_text_is_a_bare_player():
 def test_audio_sources_finds_audio_and_source_tags():
     html = '<audio src="a.mp3"></audio><audio controls><source src="b.ogg"></audio>'
     assert audio_sources(html) == ["a.mp3", "b.ogg"]
+
+
+def test_html_refs_number_audio_apart_from_figures():
+    from scriptorium.render import prepare
+    src = ('<figure id="fig-a"><figcaption>F</figcaption></figure>\n\n'
+           "![one](1.mp3){#aud-one}\n\n![two](2.mp3){#aud-two}\n\nSee @aud-two.")
+    p = prepare(src, execute=False)
+    resolve_refs(p.units, p.theme.meta["html-refs"], p.meta)
+    html = "".join(u.html for u in p.units)
+    assert '<a class="ref-aud" href="#aud-two">Audio 2</a>' in html
+
+
+def test_carry_counters_carries_audio():
+    first = '<section class="chapter"><figure class="audio" id="aud-x"></figure></section>'
+    second = '<section class="chapter"><p>next</p></section>'
+    assert "audio 1" in _carry_counters([first, second])[1]
+
+
+def test_the_caption_label_is_in_the_css():
+    html, _ = render_html("![one](1.mp3){#aud-one}", execute=False)
+    assert 'figure[id^="aud-"]' in html and "--audio-label" in html
