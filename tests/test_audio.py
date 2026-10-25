@@ -1,9 +1,9 @@
 import pytest
 
-from scriptorium.book import _carry_counters, resolve_refs
+from scriptorium.book import _carry_counters, render_book, resolve_refs
 from scriptorium.media import MediaError, audio_sources, is_audio
 from scriptorium.parse import parse
-from scriptorium.project import load
+from scriptorium.project import Output, load
 from scriptorium.render import prepare, render_html
 
 
@@ -99,3 +99,31 @@ def test_the_print_box_links_to_the_figure_on_the_site(tmp_path):
     html = "".join(u.html for u in p.units)
     assert '<a href="https://example.org/b/strings.html#aud-pluck">' in html
     assert "p.mp3" in html
+
+
+def _book(tmp_path, src, **kw):
+    out = tmp_path / "web"
+    render_book(src, out, output=Output(name="web", format="html", **kw), base_dir=tmp_path,
+                execute=False)
+    return out
+
+
+def test_audio_is_copied_by_content_and_used_once(tmp_path):
+    (tmp_path / "my tone.mp3").write_bytes(b"abc")
+    out = _book(tmp_path, "# A\n\n![one](my%20tone.mp3)\n\n![two](my%20tone.mp3)")
+    files = list((out / "media").iterdir())
+    assert len(files) == 1 and files[0].suffix == ".mp3"
+    text = "".join(p.read_text() for p in (out / "chapters").iterdir())
+    assert text.count(f'src="media/{files[0].name}"') == 2
+
+
+def test_media_is_not_precached_by_default(tmp_path):
+    (tmp_path / "t.mp3").write_bytes(b"abc")
+    out = _book(tmp_path, "# A\n\n![t](t.mp3)")
+    assert '"media/' not in (out / "sw.js").read_text()
+
+
+def test_offline_media_precaches_audio(tmp_path):
+    (tmp_path / "t.mp3").write_bytes(b"abc")
+    out = _book(tmp_path, "# A\n\n![t](t.mp3)", offline_media=True)
+    assert '"media/' in (out / "sw.js").read_text()

@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import unquote
 
+from .media import collect_media
+
 # Declarations only paged media understands. In a browser an unknown function
 # invalidates the whole declaration, so a `content: "Chapter " target-counter()`
 # would leave the reference empty rather than half-filled.
@@ -516,6 +518,7 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
         section, img_warnings = collect_images(section, base_dir, out_dir, output.image_max_width,
                                                output.image_quality, not output.offline_images)
         warnings += img_warnings
+        section = collect_media(section, base_dir, out_dir)
         (out_dir / f"chapters/{n:03d}.html").write_text(section, encoding="utf-8")
 
     css = [relative_sizes(browser_css(collect_css_assets(_emit_css(p.theme, p.meta), out_dir))),
@@ -543,7 +546,7 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
     make_icons(base_dir / output.cover if output.cover else None, str(p.meta.get("title") or ""),
                str(p.meta.get("brand") or ""), out_dir)
     write_manifest(p.meta, str(p.meta.get("lang") or p.theme.meta.get("lang") or "en"), out_dir)
-    version = write_service_worker(out_dir, output.offline_images)
+    version = write_service_worker(out_dir, output.offline_images, output.offline_media)
 
     files = [f for f in out_dir.rglob("*") if f.is_file()]
     return BookReport(files=len(files), bytes=sum(f.stat().st_size for f in files),
@@ -613,15 +616,21 @@ def site_version(out_dir: Path) -> str:
     return digest.hexdigest()[:12]
 
 
-def write_service_worker(out_dir: Path, offline_images: bool = True) -> str:
+def write_service_worker(out_dir: Path, offline_images: bool = True,
+                         offline_media: bool = False) -> str:
     """Without `offline_images`, `img/` stays out of the precache: the worker
-    caches each image the first time it is fetched instead."""
+    caches each image the first time it is fetched instead. Without
+    `offline_media`, `media/` stays out too, and the worker leaves audio
+    requests to the network: a player asks for byte ranges, which a cache
+    does not answer."""
+    skip = tuple(d for d, keep in (("img/", offline_images), ("media/", offline_media)) if not keep)
     assets = ["./"] + sorted(p.relative_to(out_dir).as_posix()
                              for p in out_dir.rglob("*") if p.is_file() and p.name != "sw.js"
-                             and (offline_images or not p.relative_to(out_dir).as_posix().startswith("img/")))
+                             and not p.relative_to(out_dir).as_posix().startswith(skip))
     version = site_version(out_dir)
     sw = (READER_DIR / "sw.js").read_text(encoding="utf-8")
     sw = (sw.replace("__VERSION__", version).replace("__ASSETS__", json.dumps(assets, indent=1))
-          .replace("__LAZY_IMAGES__", "false" if offline_images else "true"))
+          .replace("__LAZY_IMAGES__", "false" if offline_images else "true")
+          .replace("__PRECACHE_MEDIA__", "true" if offline_media else "false"))
     (out_dir / "sw.js").write_text(sw, encoding="utf-8")
     return version

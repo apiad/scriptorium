@@ -1,6 +1,8 @@
 """Audio in documents: which links are audio, and where the HTML names them."""
 
+import hashlib
 import re
+import shutil
 from html import escape, unescape
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
@@ -10,6 +12,7 @@ AUDIO_EXT = frozenset({".mp3", ".ogg", ".opus", ".m4a", ".wav", ".flac"})
 _FIGURE = re.compile(r'<figure class="audio"(?: id="([^"]*)")?><audio\b[^>]*\bsrc="([^"]*)"[^>]*></audio>')
 _ID = re.compile(r'\bid="([^"]+)"')
 _SRC = re.compile(r'<(audio|source)\b[^>]*\bsrc="([^"]*)"')
+_SRC_TAG = re.compile(r'(<(?:audio|source)\b[^>]*\bsrc=")([^"]*)(")')
 
 
 def is_audio(url: str) -> bool:
@@ -83,3 +86,25 @@ def link_audio(units, base_url: str) -> None:
             return m.group(0) + f'<p class="audio-print">{name}</p>'
 
         u.html = _FIGURE.sub(box, u.html)
+
+
+def collect_media(html: str, base_dir: Path, out_dir: Path) -> str:
+    """Copy every local audio file into `out_dir/media/`, as it is, and point
+    its tag there. Files are named by content, as images are, so a changed
+    sound gets a new URL and a sound used twice is stored once."""
+    from .book import _is_local
+
+    def sub(m):
+        src = unescape(m.group(2))
+        if not _is_local(src):
+            return m.group(0)
+        path = base_dir / unquote(urlsplit(src).path)
+        if not path.is_file():
+            return m.group(0)
+        name = f"media/{hashlib.sha256(path.read_bytes()).hexdigest()[:12]}{path.suffix.lower()}"
+        if not (out_dir / name).exists():
+            (out_dir / "media").mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(path, out_dir / name)
+        return m.group(1) + name + m.group(3)
+
+    return _SRC_TAG.sub(sub, html)
