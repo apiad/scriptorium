@@ -55,8 +55,8 @@ def check_audio(units, base_dir: Path) -> None:
 def _pages(units):
     """Each unit with the slug of the page its chapter becomes: the chapter's
     `#` heading id, made unique with -2, -3…; units before the first chapter
-    are on "index"."""
-    used: set[str] = set()
+    are on "index", so no chapter may take that name."""
+    used = {"index"}
     page = "index"
     for u in units:
         if u.heading_level == 1 and u.heading_id:

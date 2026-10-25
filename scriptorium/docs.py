@@ -63,8 +63,6 @@ def pages(units) -> tuple[list[Page], list[dict]]:
             tree.append(group)
             if has_text:
                 out.append(Page(slug, title, title, _content(chunk), "part"))
-            else:  # kept for its id and the part counter, never written
-                out.append(Page(slug, title, title, _content(chunk), "label"))
             continue
         part = group["title"] if group else None
         out.append(Page(slug, title, part, _content(chunk), "chapter"))
@@ -90,8 +88,6 @@ def search_index(pages: list[Page]) -> list[dict]:
     text, cut at 600 characters."""
     entries = []
     for page in pages:
-        if page.kind == "label":
-            continue
         heads = [i for i, u in enumerate(page.units) if u.heading_level in (2, 3) and u.heading_id]
         lead = [u for u in page.units[:heads[0] if heads else None] if u.heading_level != 1]
         if text := _text(lead):
@@ -221,17 +217,21 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
     out_dir.mkdir(parents=True)
 
     all_pages, tree = pages(p.units)
-    # a label part's id leads to the page after it
+    # A part with no text has no page: its ids lead to the page after it, and
+    # its heading still counts for the part counter, after the page before it.
+    written = {page.slug for page in all_pages}
     where: dict[str, str] = {}
-    pending: list[str] = []
-    for page in all_pages:
-        ids = [i for u in page.units for i in _ID.findall(u.html)]
-        if page.kind == "label":
+    labels: dict[str, str] = {}  # page slug -> label headings that follow it
+    pending, last = [], "index"
+    for u, slug in _pages(p.units):
+        ids = _ID.findall(u.html)
+        if slug not in written:
             pending += ids
+            labels[last] = labels.get(last, "") + u.html
             continue
         for ident in pending + ids:
-            where.setdefault(ident, page.slug)
-        pending = []
+            where.setdefault(ident, slug)
+        pending, last = [], slug
 
     first_h1 = next((u.heading for u in p.units if u.heading_level == 1), "")
     site_title = str(p.meta.get("title") or first_h1 or "Documentation")
@@ -243,13 +243,10 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
         html = _link_pages(html, page.slug, where)
         html = _SUB_HEADING.sub(lambda m: f'{m.group(1)}<a class="anchor" href="#{m.group(3)}">#</a>{m.group(4)}', html)
         sections.append(f'<section class="docs-page {page.kind}">{html}</section>')
-    sections = _carry_counters(sections)
+    counted = _carry_counters([s + labels.get(page.slug, "") for page, s in zip(all_pages, sections)])
+    sections = [c[:len(c) - len(labels.get(page.slug, ""))] for page, c in zip(all_pages, counted)]
 
-    written = [page for page in all_pages if page.kind != "label"]
-    for page, section in zip(all_pages, sections):
-        if page.kind == "label":
-            continue
-        n = written.index(page)
+    for n, (page, section) in enumerate(zip(all_pages, sections)):
         outline = [(u.heading_level, u.heading_id, u.heading or "")
                    for u in page.units if u.heading_level in (2, 3) and u.heading_id]
         body = section
@@ -262,8 +259,8 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
         warnings += img_warnings
         body = collect_media(body, base_dir, out_dir)
         html = _shell(page, body, site_title=site_title, lang=lang, tree=tree, outline=outline,
-                      prev=written[n - 1] if n else None,
-                      next=written[n + 1] if n + 1 < len(written) else None, output=output)
+                      prev=all_pages[n - 1] if n else None,
+                      next=all_pages[n + 1] if n + 1 < len(all_pages) else None, output=output)
         (out_dir / f"{page.slug}.html").write_text(html, encoding="utf-8")
 
     css = [browser_css(collect_css_assets(_emit_css(p.theme, p.meta), out_dir)),

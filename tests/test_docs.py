@@ -25,6 +25,10 @@ See @aud-tone and @sec-pluck.
 
 ## Pluck {#sec-pluck}
 
+```python
+pluck = render(string(220.0, damping=0.996, seed=1, brightness=0.5, pickup=0.12, body="guitar"), seconds=2.0, to="build/pluck-a3.wav")
+```
+
 # Exercises
 """
 
@@ -107,3 +111,14 @@ def test_search_has_one_entry_per_section(site):
     assert waves == [{"page": "What sound is", "title": "Waves", "url": "what.html#waves",
                       "text": waves[0]["text"]}]
     assert all("<" not in e["text"] and len(e["text"]) <= 600 for e in entries)
+
+
+def test_a_chapter_named_index_does_not_replace_the_front_page(tmp_path):
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+    out = tmp_path / "site"
+    render_docs("Front text\n\n# Index\n\n## Terms\n\n# Other", out,
+                output=Output(name="site", format="docs"), base_dir=tmp_path, execute=False)
+    assert "Front text" in (out / "index.html").read_text()
+    html = (out / "index-2.html").read_text()
+    assert 'rel="prev" href="index.html"' in html and 'rel="next" href="other.html"' in html
