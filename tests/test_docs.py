@@ -25,8 +25,8 @@ See @aud-tone and @sec-pluck.
 
 ## Pluck {#sec-pluck}
 
-```python
-pluck = render(string(220.0, damping=0.996, seed=1, brightness=0.5, pickup=0.12, body="guitar"), seconds=2.0, to="build/pluck-a3.wav")
+```text
+a long line that never breaks a long line that never breaks a long line that never breaks a long line that never breaks a long line that never breaks a long line that never breaks 
 ```
 
 # Exercises
