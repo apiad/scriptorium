@@ -11,9 +11,21 @@
       const open = body.classList.toggle("drawer-open");
       menu.setAttribute("aria-expanded", String(open));
     });
-    document.querySelectorAll(".sidebar a").forEach(function (a) {
-      a.addEventListener("click", function () { body.classList.remove("drawer-open"); });
+    const close = function () {
+      body.classList.remove("drawer-open");
+      menu.setAttribute("aria-expanded", "false");
+    };
+    document.querySelectorAll(".sidebar a").forEach(function (a) { a.addEventListener("click", close); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && body.classList.contains("drawer-open")) close();
     });
+    // a click on the page behind the open drawer closes it and goes no further
+    document.addEventListener("click", function (e) {
+      if (!body.classList.contains("drawer-open") || e.target.closest(".sidebar, .topbar .menu")) return;
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+    }, true);
   }
 
   const links = new Map();
@@ -41,7 +53,7 @@
   // must be a prefix of a word in the entry; a word in the title scores 2,
   // one only in the text scores 1.
   const results = document.querySelector(".topbar .search-results");
-  let index = null;
+  let index = null, loading = false;
   const words = function (s) { return s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean); };
 
   function search() {
@@ -68,24 +80,31 @@
       const a = document.createElement("a");
       a.href = hit[1].url;
       a.textContent = hit[1].title;
-      const small = document.createElement("small");
-      small.textContent = hit[1].page;
-      a.appendChild(small);
+      if (hit[1].page !== hit[1].title) {  // a chapter's own text needs no chapter line
+        const small = document.createElement("small");
+        small.textContent = hit[1].page;
+        a.appendChild(small);
+      }
       results.appendChild(a);
     });
     results.hidden = false;
   }
 
   if (input && results) {
+    // a failed fetch (offline, or a site opened from file://) is retried on the next focus
     input.addEventListener("focus", function () {
-      if (index) return;
-      fetch("search.json").then(function (r) { return r.json(); }).then(function (entries) {
+      if (index || loading) return;
+      loading = true;
+      fetch("search.json").then(function (r) {
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      }).then(function (entries) {
         index = entries.map(function (e) {
           return Object.assign({ titleWords: words(e.title), textWords: words(e.text) }, e);
         });
         search();
-      });
-    }, { once: true });
+      }).catch(function () {}).finally(function () { loading = false; });
+    });
     input.addEventListener("input", search);
     input.addEventListener("keydown", function (e) {
       if (e.key === "Escape") { results.hidden = true; input.blur(); }

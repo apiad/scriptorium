@@ -20,7 +20,7 @@
 
 html { scroll-padding-top: calc(var(--docs-top) + 1rem); -webkit-text-size-adjust: 100%; }
 body.docs { margin: 0; background: var(--docs-bg); color: var(--docs-ink);
-            font-size: 16px; line-height: 1.6; overflow-x: hidden; }
+            font-size: 16px; line-height: 1.6; }
 body.docs a { color: var(--docs-accent); }
 
 /* top bar */
@@ -69,6 +69,8 @@ body.docs .outline a.active { color: var(--docs-accent); border-left-color: var(
 body.docs main { min-width: 0; padding: 1.5rem 0 4rem; }
 body.docs main img, body.docs main svg, body.docs main video { max-width: 100%; height: auto; }
 body.docs main pre { overflow-x: auto; max-width: 100%; font-size: .85rem; line-height: 1.5; }
+/* the themes wrap code for paper; on screen a long line scrolls instead */
+body.docs main pre, body.docs main .hl pre { white-space: pre; word-break: normal; overflow-wrap: normal; }
 body.docs main table { display: block; max-width: 100%; overflow-x: auto; }
 body.docs main h1, body.docs main h2, body.docs main h3 { break-before: auto; }
 .anchor { margin-left: .4em; text-decoration: none; color: var(--docs-muted) !important; opacity: 0; }
@@ -96,6 +98,8 @@ figure.audio audio { width: 100%; max-width: 32rem; }
              height: calc(100vh - var(--docs-top)); max-height: none; padding: 1rem; background: var(--docs-bg); border-right: 1px solid var(--docs-rule);
              transform: translateX(-100%); visibility: hidden; transition: transform .2s ease, visibility .2s; }
   body.drawer-open .sidebar { transform: none; visibility: visible; box-shadow: 0 0 32px rgba(0,0,0,.25); }
+  body.drawer-open::after { content: ""; position: fixed; inset: var(--docs-top) 0 0 0; z-index: 14;
+                            background: rgba(0,0,0,.35); }
 }
 @media (pointer: coarse) {
   .sidebar a, .outline a, .search-results a, .pager a, .topbar .menu { min-height: 44px; box-sizing: border-box;

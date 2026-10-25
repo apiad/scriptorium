@@ -56,6 +56,44 @@ def test_the_menu_opens_the_sidebar_on_a_phone(browser, url):
     ctx.close()
 
 
+def test_a_long_code_line_scrolls_inside_its_block(browser, url):
+    ctx, page = _open(browser, url + "strings.html", PHONE)
+    pre = page.evaluate("(() => { const p = document.querySelector('main pre');"
+                        " return [p.scrollWidth, p.clientWidth, getComputedStyle(p).whiteSpace]; })()")
+    assert pre[0] > pre[1] and pre[2] == "pre"
+    assert page.evaluate("document.documentElement.scrollWidth") <= 390
+    ctx.close()
+
+
+@pytest.mark.parametrize("how", ["escape", "outside"])
+def test_the_drawer_closes_with_escape_or_a_click_outside(browser, url, how):
+    ctx, page = _open(browser, url + "what.html", PHONE)
+    page.click(".topbar .menu")
+    page.wait_for_timeout(400)
+    if how == "escape":
+        page.keyboard.press("Escape")
+    else:
+        page.mouse.click(370, 600)
+    page.wait_for_timeout(400)
+    assert not page.is_visible(".sidebar a[aria-current]") and page.url.endswith("what.html")
+    ctx.close()
+
+
+def test_search_retries_after_a_failed_fetch(browser, url):
+    ctx, page = _open(browser, url, DESK)
+    page.route("**/search.json", lambda route: route.abort())
+    page.click(".topbar .search input")
+    page.wait_for_timeout(300)
+    page.unroute("**/search.json")
+    page.errors.clear()  # the aborted request is the point of the test
+    page.click("main")
+    page.click(".topbar .search input")
+    page.keyboard.type("wav")
+    page.wait_for_selector(".search-results a")
+    assert page.errors == []
+    ctx.close()
+
+
 @pytest.mark.parametrize("device", [PHONE, DESK], ids=["phone", "desktop"])
 def test_search_finds_a_section(browser, url, device):
     ctx, page = _open(browser, url, device)
