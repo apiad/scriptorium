@@ -39,3 +39,4 @@ html-refs:
   chap: "Chapter {chapter}"
   sec: "§{chapter}.{section}"
   fig: "“{text}”"
+  aud: "“{text}”"

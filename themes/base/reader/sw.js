@@ -6,6 +6,9 @@ const VERSION = '__VERSION__';
 const ASSETS = __ASSETS__;
 // true when img/ is not precached: an image is cached the first time it is fetched
 const LAZY_IMAGES = __LAZY_IMAGES__;
+// false when media/ is not precached: audio goes to the network untouched, so
+// the player's range requests get the partial responses they ask for
+const PRECACHE_MEDIA = __PRECACHE_MEDIA__;
 const SCOPE = new URL('./', self.location).pathname;
 const PREFIX = 'book:' + SCOPE + ':';
 const CACHE = PREFIX + VERSION;
@@ -29,6 +32,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET' || url.origin !== location.origin || !url.pathname.startsWith(SCOPE)) return;
+  if (!PRECACHE_MEDIA && url.pathname.startsWith(SCOPE + 'media/')) return;
   e.respondWith((async () => {
     const c = await caches.open(CACHE);
     const hit = await c.match(e.request.mode === 'navigate' ? './' : e.request, { ignoreSearch: true });

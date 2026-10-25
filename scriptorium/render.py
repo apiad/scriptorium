@@ -118,6 +118,10 @@ def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
     src, tl_warnings = process_timeline(src, meta, Path(cwd) if cwd else None)
     warnings = css_warnings + warnings + cite_warnings + gloss_warnings + tl_warnings
     units = parse(src, theme, env, meta=meta)
+    from .media import check_audio, link_audio
+    if cwd:
+        check_audio(units, Path(cwd))
+    link_audio(units, str(meta.get("base-url", "")))
     if env is not None:
         warnings = warnings + env.warnings
     if not for_screen:  # the HTML book has its own contents panel

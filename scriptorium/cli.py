@@ -69,6 +69,16 @@ def _render_project(args) -> int:
 
 
 def main(argv=None) -> int:
+    from .media import MediaError
+
+    try:
+        return _main(argv)
+    except MediaError as e:  # a missing audio file: the message is the whole story
+        print(f"scriptorium: {e}", file=sys.stderr)
+        return 2
+
+
+def _main(argv) -> int:
     p = argparse.ArgumentParser(prog="scriptorium")
     sub = p.add_subparsers(dest="cmd", required=True)
 

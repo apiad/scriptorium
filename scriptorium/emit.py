@@ -258,7 +258,7 @@ def emit(units: list[Unit], theme: Theme, meta: dict | None = None) -> str:
 _APPEARANCE = {
     "accent", "accent-dark", "brand", "brand-dark", "ink", "muted", "rule",
     "body-font", "heading-font", "mono-font",
-    "figure-label", "figure-ref-label",
+    "figure-label", "figure-ref-label", "audio-label", "audio-ref-label",
 }
 
 

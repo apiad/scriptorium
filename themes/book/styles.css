@@ -54,7 +54,7 @@ a.ref-sec::after {
            target-counter(attr(href url), section)
            " (p. " target-counter(attr(href url), page) ")";
 }
-a.ref-fig::after {
+a.ref-fig::after, a.ref-aud::after {
   content: "“" target-text(attr(href url)) "” (p. " target-counter(attr(href url), page) ")";
 }
 

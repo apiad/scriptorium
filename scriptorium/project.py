@@ -32,6 +32,7 @@ class Output:
     image_max_width: int = 1600
     image_quality: int = 80
     offline_images: bool = True
+    offline_media: bool = False
     js: list[str] = field(default_factory=list)
     css: list[str] = field(default_factory=list)
 
@@ -41,7 +42,7 @@ class Output:
 _OUTPUT_KEYS = {
     "pdf": {"format", "file", "page", "vars"},
     "html": {"format", "dir", "vars", "cover", "image-max-width", "image-quality",
-             "offline-images", "js", "css"},
+             "offline-images", "offline-media", "js", "css"},
 }
 
 
@@ -68,6 +69,7 @@ def _outputs(spec) -> list[Output]:
             image_max_width=int(cfg.get("image-max-width", 1600)),
             image_quality=int(cfg.get("image-quality", 80)),
             offline_images=bool(cfg.get("offline-images", True)),
+            offline_media=bool(cfg.get("offline-media", False)),
             js=list(cfg.get("js") or []), css=list(cfg.get("css") or []),
         ))
     return outs
@@ -108,7 +110,7 @@ def load(path: str | Path) -> Project:
     # and where the notes collect is structure, not styling either.
     meta = {k: spec[k]
             for k in ("bibliography", "nocite", "glossary", "css", "footnotes",
-                      "header", "footer", "lang",
+                      "header", "footer", "lang", "base-url",
                       "timeline", "timeline-group", "timeline-group-max", "execute")
             if k in spec}
 

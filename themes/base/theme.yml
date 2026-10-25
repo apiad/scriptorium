@@ -36,6 +36,8 @@ vars:
   # because a figure that opted into numbering has already asked for a label;
   # a Spanish document sets "Figura".
   figure-label: "Figure"
+  # The same for an audio figure and its `@aud-…` references.
+  audio-label: "Audio"
 
 # Where footnote definitions collect: document | chapter | page.
 # Frontmatter `footnotes:` overrides this per document.
@@ -56,3 +58,4 @@ components:
 # {text} is the target's heading or caption; any var can be named too.
 html-refs:
   fig: "{figure-ref-label} {figure}"
+  aud: "{audio-ref-label} {audio}"

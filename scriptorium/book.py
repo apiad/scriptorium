@@ -14,6 +14,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import unquote
 
+from .media import collect_media
+
 # Declarations only paged media understands. In a browser an unknown function
 # invalidates the whole declaration, so a `content: "Chapter " target-counter()`
 # would leave the reference empty rather than half-filled.
@@ -163,9 +165,10 @@ def resolve_refs(units, formats: dict, vars: dict) -> list[str]:
     Paged media fills these with `target-counter()`, which browsers do not
     implement. The counting follows the themes' CSS: a chapter is an `h1` that
     is neither `.unnumbered` nor `.part` and restarts the sections, a section
-    is an `h2`, a figure is a `<figure id="fig-…">`. The strings come from the
+    is an `h2`, a figure is a `<figure id="fig-…">`, an audio figure is a
+    `<figure id="aud-…">`. The strings come from the
     theme's `html-refs:`; a kind without one shows the target's own text."""
-    counters = {"chapter": 0, "section": 0, "figure": 0}
+    counters = {"chapter": 0, "section": 0, "figure": 0, "audio": 0}
     targets: dict[str, dict] = {}
     for u in units:
         for m in _ID_TAG.finditer(u.html):
@@ -179,6 +182,8 @@ def resolve_refs(units, formats: dict, vars: dict) -> list[str]:
                 counters["section"] += 1
             elif tag == "figure" and ident.startswith("fig-"):
                 counters["figure"] += 1
+            elif tag == "figure" and ident.startswith("aud-"):
+                counters["audio"] += 1
             if tag == "figure":
                 cap = u.html.find("<figcaption", m.end())
                 text = _inner_text(u.html, u.html.find(">", cap) + 1, "figcaption") if cap >= 0 else ""
@@ -191,8 +196,8 @@ def resolve_refs(units, formats: dict, vars: dict) -> list[str]:
 
     def label(key):
         v = vars.get(key)
-        if v is None and key == "figure-ref-label":
-            v = vars.get("figure-label")
+        if v is None and key in ("figure-ref-label", "audio-ref-label"):
+            v = vars.get(key.replace("-ref-", "-"))
         return str(v if v is not None else "").strip("\"'")
 
     warnings = []
@@ -398,10 +403,10 @@ def _carry_counters(sections: list[str]) -> list[str]:
     number with would restart at every chapter. Each section starts its own
     instances at the values the chapters before it reached, counted as
     `resolve_refs` counts them."""
-    chapter = part = figure = 0
+    chapter = part = figure = audio = 0
     out = []
     for html in sections:
-        start = f"counter-reset: chapter {chapter} part {part} figure {figure}"
+        start = f"counter-reset: chapter {chapter} part {part} figure {figure} audio {audio}"
         out.append(html.replace("<section ", f'<section style="{start}" ', 1))
         for m in re.finditer(r"<(h1|figure)\b([^>]*)>", html):
             classes = re.search(r'class="([^"]*)"', m.group(2))
@@ -413,6 +418,8 @@ def _carry_counters(sections: list[str]) -> list[str]:
                     chapter += 1
             elif re.search(r'\bid="fig-', m.group(2)):
                 figure += 1
+            elif re.search(r'\bid="aud-', m.group(2)):
+                audio += 1
     return out
 
 
@@ -511,6 +518,7 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
         section, img_warnings = collect_images(section, base_dir, out_dir, output.image_max_width,
                                                output.image_quality, not output.offline_images)
         warnings += img_warnings
+        section = collect_media(section, base_dir, out_dir)
         (out_dir / f"chapters/{n:03d}.html").write_text(section, encoding="utf-8")
 
     css = [relative_sizes(browser_css(collect_css_assets(_emit_css(p.theme, p.meta), out_dir))),
@@ -538,7 +546,7 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
     make_icons(base_dir / output.cover if output.cover else None, str(p.meta.get("title") or ""),
                str(p.meta.get("brand") or ""), out_dir)
     write_manifest(p.meta, str(p.meta.get("lang") or p.theme.meta.get("lang") or "en"), out_dir)
-    version = write_service_worker(out_dir, output.offline_images)
+    version = write_service_worker(out_dir, output.offline_images, output.offline_media)
 
     files = [f for f in out_dir.rglob("*") if f.is_file()]
     return BookReport(files=len(files), bytes=sum(f.stat().st_size for f in files),
@@ -608,15 +616,21 @@ def site_version(out_dir: Path) -> str:
     return digest.hexdigest()[:12]
 
 
-def write_service_worker(out_dir: Path, offline_images: bool = True) -> str:
+def write_service_worker(out_dir: Path, offline_images: bool = True,
+                         offline_media: bool = False) -> str:
     """Without `offline_images`, `img/` stays out of the precache: the worker
-    caches each image the first time it is fetched instead."""
+    caches each image the first time it is fetched instead. Without
+    `offline_media`, `media/` stays out too, and the worker leaves audio
+    requests to the network: a player asks for byte ranges, which a cache
+    does not answer."""
+    skip = tuple(d for d, keep in (("img/", offline_images), ("media/", offline_media)) if not keep)
     assets = ["./"] + sorted(p.relative_to(out_dir).as_posix()
                              for p in out_dir.rglob("*") if p.is_file() and p.name != "sw.js"
-                             and (offline_images or not p.relative_to(out_dir).as_posix().startswith("img/")))
+                             and not p.relative_to(out_dir).as_posix().startswith(skip))
     version = site_version(out_dir)
     sw = (READER_DIR / "sw.js").read_text(encoding="utf-8")
     sw = (sw.replace("__VERSION__", version).replace("__ASSETS__", json.dumps(assets, indent=1))
-          .replace("__LAZY_IMAGES__", "false" if offline_images else "true"))
+          .replace("__LAZY_IMAGES__", "false" if offline_images else "true")
+          .replace("__PRECACHE_MEDIA__", "true" if offline_media else "false"))
     (out_dir / "sw.js").write_text(sw, encoding="utf-8")
     return version

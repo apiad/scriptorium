@@ -175,6 +175,7 @@ outputs:
     image-max-width: 1600     # images become WebP no wider than this
     image-quality: 80         # their WebP quality
     offline-images: true      # false: images load as read, not on install
+    offline-media: false      # true: audio is cached on install too
     js: [extras.js]           # loaded after the reader
     css: [web.css]            # appended after the reader's CSS
 ```
@@ -245,8 +246,36 @@ All six `extend` a `base` theme; build your own by extending any of them. See
   block `continue` (`{python continue}`, `python {run continue}`) to run it on top
   of the blocks before it, and a failing block shows its traceback in red.
 - **Math** — `$inline$` and `$$display$$`.
+- **Audio** — an image link to an audio file (`.mp3` `.ogg` `.opus` `.m4a`
+  `.wav` `.flac`, any case) alone in its paragraph is an audio figure: a native
+  player with the alt text as its caption.
+  `![A plucked A3](pluck.mp3){#aud-pluck}` numbers it on its own counter ("Audio
+  1", `audio-label:` sets the word) and `@aud-pluck` refers to it. In running
+  text the link is a bare player. A missing local file fails the render and
+  names the file and the chapter. The HTML book copies each file as it is into
+  `media/`, named by its content, and precaches it only with `offline-media:
+  true`. A PDF cannot play, so it prints a box with the caption and the file
+  name; set a top-level `base-url:` in `scriptorium.yaml` and the box links to
+  `<base-url><chapter id>.html#aud-…`. An executed block's stdout is Markdown,
+  so a block that writes a sound and prints one line puts a player under itself:
+
+  ````markdown
+  ```python {run}
+  import math, os, struct, wave
+  os.makedirs("build", exist_ok=True)
+  with wave.open("build/a3.wav", "wb") as w:
+      w.setnchannels(1); w.setsampwidth(2); w.setframerate(22050)
+      w.writeframes(b"".join(struct.pack("<h", int(8000 * math.sin(2 * math.pi * 220 * n / 22050)))
+                             for n in range(22050)))
+  print("![An A3 sine](build/a3.wav)")
+  ```
+  ````
+
+  A relative path resolves against the project directory. A block times out
+  after 30 s unless `execute: {timeout: …}` raises it, and a frozen render
+  reuses the cached stdout, so the files it names must still be on disk.
 - **Cross-references** — `@type-id` resolves to "Figure 3.2 (p. 41)" via theme
-  CSS. The prefix must be one of `fig` `tbl` `sec` `eq` `lst` `thm` `chap`;
+  CSS. The prefix must be one of `fig` `tbl` `sec` `eq` `lst` `thm` `chap` `aud`;
   anything else (`@smith-2020`, a handle) stays literal text.
 - **Footnotes** — `A claim.[^a]` with `[^a]: The note.` anywhere in the file.
   Numbering is automatic; a note referenced twice gets two back-links. Set
