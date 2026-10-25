@@ -142,3 +142,10 @@ def test_a_book_reference_names_the_caption_alone(tmp_path):
                           check=True).stdout
     assert "“A plucked A3” (p." in " ".join(text.split())
     assert "p.mp3" in text
+
+
+def test_a_video_source_is_not_audio(tmp_path):
+    html = '<video controls><source src="clip.mp4"></video><audio><source src="a.ogg"></audio>'
+    assert audio_sources(html) == ["a.ogg"]
+    (tmp_path / "a.ogg").write_bytes(b"x")
+    prepare(html, cwd=str(tmp_path), execute=False)

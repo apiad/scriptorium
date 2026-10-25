@@ -1,4 +1,7 @@
-"""Audio in documents: which links are audio, and where the HTML names them."""
+"""Audio in documents: which links are audio and where the HTML names them,
+the check that every local file exists, the box a PDF prints in place of a
+player (linked to the published site), and the copy into an HTML output's
+`media/`."""
 
 import hashlib
 import re
@@ -11,7 +14,9 @@ AUDIO_EXT = frozenset({".mp3", ".ogg", ".opus", ".m4a", ".wav", ".flac"})
 
 _FIGURE = re.compile(r'<figure class="audio"(?: id="([^"]*)")?><audio\b[^>]*\bsrc="([^"]*)"[^>]*></audio>')
 _ID = re.compile(r'\bid="([^"]+)"')
-_SRC = re.compile(r'<(audio|source)\b[^>]*\bsrc="([^"]*)"')
+# an <audio> element; its own src and its <source> tags are the audio. A
+# <source> inside <video> or <picture> is not.
+_AUDIO = re.compile(r"<audio\b.*?</audio>", re.S)
 _SRC_TAG = re.compile(r'(<(?:audio|source)\b[^>]*\bsrc=")([^"]*)(")')
 
 
@@ -21,8 +26,8 @@ def is_audio(url: str) -> bool:
 
 
 def audio_sources(html: str) -> list[str]:
-    """The src of every <audio> and <source> tag, in document order."""
-    return [m.group(2) for m in _SRC.finditer(html)]
+    """The src of every <audio> tag and of each <source> inside one, in order."""
+    return [m.group(2) for a in _AUDIO.finditer(html) for m in _SRC_TAG.finditer(a.group(0))]
 
 
 class MediaError(ValueError):
@@ -39,8 +44,8 @@ def check_audio(units, base_dir: Path) -> None:
         if u.heading_level == 1:
             chapter = u.heading or chapter
         for src in audio_sources(u.html):
-            path = unquote(urlsplit(unescape(src)).path)
-            if _is_local(src) and not (base_dir / path).is_file():
+            src = unescape(src)
+            if _is_local(src) and not (base_dir / unquote(urlsplit(src).path)).is_file():
                 raise MediaError(f"audio file {src!r} not found (chapter {chapter!r})")
 
 
@@ -109,4 +114,4 @@ def collect_media(html: str, base_dir: Path, out_dir: Path) -> str:
             shutil.copyfile(path, out_dir / name)
         return m.group(1) + name + m.group(3)
 
-    return _SRC_TAG.sub(sub, html)
+    return _AUDIO.sub(lambda a: _SRC_TAG.sub(sub, a.group(0)), html)
