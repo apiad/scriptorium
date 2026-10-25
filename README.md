@@ -248,19 +248,16 @@ All six `extend` a `base` theme; build your own by extending any of them. See
 - **Math** — `$inline$` and `$$display$$`.
 - **Audio** — an image link to an audio file (`.mp3` `.ogg` `.opus` `.m4a`
   `.wav` `.flac`, any case) alone in its paragraph is an audio figure: a native
-  player with the alt text as its caption. `![A plucked A3](pluck.mp3){#aud-pluck}`
-  numbers it on its own counter ("Audio 1", `audio-label:` sets the word) and
-  `@aud-pluck` refers to it. In running text the link is a bare player. A
-  missing local file fails the render and names the file and the chapter. The
-  HTML book copies each file as it is into `media/`, named by its content, and
-  precaches it only with `offline-media: true`. A PDF cannot play, so it prints
-  a box with the caption and the file name; set a top-level `base-url:` in
-  `scriptorium.yaml` and the box links to the figure at
-  `<base-url><chapter id>.html#aud-pluck`. Those are the page names of the
-  docs output, which is not built yet; the HTML book's pages are named
-  differently, so until then the link only works for a site you name that way. An executed block's
-  stdout is Markdown, so a block that writes a sound and prints one line puts a
-  player under itself:
+  player with the alt text as its caption.
+  `![A plucked A3](pluck.mp3){#aud-pluck}` numbers it on its own counter ("Audio
+  1", `audio-label:` sets the word) and `@aud-pluck` refers to it. In running
+  text the link is a bare player. A missing local file fails the render and
+  names the file and the chapter. The HTML book copies each file as it is into
+  `media/`, named by its content, and precaches it only with `offline-media:
+  true`. A PDF cannot play, so it prints a box with the caption and the file
+  name; set a top-level `base-url:` in `scriptorium.yaml` and the box links to
+  `<base-url><chapter id>.html#aud-…`. An executed block's stdout is Markdown,
+  so a block that writes a sound and prints one line puts a player under itself:
 
   ````markdown
   ```python {run}
