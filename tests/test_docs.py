@@ -98,3 +98,12 @@ def test_a_project_declares_a_docs_output(tmp_path):
     (tmp_path / "scriptorium.yaml").write_text("outputs:\n  site:\n    format: web\n")
     with pytest.raises(ProjectError, match="is not one of pdf, html, docs"):
         load(tmp_path / "scriptorium.yaml")
+
+
+def test_search_has_one_entry_per_section(site):
+    import json
+    entries = json.loads((site / "search.json").read_text())
+    waves = [e for e in entries if e["title"] == "Waves"]
+    assert waves == [{"page": "What sound is", "title": "Waves", "url": "what.html#waves",
+                      "text": waves[0]["text"]}]
+    assert all("<" not in e["text"] and len(e["text"]) <= 600 for e in entries)

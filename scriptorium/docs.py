@@ -7,9 +7,11 @@ The theme's CSS is adapted for the browser as the book does; the layout lives
 in `themes/base/docs/`.
 """
 
+import json
 import re
 import shutil
 from dataclasses import dataclass
+from html import unescape
 from pathlib import Path
 
 from .book import (BookReport, _carry_counters, _chapters, _esc, _unit_html, browser_css,
@@ -20,6 +22,8 @@ DOCS_DIR = Path(__file__).resolve().parent.parent / "themes" / "base" / "docs"
 
 _HREF = re.compile(r'href="#([^"]+)"')
 _ID = re.compile(r'\bid="([^"]+)"')
+_TAGS = re.compile(r"<[^>]+>")
+_BLOCK_END = re.compile(r"</(?:p|li|h\d|td|th|div|pre|figcaption|dt|dd|blockquote)>|<br\s*/?>")
 _SUB_HEADING = re.compile(r'(<h([23])\b[^>]*\bid="([^"]+)"[^>]*>.*?)(</h\2>)', re.S)
 
 
@@ -73,6 +77,32 @@ def pages(units) -> tuple[list[Page], list[dict]]:
                     for u in chunk if u.heading_level == 2 and u.heading_id]
         group["chapters"].append({"title": title, "slug": slug, "sections": sections})
     return out, tree
+
+
+def _text(units) -> str:
+    text = unescape(_TAGS.sub("", _BLOCK_END.sub(" ", " ".join(u.html for u in units))))
+    return " ".join(text.split())[:600]
+
+
+def search_index(pages: list[Page]) -> list[dict]:
+    """One entry per `##` and `###` section, and one for each page's text
+    before its first section: the chapter, the title, the URL and the plain
+    text, cut at 600 characters."""
+    entries = []
+    for page in pages:
+        if page.kind == "label":
+            continue
+        heads = [i for i, u in enumerate(page.units) if u.heading_level in (2, 3) and u.heading_id]
+        lead = [u for u in page.units[:heads[0] if heads else None] if u.heading_level != 1]
+        if text := _text(lead):
+            entries.append({"page": page.title, "title": page.title, "url": f"{page.slug}.html",
+                            "text": text})
+        for n, i in enumerate(heads):
+            u = page.units[i]
+            body = page.units[i + 1:heads[n + 1] if n + 1 < len(heads) else None]
+            entries.append({"page": page.title, "title": u.heading or "",
+                            "url": f"{page.slug}.html#{u.heading_id}", "text": _text(body)})
+    return entries
 
 
 def _link_pages(html: str, here: str, where: dict[str, str]) -> str:
@@ -252,7 +282,10 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
             shutil.copyfile(base_dir / rel, dst)
         except OSError as exc:
             warnings.append(f"js file {rel!r} could not be copied: {exc}")
-    (out_dir / "search.json").write_text("[]\n", encoding="utf-8")
+    for page in all_pages:  # the index has no heading of its own
+        page.title = page.title or site_title
+    (out_dir / "search.json").write_text(json.dumps(search_index(all_pages), ensure_ascii=False),
+                                         encoding="utf-8")
 
     files = [f for f in out_dir.rglob("*") if f.is_file()]
     return BookReport(files=len(files), bytes=sum(f.stat().st_size for f in files),
