@@ -149,3 +149,13 @@ def test_a_video_source_is_not_audio(tmp_path):
     assert audio_sources(html) == ["a.ogg"]
     (tmp_path / "a.ogg").write_bytes(b"x")
     prepare(html, cwd=str(tmp_path), execute=False)
+
+
+def test_the_cli_reports_a_missing_audio_file_in_one_line(tmp_path, capsys):
+    from scriptorium.cli import main
+
+    doc = tmp_path / "d.md"
+    doc.write_text("# Strings\n\n![x](gone.mp3)")
+    assert main(["render", str(doc), "--html", "--no-execute"]) == 2
+    err = capsys.readouterr().err
+    assert err == "scriptorium: audio file 'gone.mp3' not found (chapter 'Strings')\n"

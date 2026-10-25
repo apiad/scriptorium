@@ -73,6 +73,9 @@ _default_image = _md.renderer.rules["image"]
 
 
 def _image(tokens, idx, options, env):
+    """An audio link renders a player; any other image the default way. An
+    audio figure keeps only an `{#id}`: classes are dropped, and so is an id
+    on a bare player in running text."""
     tok = tokens[idx]
     src = tok.attrGet("src") or ""
     if not is_audio(src):
