@@ -255,8 +255,10 @@ All six `extend` a `base` theme; build your own by extending any of them. See
   HTML book copies each file as it is into `media/`, named by its content, and
   precaches it only with `offline-media: true`. A PDF cannot play, so it prints
   a box with the caption and the file name; set a top-level `base-url:` in
-  `scriptorium.yaml` (where the site is published) and the box links to the
-  figure there, at `<base-url><chapter id>.html#aud-pluck`. An executed block's
+  `scriptorium.yaml` and the box links to the figure at
+  `<base-url><chapter id>.html#aud-pluck`. Those are the page names of the
+  docs output, which is not built yet; the HTML book's pages are named
+  differently, so until then the link only works for a site you name that way. An executed block's
   stdout is Markdown, so a block that writes a sound and prints one line puts a
   player under itself:
 
