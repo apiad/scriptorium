@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Features
 
+- **Audio figures.** `![caption](file.mp3)` alone in its paragraph renders a
+  native player with a caption, numbered on its own counter and referenced as
+  `@aud-name`. A missing local file fails the render. The HTML book copies
+  audio into `media/` by content hash and precaches it only with
+  `offline-media`; a PDF prints a box with the file name, linked to the
+  figure on the site when the project sets `base-url`.
 - **The HTML book.** An `html` output writes a static, installable ebook:
   CSS columns make the pages (swipe on phones, two facing pages on wide
   screens), the theme's fonts and colours carry over, references become text,
