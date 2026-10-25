@@ -48,11 +48,14 @@ def _render_project(args) -> int:
     base = args.input.resolve().parent
     cwd = str(base)
     for o in outputs:
-        if o.format == "html":
-            from .book import render_book
+        if o.format in ("html", "docs"):
+            if o.format == "html":
+                from .book import render_book as render_site
+            else:
+                from .docs import render_docs as render_site
 
             out = args.output or (base / o.dir)
-            report = render_book(proj.src, out, output=o, base_dir=base, theme_name=proj.theme,
+            report = render_site(proj.src, out, output=o, base_dir=base, theme_name=proj.theme,
                                  vars=proj.vars, project_meta=proj.meta,
                                  execute=not args.no_execute, code_root=proj.code_root)
             _book_line(o.name, out, report)
@@ -92,8 +95,8 @@ def _main(argv) -> int:
                    help="write the HTML document instead of a PDF (needs no WeasyPrint)")
     r.add_argument("--only", action="append", metavar="NAME", default=None,
                    help="build only this output of a project (repeatable)")
-    r.add_argument("--format", choices=("pdf", "html"), default="pdf",
-                   help="for a single file: a PDF (default) or an HTML book")
+    r.add_argument("--format", choices=("pdf", "html", "docs"), default="pdf",
+                   help="for a single file: a PDF (default), an HTML book or a docs site")
 
     t = sub.add_parser("tangle", help="extract export= code blocks to source files")
     t.add_argument("input", type=Path)
@@ -141,6 +144,16 @@ def _main(argv) -> int:
                                  base_dir=args.input.resolve().parent, theme_name=args.theme,
                                  execute=not args.no_execute)
             _book_line("html", out, report)
+            return 0
+        if args.format == "docs":
+            from .docs import render_docs
+            from .project import Output
+
+            out = args.output or args.input.with_suffix("")
+            report = render_docs(src, out, output=Output(name="docs", format="docs"),
+                                 base_dir=args.input.resolve().parent, theme_name=args.theme,
+                                 execute=not args.no_execute)
+            _book_line("docs", out, report)
             return 0
         out = args.output or args.input.with_suffix(".pdf")
         cwd = str(args.input.resolve().parent)
