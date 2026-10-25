@@ -159,3 +159,25 @@ def test_the_cli_reports_a_missing_audio_file_in_one_line(tmp_path, capsys):
     assert main(["render", str(doc), "--html", "--no-execute"]) == 2
     err = capsys.readouterr().err
     assert err == "scriptorium: audio file 'gone.mp3' not found (chapter 'Strings')\n"
+
+
+def test_an_inline_player_prints_its_caption_and_file(tmp_path):
+    import subprocess
+
+    from scriptorium.galley import render_pdf
+
+    (tmp_path / "tone.wav").write_bytes(b"x")
+    out = tmp_path / "i.pdf"
+    render_pdf("Inline: listen to ![a tone](tone.wav) here.", str(out),
+               cwd=str(tmp_path), execute=False)
+    text = " ".join(subprocess.run(["pdftotext", str(out), "-"], capture_output=True,
+                                   text=True, check=True).stdout.split())
+    assert "a tone" in text and "tone.wav" in text
+
+
+def test_a_base_url_without_a_slash_still_links_the_page(tmp_path):
+    (tmp_path / "p.mp3").write_bytes(b"x")
+    p = prepare("# Strings {#strings}\n\n![Pluck](p.mp3){#aud-pluck}", cwd=str(tmp_path),
+                execute=False, project_meta={"base-url": "https://example.org/b"})
+    html = "".join(u.html for u in p.units)
+    assert 'href="https://example.org/b/strings.html#aud-pluck"' in html

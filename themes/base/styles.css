@@ -86,16 +86,20 @@ a.ref-fig::after {
    before it, and `audio-label` / `audio-ref-label` work as the figure pair. */
 figure.audio audio { width:100%; }
 /* Paper cannot play: print the file name (linked to the site when the project
-   sets base-url) in place of the player. WeasyPrint renders print media. */
+   sets base-url) in place of the player. WeasyPrint renders print media. A
+   bare player in running text prints its title and the name in brackets. */
 .audio-print { display:none; }
 @media print {
+  audio { display:none; }
   figure.audio { border:0.3mm solid var(--rule); border-radius:1.5mm; padding:2.5mm 3mm; }
-  figure.audio audio { display:none; }
   figure.audio .audio-print { display:block; font-family:var(--mono-font), monospace;
                               font-size:8pt; margin:0; }
-  figure.audio .audio-print::before { content:"\25B6\00A0"; }
+  .audio-print::before { content:"\25B6\00A0"; }
   figure.audio .audio-print [data-file]::after,
   figure.audio .audio-print[data-file]::after { content:attr(data-file); }
+  span.audio-print { display:inline; }
+  span.audio-print [data-file]::after,
+  span.audio-print[data-file]::after { content:" (" attr(data-file) ")"; }
 }
 figure[id^="aud-"] { counter-increment: audio; }
 figure[id^="aud-"] > figcaption::before {

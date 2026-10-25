@@ -12,7 +12,10 @@ from urllib.parse import unquote, urlsplit
 
 AUDIO_EXT = frozenset({".mp3", ".ogg", ".opus", ".m4a", ".wav", ".flac"})
 
-_FIGURE = re.compile(r'<figure class="audio"(?: id="([^"]*)")?><audio\b[^>]*\bsrc="([^"]*)"[^>]*></audio>')
+# an audio figure's opening and its player, or a bare player in running text
+_PLAYER = re.compile(r'(<figure class="audio"(?: id="([^"]*)")?>)?<audio\b([^>]*)></audio>')
+_ATTR_SRC = re.compile(r'\bsrc="([^"]*)"')
+_ATTR_TITLE = re.compile(r'\btitle="([^"]*)"')
 _ID = re.compile(r'\bid="([^"]+)"')
 # an <audio> element; its own src and its <source> tags are the audio. A
 # <source> inside <video> or <picture> is not.
@@ -74,25 +77,37 @@ def page_slugs(units) -> dict[str, str]:
 
 
 def link_audio(units, base_url: str) -> None:
-    """Give each audio figure what paper can show instead of a player: a
-    `.audio-print` line with the file name, linked to the figure on the
-    published site when `base_url` is set. It links the page, not the file,
-    so the link survives a rebuild that renames the file's hash. The name is
-    an attribute the theme CSS shows, not text: a theme that refers to a figure
-    by `target-text()` must read the caption alone."""
+    """Give each audio player what paper can show instead: an `.audio-print`
+    with the file name, a line under a figure's player and a span after a
+    bare player's title in running text, linked to the page on the published
+    site when `base_url` is set. It links the page, not the file, so the link
+    survives a rebuild that renames the file's hash. The name is an attribute
+    the theme CSS shows, not text: a theme that refers to a figure by
+    `target-text()` must read the caption alone."""
+    if base_url and not base_url.endswith("/"):
+        base_url += "/"
     for u, page in _pages(units):
-        if '<figure class="audio"' not in u.html:
+        if "<audio" not in u.html:
             continue
 
         def box(m):
-            ident, src = m.group(1), m.group(2)
-            name = escape(PurePosixPath(unquote(urlsplit(unescape(src)).path)).name)
-            if not base_url:
-                return m.group(0) + f'<p class="audio-print" data-file="{name}"></p>'
+            src = _ATTR_SRC.search(m.group(3))
+            if not src:  # a raw <audio> with <source> children
+                return m.group(0)
+            name = escape(PurePosixPath(unquote(urlsplit(unescape(src.group(1))).path)).name)
+            ident = m.group(2)
             href = escape(f"{base_url}{page}.html" + (f"#{ident}" if ident else ""))
-            return m.group(0) + f'<p class="audio-print"><a href="{href}" data-file="{name}"></a></p>'
+            if m.group(1):
+                inner = f'<a href="{href}" data-file="{name}"></a>' if base_url else ""
+                attr = "" if base_url else f' data-file="{name}"'
+                return m.group(0) + f'<p class="audio-print"{attr}>{inner}</p>'
+            title = _ATTR_TITLE.search(m.group(3))
+            text = title.group(1) if title else ""
+            if base_url:
+                return m.group(0) + f'<span class="audio-print">{text}<a href="{href}" data-file="{name}"></a></span>'
+            return m.group(0) + f'<span class="audio-print" data-file="{name}">{text}</span>'
 
-        u.html = _FIGURE.sub(box, u.html)
+        u.html = _PLAYER.sub(box, u.html)
 
 
 def collect_media(html: str, base_dir: Path, out_dir: Path) -> str:
