@@ -72,7 +72,9 @@ def link_audio(units, base_url: str) -> None:
     """Give each audio figure what paper can show instead of a player: a
     `.audio-print` line with the file name, linked to the figure on the
     published site when `base_url` is set. It links the page, not the file,
-    so the link survives a rebuild that renames the file's hash."""
+    so the link survives a rebuild that renames the file's hash. The name is
+    an attribute the theme CSS shows, not text: a theme that refers to a figure
+    by `target-text()` must read the caption alone."""
     for u, page in _pages(units):
         if '<figure class="audio"' not in u.html:
             continue
@@ -80,10 +82,10 @@ def link_audio(units, base_url: str) -> None:
         def box(m):
             ident, src = m.group(1), m.group(2)
             name = escape(PurePosixPath(unquote(urlsplit(unescape(src)).path)).name)
-            if base_url:
-                href = f"{base_url}{page}.html" + (f"#{ident}" if ident else "")
-                name = f'<a href="{escape(href)}">{name}</a>'
-            return m.group(0) + f'<p class="audio-print">{name}</p>'
+            if not base_url:
+                return m.group(0) + f'<p class="audio-print" data-file="{name}"></p>'
+            href = escape(f"{base_url}{page}.html" + (f"#{ident}" if ident else ""))
+            return m.group(0) + f'<p class="audio-print"><a href="{href}" data-file="{name}"></a></p>'
 
         u.html = _FIGURE.sub(box, u.html)
 

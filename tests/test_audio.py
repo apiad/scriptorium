@@ -97,7 +97,7 @@ def test_the_print_box_links_to_the_figure_on_the_site(tmp_path):
     p = prepare("# Strings {#strings}\n\n![Pluck](p.mp3){#aud-pluck}", cwd=str(tmp_path),
                 execute=False, project_meta={"base-url": "https://example.org/b/"})
     html = "".join(u.html for u in p.units)
-    assert '<a href="https://example.org/b/strings.html#aud-pluck">' in html
+    assert 'href="https://example.org/b/strings.html#aud-pluck"' in html
     assert "p.mp3" in html
 
 
@@ -127,3 +127,18 @@ def test_offline_media_precaches_audio(tmp_path):
     (tmp_path / "t.mp3").write_bytes(b"abc")
     out = _book(tmp_path, "# A\n\n![t](t.mp3)", offline_media=True)
     assert '"media/' in (out / "sw.js").read_text()
+
+
+def test_a_book_reference_names_the_caption_alone(tmp_path):
+    import subprocess
+
+    from scriptorium.galley import render_pdf
+
+    (tmp_path / "p.mp3").write_bytes(b"x")
+    out = tmp_path / "b.pdf"
+    render_pdf("# Strings\n\nSee @aud-pluck.\n\n![A plucked A3](p.mp3){#aud-pluck}",
+               str(out), theme_name="book", cwd=str(tmp_path), execute=False)
+    text = subprocess.run(["pdftotext", str(out), "-"], capture_output=True, text=True,
+                          check=True).stdout
+    assert "“A plucked A3” (p." in " ".join(text.split())
+    assert "p.mp3" in text

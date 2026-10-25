@@ -94,6 +94,8 @@ figure.audio audio { width:100%; }
   figure.audio .audio-print { display:block; font-family:var(--mono-font), monospace;
                               font-size:8pt; margin:0; }
   figure.audio .audio-print::before { content:"\25B6\00A0"; }
+  figure.audio .audio-print [data-file]::after,
+  figure.audio .audio-print[data-file]::after { content:attr(data-file); }
 }
 figure[id^="aud-"] { counter-increment: audio; }
 figure[id^="aud-"] > figcaption::before {
