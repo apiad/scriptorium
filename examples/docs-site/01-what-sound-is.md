@@ -16,5 +16,5 @@ it as pitch: the A above middle C is 440 Hz, and each octave doubles it.
 ## Amplitude {#sec-amplitude}
 
 How far the pressure swings is the amplitude. We hear it as loudness. A
-digital recording stores the amplitude many thousands of times per second;
-@sec-sampling in the next chapter does exactly that.
+digital recording stores the amplitude many thousands of times per second.
+The next chapter, [Sampling](#sec-sampling), does exactly that.

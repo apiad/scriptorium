@@ -24,8 +24,8 @@ with wave.open("build/tone.wav", "wb") as w:
 print("![A 440 Hz tone](build/tone.wav){#aud-tone}")
 ```
 
-@aud-tone is the frequency from @sec-frequency, one second long, sampled
-44 100 times.
+@aud-tone is the A from [Frequency](#sec-frequency), one second long,
+sampled 44 100 times.
 
 ## Listening {#sec-listening}
 
