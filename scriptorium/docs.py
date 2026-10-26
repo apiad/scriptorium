@@ -17,8 +17,9 @@ from pathlib import Path
 from .book import (BookReport, _carry_counters, _chapters, _esc, _unit_html, browser_css,
                    collect_css_assets, collect_images, resolve_refs)
 from .media import collect_media, page_units
+from .theme import THEMES_DIR
 
-DOCS_DIR = Path(__file__).resolve().parent.parent / "themes" / "base" / "docs"
+DOCS_DIR = THEMES_DIR / "base" / "docs"
 
 _HREF = re.compile(r'href="#([^"]+)"')
 _ID = re.compile(r'\bid="([^"]+)"')

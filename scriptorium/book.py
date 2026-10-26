@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import unquote
 
 from .media import collect_media
+from .theme import THEMES_DIR
 
 # Declarations only paged media understands. In a browser an unknown function
 # invalidates the whole declaration, so a `content: "Chapter " target-counter()`
@@ -316,7 +317,7 @@ def collect_css_assets(css: str, out_dir: Path) -> str:
     return _CSS_FILE_URL.sub(sub, css)
 
 
-READER_DIR = Path(__file__).resolve().parent.parent / "themes" / "base" / "reader"
+READER_DIR = THEMES_DIR / "base" / "reader"
 
 # The reader's own words. A book in another language gets the English ones.
 STRINGS = {
