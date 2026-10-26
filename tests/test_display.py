@@ -42,3 +42,66 @@ def test_single_repr_methods_are_enough(tmp_path):
 def test_traceback_still_numbers_cell_lines(tmp_path):
     res = ExecEnv(cwd=str(tmp_path)).run("x = 1\nraise ValueError('boom')\n", "python")
     assert res.failed and 'File "<cell>", line 2' in res.stdout + res.stderr
+
+
+SVG_AUDIO = '''
+import base64
+class V:
+    def __init__(self, cap=None): self.cap = cap
+    def _repr_mimebundle_(self, include=None, exclude=None):
+        md = {"caption": self.cap, "id": "wave"} if self.cap else {}
+        return {"image/svg+xml": "<svg xmlns='http://www.w3.org/2000/svg'/>",
+                "audio/mpeg": base64.b64encode(b"ID3fake").decode()}, md
+'''
+
+
+def _html(src, tmp_path, env=None):
+    from scriptorium.parse import parse
+    units = parse(src, env=env or ExecEnv(cwd=str(tmp_path)))
+    return units, "".join(u.html for u in units)
+
+
+def test_image_and_audio_make_one_figure(tmp_path):
+    from scriptorium.book import resolve_refs
+    from scriptorium.media import audio_sources
+    units, html = _html("```python {run}\n" + SVG_AUDIO + "V('A sine')\n```", tmp_path)
+    assert html.count("<figure") == 1 and 'id="fig-wave"' in html and "<audio" in html and "A sine" in html
+    assert len(list((tmp_path / "build/img").glob("a-sine-*.svg"))) == 1
+    assert len(list((tmp_path / "build/audio").glob("a-sine-*.mp3"))) == 1
+    assert any(s.endswith(".mp3") for s in audio_sources(html))
+    resolve_refs(units, {}, {})  # numbers the figure without complaint
+
+
+def test_image_only_is_an_image_figure(tmp_path):
+    src = "```python {run}\nclass S:\n    def _repr_svg_(self): return '<svg/>'\nS()\n```"
+    _, html = _html(src, tmp_path)
+    assert "<img" in html and "<audio" not in html
+
+
+def test_fence_caption_is_the_fallback(tmp_path):
+    _, html = _html('```python {run caption="From the fence" id=fig-f}\n' + SVG_AUDIO + "V()\n```", tmp_path)
+    assert "From the fence" in html and 'id="fig-f"' in html
+
+
+def test_output_follows_call_order(tmp_path):
+    src = SVG_AUDIO + "print('before')\ndisplay(V('x'))\nprint('after')\n"
+    _, html = _html("```python {run echo=false}\n" + src + "```", tmp_path)
+    assert html.index("before") < html.index("<figure") < html.index("after")
+
+
+def test_two_bundles_and_fence_caption_warn(tmp_path):
+    env = ExecEnv(cwd=str(tmp_path))
+    _html('```python {run caption="c"}\n' + SVG_AUDIO + "display(V(), V())\n```", tmp_path, env)
+    assert any("caption" in w for w in env.warnings)
+
+
+def test_frozen_build_writes_the_files(tmp_path):
+    import shutil
+    from scriptorium.freeze import Freeze
+    fz = Freeze(tmp_path / "f.json")
+    src = "```python {run}\n" + SVG_AUDIO + "V('A sine')\n```"
+    _html(src, tmp_path, ExecEnv(cwd=str(tmp_path), freeze=fz))
+    shutil.rmtree(tmp_path / "build")
+    _html(src, tmp_path, ExecEnv(cwd=str(tmp_path), freeze=fz, frozen=True))
+    assert len(list((tmp_path / "build/img").glob("*.svg"))) == 1
+    assert len(list((tmp_path / "build/audio").glob("*.mp3"))) == 1
