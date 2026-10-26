@@ -9,6 +9,7 @@ Recognized forms (attributes combine freely):
     ```python {name=frag}         named noweb fragment (definition)
     ```python {run echo=false}    run but hide the source
     ```python {run output=code}   force monospace output (default asis for native)
+    ```python {run caption=".." id=fig-x}  caption and id for the one bundle it displays
 
 Default output mode differs by syntax: Quarto `{lang}` blocks default to `code`
 (monospace, matching Quarto), native `{run}` blocks default to `asis` (stdout
@@ -34,6 +35,8 @@ class Fence:
     echo: bool = True  # show the source?
     output_mode: str = "asis"  # "asis" | "code"
     cont: bool = False  # `continue`: run on top of the previous block's chain
+    caption: str | None = None  # caption for the one thing the block displays
+    id: str | None = None  # its id, e.g. fig-x
 
     @property
     def tangles(self) -> bool:
@@ -75,4 +78,6 @@ def parse_fence(info: str) -> Fence:
     if kv.get("echo") == "false" or "echo=false" in attr_text:
         f.echo = False
     f.output_mode = kv.get("output", f.output_mode)
+    f.caption = kv.get("caption")
+    f.id = kv.get("id")
     return f

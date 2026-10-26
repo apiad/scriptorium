@@ -297,6 +297,14 @@ and a chain never crosses a file boundary or includes a failing block. Noweb
 assembly remains the way to share code without replaying it. (Revised 2026-09-16;
 see `docs/superpowers/specs/2026-09-16-independent-cells-design.md`.)
 
+**Rich display (2026-10-26).** A Python block has a `display()` builtin and shows
+a rich last expression, so code written for Jupyter runs unchanged. The driver
+prints each displayed object's MIME bundle as JSON between sentinels in stdout;
+the parent splits stdout and places each bundle in order (`bundles.py`): Markdown
+spliced, image and audio written as files and turned into a figure, HTML raw, text
+as output. Because the bundles live in stdout, the freeze cache holds them and a
+frozen render recreates the files.
+
 ### 5.3 Mechanics
 
 - **Interpreter map:** language tag → command (`python`→`python -`,

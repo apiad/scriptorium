@@ -8,6 +8,7 @@ An optional ExecEnv enables execution; without it, code is shown, not run.
 """
 
 import re
+from pathlib import Path
 from html import escape
 
 import yaml
@@ -15,6 +16,7 @@ from markdown_it import MarkdownIt
 from mdit_py_plugins.attrs import attrs_block_plugin, attrs_plugin
 from mdit_py_plugins.dollarmath import dollarmath_plugin
 
+from .bundles import place, split
 from .fence import EXT, parse_fence
 from .highlight import highlight
 from .mathrender import render_display, render_inline
@@ -335,16 +337,27 @@ def _code_units(info, body, theme, env, cursor, stem) -> list[Unit]:
     if f.run and env is not None:
         res = env.run(body, f.lang, cont=f.cont)
         if res.failed:
-            stdout = res.stdout if not res.stdout or res.stdout.endswith("\n") else res.stdout + "\n"
+            stdout = "".join(p if isinstance(p, str) else p["data"].get("text/plain", "") + "\n"
+                             for p in split(res.stdout))
+            stdout = stdout if not stdout or stdout.endswith("\n") else stdout + "\n"
             units.append(Unit(
                 html=(f'<pre class="output error">{escape(stdout)}'
                       f'<span class="stderr">{escape(res.stderr)}</span></pre>'),
                 name="output"))
         elif res.stdout.strip():
+            parts = split(res.stdout)
+            shown = [p for p in parts if isinstance(p, dict)]
             if f.output_mode == "code":
-                units.append(Unit(html=f'<pre class="output">{escape(res.stdout)}</pre>', name="output"))
-            else:  # asis: stdout is raw markdown, re-parsed
-                units.extend(parse(res.stdout, theme, env))
+                text = "".join(p if isinstance(p, str) else p["data"].get("text/plain", "") + "\n" for p in parts)
+                units.append(Unit(html=f'<pre class="output">{escape(text)}</pre>', name="output"))
+            else:  # asis: stdout is raw markdown, re-parsed; display bundles become files and figures
+                if (f.caption or f.id) and len(shown) != 1:
+                    env.warnings.append(f"caption= and id= on a block apply when it displays exactly one "
+                                        f"thing; this block displayed {len(shown)}")
+                fallback = {"caption": f.caption, "id": f.id} if len(shown) == 1 else {}
+                outdir = Path(env.cwd or ".")
+                text = "".join(p if isinstance(p, str) else place(p, outdir, fallback) for p in parts)
+                units.extend(parse(text, theme, env))
     return units
 
 
