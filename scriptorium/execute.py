@@ -36,18 +36,52 @@ class RunResult:
 
 
 _MARK = "\x00SCRIPTORIUM_CELL\x00"
+# a displayed object prints its bundle as JSON between these (see bundles.py)
+BUNDLE_START = "\x00SCRIPTORIUM_BUNDLE\x00"
+BUNDLE_END = "\x00\n"
 
 _DRIVER = '''\
 def _scriptorium_driver(chain, cell):
-    import contextlib, io, linecache, sys, traceback
+    import ast, base64, builtins, contextlib, io, json, linecache, sys, traceback
     ns = sys.modules["__main__"].__dict__
     del ns["_scriptorium_driver"]
+    reprs = (("_repr_markdown_", "text/markdown"), ("_repr_svg_", "image/svg+xml"),
+             ("_repr_png_", "image/png"), ("_repr_html_", "text/html"))
+
+    def rich(obj):
+        return any(hasattr(obj, m) for m in ("_repr_mimebundle_",) + tuple(m for m, _ in reprs))
+
+    def display(*objs, metadata=None):
+        for obj in objs:
+            data, md = {}, {}
+            if hasattr(obj, "_repr_mimebundle_"):
+                r = obj._repr_mimebundle_(include=None, exclude=None)
+                data, md = r if isinstance(r, tuple) else (r, {})
+            else:
+                for meth, mime in reprs:
+                    v = getattr(obj, meth, lambda: None)()
+                    if v is not None:
+                        data[mime] = v
+            if not data:
+                print(repr(obj))
+                continue
+            data = {k: base64.b64encode(v).decode() if isinstance(v, bytes) else v for k, v in data.items()}
+            md = {**(md or {}), **(metadata or {})}
+            sys.stdout.write(%r + json.dumps({"data": data, "metadata": md}) + %r)
+
+    builtins.display = display
     with contextlib.redirect_stdout(io.StringIO()):
         for i, src in enumerate(chain):
             exec(compile(src, f"<chain-{i}>", "exec"), ns)
     linecache.cache["<cell>"] = (len(cell), None, cell.splitlines(True), "<cell>")
     try:
-        exec(compile(cell, "<cell>", "exec"), ns)
+        tree = ast.parse(cell, "<cell>")
+        last = tree.body.pop() if tree.body and isinstance(tree.body[-1], ast.Expr) else None
+        exec(compile(tree, "<cell>", "exec"), ns)
+        if last is not None:
+            value = eval(compile(ast.Expression(last.value), "<cell>", "eval"), ns)
+            if rich(value):
+                display(value)
     except SystemExit as e:
         if e.code not in (None, 0):
             raise
@@ -59,8 +93,8 @@ def _scriptorium_driver(chain, cell):
         traceback.print_exception(type(e), e, tb)
         sys.exit(1)
 
-_scriptorium_driver(%r, %r)
-'''
+_scriptorium_driver(%%r, %%r)
+''' % (BUNDLE_START, BUNDLE_END)
 
 
 @dataclass
