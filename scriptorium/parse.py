@@ -337,7 +337,9 @@ def _code_units(info, body, theme, env, cursor, stem) -> list[Unit]:
     if f.run and env is not None:
         res = env.run(body, f.lang, cont=f.cont)
         if res.failed:
-            stdout = res.stdout if not res.stdout or res.stdout.endswith("\n") else res.stdout + "\n"
+            stdout = "".join(p if isinstance(p, str) else p["data"].get("text/plain", "") + "\n"
+                             for p in split(res.stdout))
+            stdout = stdout if not stdout or stdout.endswith("\n") else stdout + "\n"
             units.append(Unit(
                 html=(f'<pre class="output error">{escape(stdout)}'
                       f'<span class="stderr">{escape(res.stderr)}</span></pre>'),

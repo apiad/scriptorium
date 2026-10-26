@@ -74,7 +74,7 @@ def place(bundle: dict, outdir: Path, fallback: dict | None = None) -> str:
             return (f'\n<figure class="view"{id_attr}><img src="{img}" alt="{escape(caption)}">'
                     f'<audio controls preload="none" src="{audio}"></audio>{cap}</figure>\n\n')
         alt = caption.replace("[", "\\[").replace("]", "\\]")
-        return f"![{alt}]({img or audio})" + (f"{{#{ident}}}" if ident else "") + "\n\n"
+        return f"\n\n![{alt}]({img or audio})" + (f"{{#{ident}}}" if ident else "") + "\n\n"
     if "text/html" in data:
         return "\n" + data["text/html"] + "\n\n"
     return f'\n<pre class="output">{escape(data.get("text/plain", ""))}</pre>\n\n'

@@ -105,3 +105,17 @@ def test_frozen_build_writes_the_files(tmp_path):
     _html(src, tmp_path, ExecEnv(cwd=str(tmp_path), freeze=fz, frozen=True))
     assert len(list((tmp_path / "build/img").glob("*.svg"))) == 1
     assert len(list((tmp_path / "build/audio").glob("*.mp3"))) == 1
+
+
+def test_a_failing_block_shows_its_bundles_as_text(tmp_path):
+    src = "```python {run echo=false}\n" + SVG_AUDIO + "display(V('x'))\nraise ValueError('boom')\n```"
+    _, html = _html(src, tmp_path)
+    assert "SCRIPTORIUM_BUNDLE" not in html and "ID3" not in html and "\x00" not in html
+    assert "boom" in html
+
+
+def test_an_image_after_printed_text_stands_alone(tmp_path):
+    src = ("```python {run echo=false}\nclass S:\n    def _repr_svg_(self): return '<svg/>'\n"
+           "print('Intro text')\ndisplay(S(), metadata={'caption': 'a', 'id': 'fig-a'})\n```")
+    _, html = _html(src, tmp_path)
+    assert "Intro text <img" not in html and "Intro text\n<img" not in html
