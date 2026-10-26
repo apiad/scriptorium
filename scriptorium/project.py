@@ -21,7 +21,7 @@ class ProjectError(ValueError):
 
 @dataclass
 class Output:
-    """One render of a project: a PDF (`file`) or an HTML book (`dir`)."""
+    """One render of a project: a PDF (`file`), an HTML book or a docs site (`dir`)."""
     name: str
     format: str
     file: str | None = None
@@ -35,6 +35,7 @@ class Output:
     offline_media: bool = False
     js: list[str] = field(default_factory=list)
     css: list[str] = field(default_factory=list)
+    repo_url: str | None = None
 
 
 # the keys each format accepts; anything else is a typo or a key for the
@@ -43,6 +44,7 @@ _OUTPUT_KEYS = {
     "pdf": {"format", "file", "page", "vars"},
     "html": {"format", "dir", "vars", "cover", "image-max-width", "image-quality",
              "offline-images", "offline-media", "js", "css"},
+    "docs": {"format", "dir", "vars", "image-max-width", "image-quality", "js", "css", "repo-url"},
 }
 
 
@@ -56,7 +58,7 @@ def _outputs(spec) -> list[Output]:
         cfg = cfg or {}
         fmt = cfg.get("format")
         if fmt not in _OUTPUT_KEYS:
-            raise ProjectError(f"outputs.{name}: format {fmt!r} is not one of pdf, html")
+            raise ProjectError(f"outputs.{name}: format {fmt!r} is not one of pdf, html, docs")
         unknown = sorted(set(cfg) - _OUTPUT_KEYS[fmt])
         if unknown:
             raise ProjectError(f"outputs.{name}: unknown key(s) for a {fmt} output: "
@@ -64,13 +66,14 @@ def _outputs(spec) -> list[Output]:
         outs.append(Output(
             name=name, format=fmt,
             file=cfg.get("file", f"{name}.pdf") if fmt == "pdf" else None,
-            dir=cfg.get("dir", name) if fmt == "html" else None,
+            dir=cfg.get("dir", name) if fmt in ("html", "docs") else None,
             page=cfg.get("page"), vars=cfg.get("vars") or {}, cover=cfg.get("cover"),
             image_max_width=int(cfg.get("image-max-width", 1600)),
             image_quality=int(cfg.get("image-quality", 80)),
             offline_images=bool(cfg.get("offline-images", True)),
             offline_media=bool(cfg.get("offline-media", False)),
             js=list(cfg.get("js") or []), css=list(cfg.get("css") or []),
+            repo_url=cfg.get("repo-url"),
         ))
     return outs
 

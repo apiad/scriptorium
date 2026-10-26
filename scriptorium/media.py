@@ -52,11 +52,11 @@ def check_audio(units, base_dir: Path) -> None:
                 raise MediaError(f"audio file {src!r} not found (chapter {chapter!r})")
 
 
-def _pages(units):
+def page_units(units):
     """Each unit with the slug of the page its chapter becomes: the chapter's
     `#` heading id, made unique with -2, -3…; units before the first chapter
-    are on "index"."""
-    used: set[str] = set()
+    are on "index", so no chapter may take that name."""
+    used = {"index"}
     page = "index"
     for u in units:
         if u.heading_level == 1 and u.heading_id:
@@ -70,7 +70,7 @@ def _pages(units):
 def page_slugs(units) -> dict[str, str]:
     """Each element id, mapped to the slug of its chapter's page."""
     slugs: dict[str, str] = {}
-    for u, page in _pages(units):
+    for u, page in page_units(units):
         for ident in _ID.findall(u.html):
             slugs.setdefault(ident, page)
     return slugs
@@ -86,7 +86,7 @@ def link_audio(units, base_url: str) -> None:
     `target-text()` must read the caption alone."""
     if base_url and not base_url.endswith("/"):
         base_url += "/"
-    for u, page in _pages(units):
+    for u, page in page_units(units):
         if "<audio" not in u.html:
             continue
 

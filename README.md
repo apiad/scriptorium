@@ -215,6 +215,39 @@ books.example.org {
 Several books can share one origin, one directory each: each book caches under
 its own path and never touches another's cache.
 
+### The docs site
+
+An output with `format: docs` writes a documentation site of scrolling pages:
+one page per chapter (`#` heading), a sidebar of parts and chapters, an
+outline of the page's sections, previous and next links, and search over an
+index built at render time. Below 640 px the sidebar folds into a menu. It
+keeps the project's theme, so chapters, figures and references number as in
+the PDF; a reference to another chapter links to that page.
+
+```yaml
+base-url: https://example.org/book/      # project-level, optional: the PDF links audio here
+outputs:
+  site:
+    format: docs
+    dir: site                            # defaults to the output's name
+    repo-url: https://github.com/org/repo   # optional: a "Source" link in the top bar
+    image-max-width: 1600                # as in the html output
+    css: [site.css]
+    js: [site.js]
+  print:
+    format: pdf
+```
+
+A part heading (`# Part {.part}`) with text under it gets its own page; one
+with none is only a label in the sidebar. `scriptorium render chapter.md
+--format docs` builds a one-page site from a single file.
+
+The site is plain files with relative URLs, no service worker and no server
+code: copy the directory to any static host (GitHub Pages, an S3 bucket, a
+`file_server`). Set `base-url` to where it lands, so the PDF's audio figures
+link to their page. `examples/docs-site/` builds a site and a PDF from two
+chapters, one of which writes and plays a tone.
+
 ## Themes
 
 Themes are project templates. Point at one and customize with `vars:` — no theme
