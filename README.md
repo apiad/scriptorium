@@ -278,6 +278,27 @@ All six `extend` a `base` theme; build your own by extending any of them. See
   does both; `{python}` is Quarto-compatible. Blocks run independently; mark a
   block `continue` (`{python continue}`, `python {run continue}`) to run it on top
   of the blocks before it, and a failing block shows its traceback in red.
+- **Rich display** — a Python block has Jupyter's `display(obj, metadata=None)`,
+  and a block whose last line is an expression with a rich repr shows it, as a
+  notebook would (a plain value prints nothing). Scriptorium reads the object's
+  `_repr_mimebundle_`, or its `_repr_markdown_`, `_repr_svg_`, `_repr_png_` and
+  `_repr_html_`. Markdown is spliced; an SVG or PNG and an MP3 or WAV are written
+  under `build/img/` and `build/audio/`, named by caption and content, and an image
+  with audio becomes one figure with its player under it; HTML goes in raw; plain
+  text shows as output. The caption and id come from the bundle's metadata
+  (`{"caption": …, "id": "fig-…"}`), or from the block's `caption="…"` and `id=…`
+  when it displays exactly one thing. A frozen render writes the files again from
+  the cache.
+
+  ````markdown
+  ```python {run echo=false}
+  class Dot:
+      def _repr_svg_(self):
+          return '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="8"/></svg>'
+
+  display(Dot(), metadata={"caption": "A dot", "id": "fig-dot"})
+  ```
+  ````
 - **Math** — `$inline$` and `$$display$$`.
 - **Audio** — an image link to an audio file (`.mp3` `.ogg` `.opus` `.m4a`
   `.wav` `.flac`, any case) alone in its paragraph is an audio figure: a native
