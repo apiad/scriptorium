@@ -111,6 +111,9 @@ class ExecEnv:
     # frozen: serve cached results only and never start an interpreter (a
     # reader such as marginalia shows a book's outputs without running it)
     frozen: bool = False
+    # site_html: the output is a docs site, which shows a bundle's own HTML when its
+    # metadata asks for it with "site": "html" (bundles.place)
+    site_html: bool = False
 
     def reset_session(self) -> None:
         """New document/chapter: chains never cross a file boundary."""

@@ -208,7 +208,7 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
     base_dir, out_dir = Path(base_dir), Path(out_dir)
     p = prepare(src, theme_name=theme_name, cwd=str(base_dir), execute=execute,
                 vars={**(vars or {}), **output.vars}, code_root=code_root,
-                project_meta=project_meta, for_screen=True)
+                project_meta=project_meta, for_screen=True, site_html=True)
     if str(p.theme.meta.get("mode", "")) == "deck":
         raise ValueError("deck themes have no docs form; render them to PDF")
     warnings = list(p.warnings) + resolve_refs(p.units, p.theme.meta.get("html-refs", {}), p.meta)

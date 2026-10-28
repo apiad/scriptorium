@@ -29,7 +29,7 @@ def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
             execute: bool = True, vars: dict | None = None,
             code_root: str | None = None,
             project_meta: dict | None = None, frozen: bool = False,
-            page: dict | None = None, for_screen: bool = False) -> Prepared:
+            page: dict | None = None, for_screen: bool = False, site_html: bool = False) -> Prepared:
     """Run the preprocessors and the parser: the units, theme and metadata a
     document renders from."""
     from .parse import frontmatter, parse
@@ -91,7 +91,7 @@ def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
         pythonpath = []
         if cwd and code_root:
             pythonpath = [str((Path(cwd) / code_root).resolve())]
-        env = ExecEnv(cwd=cwd, freeze=freeze, pythonpath=pythonpath, frozen=frozen)
+        env = ExecEnv(cwd=cwd, freeze=freeze, pythonpath=pythonpath, frozen=frozen, site_html=site_html)
         settings = meta.get("execute") if isinstance(meta.get("execute"), dict) else {}
         if settings.get("interpreters"):
             env.interpreters.update(settings["interpreters"])
