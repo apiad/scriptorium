@@ -1,5 +1,7 @@
 """VS3 acceptance: fence directives, tangle, and subshell execution + splice."""
 
+import pytest
+
 from scriptorium.execute import ExecEnv, RunResult
 from scriptorium.freeze import Freeze
 from scriptorium.fence import parse_fence
@@ -192,3 +194,54 @@ def test_base_theme_styles_errors():
     css = load_theme("note").css
     assert "--error:#b42318" in css.replace(" ", "")
     assert "pre.output.error" in css
+
+
+_RANDOM = "```{python}\nimport random; print(random.random())\n```"
+
+
+def _two_files(first_prose, second_prose):
+    return f"# A\n\n{first_prose}\n\n{_RANDOM}\n\n\\newpage\n\n# B\n\n{second_prose}\n\n{_RANDOM}"
+
+
+def _freeze_outputs(tmp_path, src, scope):
+    env = ExecEnv(cwd=str(tmp_path), freeze=Freeze(tmp_path / "f.json"), freeze_scope=scope)
+    return _outputs(parse(src, env=env))
+
+
+def test_freeze_per_file_reruns_only_the_edited_file(tmp_path):
+    a1, b1 = _freeze_outputs(tmp_path, _two_files("one", "two"), "file")
+    assert a1 != b1  # the same block in two files is two cache entries
+    assert _freeze_outputs(tmp_path, _two_files("one", "two"), "file") == [a1, b1]
+    a2, b2 = _freeze_outputs(tmp_path, _two_files("one, edited", "two"), "file")
+    assert a2 != a1 and b2 == b1
+
+
+def test_freeze_per_block_ignores_prose_edits(tmp_path):
+    a1, b1 = _freeze_outputs(tmp_path, _two_files("one", "two"), "block")
+    assert a1 == b1  # keyed on the block alone
+    assert _freeze_outputs(tmp_path, _two_files("one, edited", "two"), "block") == [a1, b1]
+
+
+def test_freeze_setting_comes_from_the_execute_settings(tmp_path):
+    from scriptorium.render import prepare
+
+    src = _two_files("one", "two")
+    p = prepare(src, cwd=str(tmp_path), project_meta={"execute": {"freeze": "file"}})
+    assert p.env.freeze_scope == "file"
+    with pytest.raises(ValueError, match="execute.freeze"):
+        prepare(src, cwd=str(tmp_path), project_meta={"execute": {"freeze": "chapter"}})
+
+
+def test_freeze_per_file_reruns_blocks_after_a_fixed_output(tmp_path):
+    # a python {run} block's output is Markdown, parsed again; that parse must not
+    # reset the file's key
+    src = ("Prose PROSE.\n\n```python {run}\nprint('fixed')\n```\n\n"
+           "```python {run}\nimport random; print(random.random())\n```")
+
+    def last_prose(text):
+        env = ExecEnv(cwd=str(tmp_path), freeze=Freeze(tmp_path / "f.json"), freeze_scope="file")
+        return [u.html for u in parse(text, env=env) if u.name == "prose"][-1]
+
+    r1 = last_prose(src.replace("PROSE", "one"))
+    r2 = last_prose(src.replace("PROSE", "one, edited"))
+    assert r2 != r1

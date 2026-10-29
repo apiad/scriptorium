@@ -114,6 +114,11 @@ class ExecEnv:
     # site_html: the output is a docs site, which shows a bundle's own HTML when its
     # metadata asks for it with "site": "html" (bundles.place)
     site_html: bool = False
+    # freeze_scope "file": a block's freeze key also carries `salt`, the hash of its
+    # whole file (set by parse), so editing a file re-runs every block in it; "block"
+    # keys a block on its own source and chain only
+    freeze_scope: str = "block"
+    salt: str = ""
 
     def reset_session(self) -> None:
         """New document/chapter: chains never cross a file boundary."""
@@ -150,7 +155,7 @@ class ExecEnv:
         cache_key = None
         hit = None
         if self.freeze is not None:
-            cache_key = self.freeze.key(" ".join(cmd) + "|".join(self.pythonpath), program)
+            cache_key = self.freeze.key(" ".join(cmd) + "|".join(self.pythonpath) + self.salt, program)
             hit = self.freeze.get(cache_key)
 
         if hit is not None:

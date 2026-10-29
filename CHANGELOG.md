@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Features
+
+- **Freeze per file.** `execute: {freeze: file}` keys each block's cached output
+  on its whole file, so editing a file re-runs all its blocks and an unchanged
+  file is served from the cache. The default, `block`, keeps today's keys.
+
 ## [v0.11.0] - 2026-10-29
 
 ### Features
