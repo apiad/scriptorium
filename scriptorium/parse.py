@@ -359,7 +359,7 @@ def _code_units(info, body, theme, env, cursor, stem) -> list[Unit]:
                 outdir = Path(env.cwd or ".")
                 site = getattr(env, "site_html", False)
                 text = "".join(p if isinstance(p, str) else place(p, outdir, fallback, site) for p in parts)
-                units.extend(parse(text, theme, env))
+                units.extend(parse(text, theme, env, nested=True))
     return units
 
 
