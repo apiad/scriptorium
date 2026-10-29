@@ -44,18 +44,35 @@ def _write(outdir: Path, sub: str, caption: str, ext: str, data: bytes) -> str:
     return rel.as_posix()
 
 
-def place(bundle: dict, outdir: Path, fallback: dict | None = None) -> str:
+def _site_html(data: dict, outdir: Path, caption: str, ident: str) -> str:
+    """The bundle's own HTML, its audio written as a file in place of its data URI, and the
+    id on its outermost <figure> so the figure is numbered like an image with audio."""
+    page = data["text/html"]
+    for mime, ext in (("audio/mpeg", "mp3"), ("audio/wav", "wav")):
+        if mime in data:
+            path = _write(outdir, "audio", caption, ext, base64.b64decode(data[mime]))
+            page = page.replace(f"data:{mime};base64,{data[mime]}", path)
+    if ident and page.lstrip().startswith("<figure"):
+        ident = ident if ident.startswith("fig-") else "fig-" + ident
+        page = re.sub(r"<figure\b", f'<figure id="{escape(ident)}"', page.lstrip(), count=1)
+    return "\n" + page + "\n\n"
+
+
+def place(bundle: dict, outdir: Path, fallback: dict | None = None, site: bool = False) -> str:
     """Markdown or raw HTML for one bundle, writing its image and audio under outdir/build.
 
-    Preference: text/markdown; an image and/or audio as files (one figure when both);
-    text/html; text/plain as output. Caption and id come from the bundle's metadata,
-    else from fallback (the block's attributes)."""
+    Preference: text/markdown; on a site (the docs format), the HTML of a bundle whose
+    metadata asks for it with "site": "html"; an image and/or audio as files (one figure
+    when both); text/html; text/plain as output. Caption and id come from the bundle's
+    metadata, else from fallback (the block's attributes)."""
     data = bundle.get("data", {})
     meta = {k: v for k, v in (fallback or {}).items() if v}
     meta.update({k: v for k, v in (bundle.get("metadata") or {}).items() if v})
     caption, ident = meta.get("caption", ""), meta.get("id", "")
     if "text/markdown" in data:
         return data["text/markdown"] + "\n\n"
+    if site and meta.get("site") == "html" and "text/html" in data:
+        return _site_html(data, outdir, caption, ident)
     img = audio = None
     if "image/svg+xml" in data:
         img = _write(outdir, "img", caption, "svg", data["image/svg+xml"].encode())

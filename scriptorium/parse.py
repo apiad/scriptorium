@@ -356,7 +356,8 @@ def _code_units(info, body, theme, env, cursor, stem) -> list[Unit]:
                                         f"thing; this block displayed {len(shown)}")
                 fallback = {"caption": f.caption, "id": f.id} if len(shown) == 1 else {}
                 outdir = Path(env.cwd or ".")
-                text = "".join(p if isinstance(p, str) else place(p, outdir, fallback) for p in parts)
+                site = getattr(env, "site_html", False)
+                text = "".join(p if isinstance(p, str) else place(p, outdir, fallback, site) for p in parts)
                 units.extend(parse(text, theme, env))
     return units
 

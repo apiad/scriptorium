@@ -119,3 +119,33 @@ def test_an_image_after_printed_text_stands_alone(tmp_path):
            "print('Intro text')\ndisplay(S(), metadata={'caption': 'a', 'id': 'fig-a'})\n```")
     _, html = _html(src, tmp_path)
     assert "Intro text <img" not in html and "Intro text\n<img" not in html
+
+
+SITE_HTML = '''
+import base64
+MP3 = base64.b64encode(b"ID3fake").decode()
+class W:
+    def _repr_mimebundle_(self, include=None, exclude=None):
+        html = ('<figure class="widget"><div>drawn</div>\\n<audio controls src="data:audio/mpeg;base64,' + MP3 +
+                '"></audio><figcaption>A widget</figcaption>\\n<script>\\nvar x = 1 < 2 && 3 > 2;\\n</script></figure>')
+        return ({"text/html": html, "image/svg+xml": "<svg xmlns='http://www.w3.org/2000/svg'/>", "audio/mpeg": MP3},
+                {"caption": "A widget", "id": "w", "site": "html"})
+'''
+
+
+def test_a_site_shows_the_bundles_own_html_with_its_audio_as_a_file(tmp_path):
+    from scriptorium.book import resolve_refs
+    from scriptorium.media import audio_sources
+    env = ExecEnv(cwd=str(tmp_path), site_html=True)
+    units, html = _html("```python {run echo=false}\n" + SITE_HTML + "W()\n```", tmp_path, env)
+    assert '<figure id="fig-w" class="widget">' in html and "drawn" in html and "<img" not in html
+    assert "data:audio" not in html and html.count("<figure") == 1 and html.count("A widget") == 1
+    assert "var x = 1 < 2 && 3 > 2;" in html  # the script reaches the page as written
+    [src] = audio_sources(html)
+    assert src.startswith("build/audio/a-widget-") and (tmp_path / src).read_bytes() == b"ID3fake"
+    resolve_refs(units, {}, {})
+
+
+def test_print_and_the_reader_ignore_the_site_key(tmp_path):
+    _, html = _html("```python {run echo=false}\n" + SITE_HTML + "W()\n```", tmp_path)
+    assert '<figure class="view" id="fig-w">' in html and "<img" in html and "drawn" not in html
