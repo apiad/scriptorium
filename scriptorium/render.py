@@ -97,6 +97,10 @@ def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
             env.interpreters.update(settings["interpreters"])
         if settings.get("timeout"):
             env.timeout = float(settings["timeout"])
+        if settings.get("freeze"):
+            if settings["freeze"] not in ("block", "file"):
+                raise ValueError(f"execute.freeze is {settings['freeze']!r}; it takes block or file")
+            env.freeze_scope = settings["freeze"]
 
     from .parse import fill_toc
     from .footnotes import process_footnotes, resolve_footnote_mode

@@ -7,6 +7,7 @@ back — as monospace (Quarto `{lang}`) or as re-parsed markdown (native `{run}`
 An optional ExecEnv enables execution; without it, code is shown, not run.
 """
 
+import hashlib
 import re
 from pathlib import Path
 from html import escape
@@ -406,12 +407,41 @@ def fill_toc(units: list[Unit], depth: int = 2) -> list[Unit]:
     return out
 
 
-def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = None) -> list[Unit]:
+def _file_salts(body: str) -> list[str]:
+    """The hash of each stretch of `body` between page breaks: one per file of a
+    project, which starts each file on a new page. It walks the same splits as
+    `parse`, so its breaks are the ones where `parse` resets the session."""
+    files, cur = [], []
+    for node in _split_nodes(body):
+        if node[0] == "md":
+            for kind, *rest in _split_md(node[1]):
+                if kind != "code" and rest[0].strip() == r"\newpage":
+                    files.append(cur)
+                    cur = []
+                else:
+                    cur.append(repr(rest))
+        elif node[1] == "newpage":
+            files.append(cur)
+            cur = []
+        else:
+            cur.append(repr(node))
+    files.append(cur)
+    return [hashlib.sha256("\0".join(f).encode()).hexdigest() for f in files]
+
+
+def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = None,
+          nested: bool = False) -> list[Unit]:
     theme = theme or load_theme()
     meta = frontmatter(src) if meta is None else meta
     stem = str(meta.get("stem", "doc"))
     cursor: dict[str, int] = {}
     units: list[Unit] = []
+    # freeze per file: each block's key carries its file's hash; a nested parse
+    # (a transparent component) stays inside its file
+    salts = None
+    if env is not None and env.freeze_scope == "file" and not nested:
+        salts = iter(_file_salts(_body(src)))
+        env.salt = next(salts)
     for node in _split_nodes(_body(src)):
         if node[0] == "md":
             for kind, *rest in _split_md(node[1]):
@@ -422,6 +452,8 @@ def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = No
                 if block.strip() == r"\newpage":
                     if env is not None:
                         env.reset_session()  # new file/chapter -> fresh exec state
+                        if salts is not None:
+                            env.salt = next(salts)
                     units.append(Unit(is_break=True, name="newpage"))
                     continue
                 if _HEADING.match(block):
@@ -434,10 +466,12 @@ def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = No
             if name == "newpage":
                 if env is not None:
                     env.reset_session()  # new file/chapter -> fresh exec state
+                    if salts is not None:
+                        env.salt = next(salts)
                 units.append(Unit(is_break=True, name="newpage"))
                 continue
             if name in _TRANSPARENT:
-                units.extend(parse(inner, theme, env, meta=meta))
+                units.extend(parse(inner, theme, env, meta=meta, nested=True))
                 continue
             if name == "toc":  # filled after the whole doc is parsed (see fill_toc)
                 units.append(Unit(name="toc", html="", code_src=attrs.get("title", "Contents")))

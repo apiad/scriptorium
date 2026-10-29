@@ -74,6 +74,15 @@ measured by WeasyPrint.
 anything: a block that never ran shows its source and a warning. A project sets
 `execute: {timeout: 600, interpreters: {…}}` in `scriptorium.yaml`.
 
+The freeze cache (`.scriptorium/freeze.json` in the project directory) keys each
+block on its own source and the chain it runs on, so editing prose re-runs
+nothing. `execute: {freeze: file}` keys each block on its whole file instead:
+editing a file re-runs every block in it, and an unchanged file is served from
+the cache. Use it when a block reads its own file or the files other blocks
+wrote, which a per-block key would serve stale. Neither key sees the code a
+block imports, so whatever caches the freeze file (a CI cache, say) must key on
+that code too.
+
 Requires Python 3.12+. Vendored fonts (Inter, Source Serif 4, JetBrains Mono)
 ship with the themes, so output is self-contained.
 
