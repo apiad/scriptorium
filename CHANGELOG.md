@@ -4,8 +4,20 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.11.0] - 2026-10-29
+
 ### Features
 
+- **Rich display in Python blocks.** The Python driver defines `display()` and
+  shows a block's last expression when it has a rich repr (`_repr_mimebundle_`
+  or a `_repr_*_` method). Images and audio are written under `build/img` and
+  `build/audio`; an image with audio becomes one figure with its player. A
+  fence's `caption=` and `id=` name a block that displays one thing. Frozen
+  renders recreate the files from the cache.
+- **A bundle can bring its own HTML to the docs site.** A bundle whose metadata
+  says `"site": "html"` and that carries `text/html` is spliced as that HTML on
+  the docs site, with its audio written to a file and the bundle's id on its
+  outer figure. The PDF and the HTML book ignore the key.
 - **The docs site.** An output with `format: docs` writes a documentation site:
   one scrolling page per chapter, a sidebar of parts and chapters, an outline
   of the page, previous and next links, search over an index built at render
@@ -41,6 +53,11 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ### Fixes
 
+- **Code blocks read in the docs site's dark mode.** Code blocks and their
+  output kept a light frame and paper colours on the dark page; they now take
+  the dark code background and dark-mode token colours.
+- **The HTML book and the docs site find their assets in an installed wheel.**
+  Both looked for them at the repo root, which a wheel does not have.
 - **Wheels ship the themes.** The wheel packaged only `scriptorium/` and looked
   for themes at the repo root, so a non-editable install had none.
 
