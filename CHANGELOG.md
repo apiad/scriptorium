@@ -4,6 +4,8 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.12.0] - 2026-10-29
+
 ### Features
 
 - **Freeze per file.** `execute: {freeze: file}` keys each block's cached output
