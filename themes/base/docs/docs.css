@@ -14,6 +14,17 @@
   :root { --docs-bg: #16181d; --docs-panel: #1d2026; color-scheme: dark;
           --ink: #e6e6e6; --muted: #9aa3ae; --rule: #2e333b; --accent: #7aa7ff; --accent-dark: #9dbcff; }
   body.docs main pre, body.docs main code { background: #22262d; color: inherit; }
+  /* a code block's frame takes the theme's --wash, which stays light; and Pygments'
+     default colours are for paper. These follow its token classes by their first letter. */
+  body.docs main :is(.hl, pre.output) { background: #22262d; border-color: var(--rule); }
+  body.docs .hl :is([class^="k"], .ow) { color: #c792ea; font-weight: normal; }
+  body.docs .hl [class^="s"] { color: #c3e88d; }
+  body.docs .hl [class^="m"] { color: #f78c6c; }
+  body.docs .hl [class^="c"] { color: #7f8796; }
+  body.docs .hl :is(.nf, .nc, .fm) { color: #82aaff; }
+  body.docs .hl :is(.nb, .bp) { color: #ffcb6b; }
+  body.docs .hl .o { color: #89ddff; }
+  body.docs .hl :is(.n, .nn, .p, .w, .nv, .vm, .na) { color: inherit; }
   /* themes darken headings from their own scales, which vanish on dark */
   body.docs main :is(h1, h2, h3, h4, h5, h6, figcaption, th) { color: inherit; }
 }
